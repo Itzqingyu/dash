@@ -1,15 +1,15 @@
 import React from 'react';
 import type { Activity } from '../../../types/activity';
-import BreadcrumbNav from '../../BreadcrumbNav';
-import OverviewPanel from '../../OverviewPanel';
-import BeforePanel from '../../BeforePanel';
-import MeetingPanel from '../../MeetingPanel';
-import TasksPanel from '../../TasksPanel';
-import DecisionsPanel from '../../DecisionsPanel';
-import SchedulePanel from '../../SchedulePanel';
-import DuringPanel from '../../DuringPanel';
-import AfterPanel from '../../AfterPanel';
-import SourceRecordPanel from '../../SourceRecordPanel';
+import BreadcrumbNav from '../../layout/BreadcrumbNav';
+import OverviewPanel from './panels/OverviewPanel';
+import BeforePanel from './panels/BeforePanel';
+import MeetingPanel from './panels/MeetingPanel';
+import TasksPanel from './panels/TasksPanel';
+import DecisionsPanel from './panels/DecisionsPanel';
+import SchedulePanel from './panels/SchedulePanel';
+import DuringPanel from './panels/DuringPanel';
+import AfterPanel from './panels/AfterPanel';
+import SourceRecordPanel from './panels/SourceRecordPanel';
 import './ActivityWorkspace.css';
 
 const GLYPH_COLORS = ['cyan', 'violet', 'orange', 'pink'];

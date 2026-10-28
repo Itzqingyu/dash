@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Activity, ActivityInput } from '../types/activity';
+import type { Activity, ActivityInput } from '../../../types/activity';
 import './ActivityFormModal.css';
 
 interface ActivityFormModalProps {

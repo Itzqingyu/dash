@@ -17,7 +17,7 @@ import {
   Bot,
   Info,
 } from 'lucide-react';
-import { vaultApi, VaultStats } from '../api/vaultApi';
+import { vaultApi, VaultStats } from '../../../api/vaultApi';
 import './DashOutPanel.css';
 
 export default function DashOutPanel() {

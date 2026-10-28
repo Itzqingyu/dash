@@ -22,8 +22,8 @@ import {
   uploadDocument,
   deleteDocumentByIdentifier,
   checkDuplicateFileStem,
-} from '../api/documentService';
-import { BackendDocument } from '../api/apiTypes';
+} from '../../../api/documentService';
+import { BackendDocument } from '../../../api/apiTypes';
 import {
   extractMeetingSummary,
   commitMeetingSummary,
@@ -31,9 +31,9 @@ import {
   createActivity,
   BackendActivity,
   MeetingPreviewData,
-} from '../api/meetingExtractService';
-import DocumentDrawer, { DocumentItem } from './DocumentDrawer';
-import ConfirmModal from './ConfirmModal';
+} from '../../../api/meetingExtractService';
+import DocumentDrawer, { DocumentItem } from '../../common/DocumentDrawer';
+import ConfirmModal from '../../common/ConfirmModal';
 import './MeetingExtractPanel.css';
 
 /**

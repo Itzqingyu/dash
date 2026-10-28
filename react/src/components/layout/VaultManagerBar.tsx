@@ -19,8 +19,8 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { vaultApi, VaultItem } from '../api/vaultApi';
-import ConfirmModal from './ConfirmModal';
+import { vaultApi, VaultItem } from '../../api/vaultApi';
+import ConfirmModal from '../common/ConfirmModal';
 import './VaultManagerBar.css';
 
 interface VaultManagerBarProps {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { activityApi } from '../api/activityApi';
+import { activityApi } from '../../../../api/activityApi';
 import './AfterPanel.css';
 
 // 在 Props 裡接收 schedules 和 decisions

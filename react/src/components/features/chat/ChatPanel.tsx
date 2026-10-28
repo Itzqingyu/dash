@@ -13,9 +13,9 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import SessionSidebar, { SessionItem } from './SessionSidebar';
-import DocumentDrawer, { DocumentItem } from './DocumentDrawer';
-import ConfirmModal from './ConfirmModal';
-import RenameModal from './RenameModal';
+import DocumentDrawer, { DocumentItem } from '../../common/DocumentDrawer';
+import ConfirmModal from '../../common/ConfirmModal';
+import RenameModal from '../../common/RenameModal';
 import {
   fetchSessions,
   fetchSessionDetail,
@@ -23,14 +23,14 @@ import {
   updateSessionTitle,
   deleteSessionById,
   sendChatMessage,
-} from '../api/chatService';
+} from '../../../api/chatService';
 import {
   fetchDocuments,
   uploadDocument,
   deleteDocumentByIdentifier,
   checkDuplicateFileStem,
-} from '../api/documentService';
-import { RetrievedChunk } from '../api/apiTypes';
+} from '../../../api/documentService';
+import { RetrievedChunk } from '../../../api/apiTypes';
 import './ChatPanel.css';
 
 /**

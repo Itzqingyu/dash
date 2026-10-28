@@ -10,7 +10,7 @@ import {
   FileScan,
   Archive,
 } from 'lucide-react';
-import VaultManagerBar from '../VaultManagerBar';
+import VaultManagerBar from './VaultManagerBar';
 import './AppSidebar.css';
 
 interface AppSidebarProps {

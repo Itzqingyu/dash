@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { activityApi } from '../api/activityApi';
-import type { Meeting, Schedule, ScheduleInput } from '../types/activity';
-import ConfirmModal from './ConfirmModal';
+import { activityApi } from '../../../../api/activityApi';
+import type { Meeting, Schedule, ScheduleInput } from '../../../../types/activity';
+import ConfirmModal from '../../../common/ConfirmModal';
 import './SchedulePanel.css';
 
 interface SchedulePanelProps {

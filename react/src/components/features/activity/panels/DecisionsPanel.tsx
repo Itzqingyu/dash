@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { activityApi } from '../api/activityApi';
-import type { ConfirmationStatus, Decision, DecisionInput, Meeting } from '../types/activity';
-import ConfirmModal from './ConfirmModal';
+import { activityApi } from '../../../../api/activityApi';
+import type { ConfirmationStatus, Decision, DecisionInput, Meeting } from '../../../../types/activity';
+import ConfirmModal from '../../../common/ConfirmModal';
 import './DecisionsPanel.css';
 
 interface DecisionsPanelProps {

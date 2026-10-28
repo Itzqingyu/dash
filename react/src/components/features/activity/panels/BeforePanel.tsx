@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './BeforePanel.css';
-import { activityApi } from '../api/activityApi';
-import type { Meeting, Task, Decision } from '../types/activity';
+import { activityApi } from '../../../../api/activityApi';
+import type { Meeting, Task, Decision } from '../../../../types/activity';
 
 export default function BeforePanel({ currentActivity, currentView, setCurrentView }: any) {
   // 建立儲存資料的 state，預設為空陣列

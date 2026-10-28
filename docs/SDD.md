@@ -54,9 +54,20 @@ rag-project/
 │   │   │   ├── meetingExtractService.ts # AI 會議紀錄結構化抽取 (1-shot) 與 Preview-Commit 寫入
 │   │   │   └── vaultApi.ts       # 多 Vault 管理與 DASH OUT 導出、DASH IN 匯入 API
 │   │   ├── components/           # 組件依領域分層管理與同名獨立樣式 (.tsx & .css)
+│   │   │   ├── common/           # 全域共用通用基礎組件與彈窗
+│   │   │   │   ├── ConfirmModal.tsx       # 防手殘刪除確認獨立彈窗 (霧化毛玻璃背景)
+│   │   │   │   ├── ConfirmModal.css
+│   │   │   │   ├── RenameModal.tsx        # 編輯名稱獨立彈窗 (霧化毛玻璃背景)
+│   │   │   │   ├── RenameModal.css
+│   │   │   │   ├── DocumentDrawer.tsx     # 歷史紀錄文檔抽屜 (跨 Chat 與 Extract 共用)
+│   │   │   │   └── DocumentDrawer.css
 │   │   │   ├── layout/           # 應用骨架與導航佈局
 │   │   │   │   ├── AppSidebar.tsx # 主選單導航側邊欄 (活動工作台/DASH Agent/DASH Out 切換)
-│   │   │   │   └── AppSidebar.css # 主選單專屬樣式
+│   │   │   │   ├── AppSidebar.css # 主選單專屬樣式
+│   │   │   │   ├── BreadcrumbNav.tsx      # 活動工作台頂部多層級麵包屑導航
+│   │   │   │   ├── BreadcrumbNav.css
+│   │   │   │   ├── VaultManagerBar.tsx    # 側邊欄底部 Vault 控制列 (切換/重命名/刪除/新建/DASH IN)
+│   │   │   │   └── VaultManagerBar.css
 │   │   │   ├── features/         # 業務領域專屬視圖與面板
 │   │   │   │   └── activity/     # 活動工作台領域組件
 │   │   │   │       ├── ActivityListView.tsx   # 活動清單工作台首頁 (統計摘要卡、即時搜尋與列表)
@@ -67,19 +78,29 @@ rag-project/
 │   │   │   │       ├── QuickAddModal.css
 │   │   │   │       ├── HandoverModal.tsx      # 活動交接報告預覽彈窗 (存入紀錄庫與 PDF 匯出)
 │   │   │   │       └── HandoverModal.css
-│   │   │   ├── VaultManagerBar.tsx # 側邊欄底部 Vault 控制列 (切換、重命名、刪除防呆、新建空白、DASH IN)
-│   │   │   ├── VaultManagerBar.css # 側邊欄底部 Vault 控制列專屬樣式
-│   │   │   ├── DashOutPanel.tsx  # DASH OUT 全量資料導出專用面板 (資料統計卡片與一鍵打包 ZIP)
-│   │   │   ├── DashOutPanel.css  # DASH OUT 面板專屬樣式
-│   │   │   ├── ChatPanel.tsx     # LLM 聊天大面板主組件 (雙欄佈局、模式切換、即時 API 串接與真實錯誤反饋)
-│   │   │   ├── MeetingExtractPanel.tsx # AI 會議紀錄整理面板 (Preview-Commit 雙階段工作流)
-│   │   │   ├── SessionSidebar.tsx # 對話會話側邊欄 (新對話、切換、三點選單觸發重命名與刪除)
-│   │   │   ├── RenameModal.tsx   # 編輯會話名稱獨立彈窗 (霧化毛玻璃背景)
-│   │   │   ├── ConfirmModal.tsx  # 防手殘刪除確認獨立彈窗 (霧化毛玻璃背景)
-│   │   │   ├── DocumentDrawer.tsx # 歷史紀錄文檔抽屜 (文件清單、真實上傳與刪除)
-│   │   │   ├── BreadcrumbNav.tsx # 活動工作台頂部多層級麵包屑導航
-│   │   │   ├── MeetingPanel.tsx  # 會議管理面板
-│   │   │   └── ...               # 其餘活動管理面板 (Overview, Tasks, Decisions 等各自獨立 CSS)
+│   │   │   │       ├── ActivityFormModal.tsx  # 新增/編輯活動表單彈窗
+│   │   │   │       ├── ActivityFormModal.css
+│   │   │   │       └── panels/                # 活動各階段子面板 (各自獨立 TSX & CSS)
+│   │   │   │           ├── OverviewPanel.*    # 01 總覽
+│   │   │   │           ├── BeforePanel.*      # 02 活動前導覽
+│   │   │   │           ├── MeetingPanel.*     # 02 籌備會議
+│   │   │   │           ├── TasksPanel.*       # 02 待辦事項
+│   │   │   │           ├── DecisionsPanel.*   # 02 決策紀錄
+│   │   │   │           ├── SchedulePanel.*    # 02 流程規劃
+│   │   │   │           ├── DuringPanel.*      # 03 活動中現場
+│   │   │   │           ├── AfterPanel.*       # 04 活動後檢討
+│   │   │   │           └── SourceRecordPanel.*# 04 原始紀錄
+│   │   │       ├── chat/         # AI 對話模組
+│   │   │       │   ├── ChatPanel.tsx          # LLM 聊天大面板主組件 (雙欄佈局、模式切換)
+│   │   │       │   ├── ChatPanel.css
+│   │   │       │   ├── SessionSidebar.tsx     # 對話會話側邊欄 (新對話、切換、重命名與刪除)
+│   │   │       │   └── SessionSidebar.css
+│   │   │       ├── meeting-extract/ # AI 會議紀錄整理模組
+│   │   │       │   ├── MeetingExtractPanel.tsx # 會議紀錄整理面板 (Preview-Commit 雙階段工作流)
+│   │   │       │   └── MeetingExtractPanel.css
+│   │   │       └── dash-out/     # DASH OUT 模組
+│   │   │           ├── DashOutPanel.tsx       # DASH OUT 全量資料導出專用面板 (統計卡片與打包 ZIP)
+│   │   │           └── DashOutPanel.css
 │   │   └── index.css             # 全域 Design Tokens (:root)、Reset 與 App Shell 樣式
 │
 ├── python/                       # Python 後端 (FastAPI)

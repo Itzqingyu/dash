@@ -8,13 +8,13 @@ import AppSidebar from './components/layout/AppSidebar';
 // 業務視圖組件
 import ActivityListView from './components/features/activity/ActivityListView';
 import ActivityWorkspace from './components/features/activity/ActivityWorkspace';
-import ChatPanel from './components/ChatPanel';
-import MeetingExtractPanel from './components/MeetingExtractPanel';
-import DashOutPanel from './components/DashOutPanel';
+import ChatPanel from './components/features/chat/ChatPanel';
+import MeetingExtractPanel from './components/features/meeting-extract/MeetingExtractPanel';
+import DashOutPanel from './components/features/dash-out/DashOutPanel';
 
 // 彈窗組件
-import ActivityFormModal from './components/ActivityFormModal';
-import ConfirmModal from './components/ConfirmModal';
+import ActivityFormModal from './components/features/activity/ActivityFormModal';
+import ConfirmModal from './components/common/ConfirmModal';
 import QuickAddModal from './components/features/activity/QuickAddModal';
 import HandoverModal from './components/features/activity/HandoverModal';
 

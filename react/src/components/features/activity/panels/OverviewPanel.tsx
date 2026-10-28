@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Activity } from '../types/activity';
+import type { Activity } from '../../../../types/activity';
 import './OverviewPanel.css';
 
 interface OverviewPanelProps {
