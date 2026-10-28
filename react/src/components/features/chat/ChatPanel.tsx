@@ -30,7 +30,7 @@ import {
   deleteDocumentByIdentifier,
   checkDuplicateFileStem,
 } from '../../../api/documentService';
-import { RetrievedChunk } from '../../../api/apiTypes';
+import { RetrievedChunk } from '../../../types/chat';
 import './ChatPanel.css';
 
 /**

@@ -3,7 +3,7 @@
  * 統一管理 HTTP 請求、錯誤攔截與後端連線異常捕捉
  */
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+export const API_BASE_URL = 'http://127.0.0.1:8000';
 
 /**
  * 自訂 API 錯誤類別，攜帶 HTTP 狀態碼與後端詳細錯誤說明
@@ -101,6 +101,12 @@ export const apiClient = {
   post: <T>(endpoint: string, body?: unknown) =>
     apiRequest<T>(endpoint, {
       method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
+  put: <T>(endpoint: string, body?: unknown) =>
+    apiRequest<T>(endpoint, {
+      method: 'PUT',
       body: body ? JSON.stringify(body) : undefined,
     }),
 

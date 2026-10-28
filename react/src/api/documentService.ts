@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from './apiClient';
-import { BackendDocument, UploadDocumentResponse } from './apiTypes';
+import { BackendDocument, UploadDocumentResponse } from '../types/document';
 
 /**
  * 取得已入庫的歷史紀錄文件列表

@@ -46,13 +46,20 @@ rag-project/
 ├── react/                        # Electron + Vite + React 前端
 │   ├── src/
 │   │   ├── App.tsx               # 頂層主畫面與導航路由 (活動工作台 vs AI 對話 vs DASH OUT)
-│   │   ├── api/                  # 後端 API 通訊服務層 (camelCase 命名)
-│   │   │   ├── apiTypes.ts       # 後端資料結構與 TypeScript 介面定義
-│   │   │   ├── apiClient.ts      # HTTP 請求封裝、錯誤攔截與後端斷線處理
+│   │   ├── api/                  # 後端 API 通訊服務層 (統一透過 apiClient 呼叫)
+│   │   │   ├── apiClient.ts      # HTTP 請求核心封裝、錯誤攔截與狀態解析 (Base URL & Methods)
+│   │   │   ├── activityApi.ts    # 活動與各階段籌備細項 CRUD API
 │   │   │   ├── chatService.ts    # 對話會話增刪查改與雙模式訊息發送
 │   │   │   ├── documentService.ts # 歷史紀錄文件清單、上傳轉檔向量化與刪除
 │   │   │   ├── meetingExtractService.ts # AI 會議紀錄結構化抽取 (1-shot) 與 Preview-Commit 寫入
 │   │   │   └── vaultApi.ts       # 多 Vault 管理與 DASH OUT 導出、DASH IN 匯入 API
+│   │   ├── types/                # 全域與業務領域型別定義
+│   │   │   ├── index.ts          # 統一型別入口匯出模組
+│   │   │   ├── activity.ts       # 活動主體資料結構型別
+│   │   │   ├── meeting.ts        # 會議、待辦、決策、日程規劃與突發事件型別
+│   │   │   ├── chat.ts           # 對話會話、歷史訊息與檢索切片型別
+│   │   │   ├── document.ts       # 紀錄庫文件管理型別
+│   │   │   └── vault.ts          # Vault 統計數據、身分識別與交接操作型別
 │   │   ├── components/           # 組件依領域分層管理與同名獨立樣式 (.tsx & .css)
 │   │   │   ├── common/           # 全域共用通用基礎組件與彈窗
 │   │   │   │   ├── ConfirmModal.tsx       # 防手殘刪除確認獨立彈窗 (霧化毛玻璃背景)

@@ -23,7 +23,7 @@ import {
   deleteDocumentByIdentifier,
   checkDuplicateFileStem,
 } from '../../../api/documentService';
-import { BackendDocument } from '../../../api/apiTypes';
+import { BackendDocument } from '../../../types/document';
 import {
   extractMeetingSummary,
   commitMeetingSummary,
