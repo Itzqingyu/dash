@@ -1,0 +1,20 @@
+/**
+ * ActivityWorkspace.css
+ * 活動工作台主工作區容器樣式
+ */
+
+.activity-workspace .title-lockup {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.activity-workspace .activity-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+

@@ -1,151 +1,83 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  Send,
-  Paperclip,
-  Loader2,
-  Bot,
-  User,
-  LayoutGrid,
-  Menu,
-  ArrowLeft,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  FileScan,
-  MessageSquare,
-  ArrowLeftRight,
-  Archive,
-  RefreshCw,
-} from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import React, { useState, useEffect } from 'react';
 import { activityApi } from './api/activityApi';
 import type { Activity, ActivityInput } from './types/activity';
-import OverviewPanel from './components/OverviewPanel';
-import ActivityFormModal from './components/ActivityFormModal';
-import BeforePanel from './components/BeforePanel';
-import TasksPanel from './components/TasksPanel';
-import DecisionsPanel from './components/DecisionsPanel';
-import SchedulePanel from './components/SchedulePanel';
-import MeetingPanel from './components/MeetingPanel';
-import DuringPanel from './components/DuringPanel';
-import AfterPanel from './components/AfterPanel';
-import SourceRecordPanel from './components/SourceRecordPanel';
-import BreadcrumbNav from './components/BreadcrumbNav';
-import ConfirmModal from './components/ConfirmModal';
-// 引入 LLM 聊天面板組件
+
+// 佈局組件
+import AppSidebar from './components/layout/AppSidebar';
+
+// 業務視圖組件
+import ActivityListView from './components/features/activity/ActivityListView';
+import ActivityWorkspace from './components/features/activity/ActivityWorkspace';
 import ChatPanel from './components/ChatPanel';
-// 引入 AI 會議紀錄整理面板組件
 import MeetingExtractPanel from './components/MeetingExtractPanel';
-// 引入 DASH OUT 本地資料導出面板組件
 import DashOutPanel from './components/DashOutPanel';
-// 引入側邊欄底部 Vault 控制列組件
-import VaultManagerBar from './components/VaultManagerBar';
-import html2pdf from 'html2pdf.js';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-}
+// 彈窗組件
+import ActivityFormModal from './components/ActivityFormModal';
+import ConfirmModal from './components/ConfirmModal';
+import QuickAddModal from './components/features/activity/QuickAddModal';
+import HandoverModal from './components/features/activity/HandoverModal';
 
-// 加上型別定義的 QuickAddButton
-const QuickAddButton = ({
-  label,
-  targetView,
-  activityId,
-  onAction
-}: {
-  label: string;
-  targetView: string;
-  activityId: string;
-  onAction: (view: string) => void;
-}) => (
-  <button
-    type="button"
-    disabled={!activityId}
-    onClick={() => onAction(targetView)}
-  >
-    <strong>{label}</strong>
-  </button>
-);
-
+/**
+ * DASH 應用頂層根組件 (App.tsx)
+ * 職責：管理視圖路由分發、活動選取全域狀態與各業務模組掛載
+ */
 export default function App() {
-  // ==========================================
-  // 1. 保留原本的 AI 對話與上傳狀態邏輯
-  // ==========================================
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', role: 'assistant', content: 'Hello! Please upload a markdown document to start asking questions.' }
-  ]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  // 畫面路由切換 (預設為 activities 活動列表)
+  const [currentView, setCurrentView] = useState('activities');
+
+  // 活動清單與選取狀態
   const [activities, setActivities] = useState<Activity[]>([]);
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
+
+  // 側邊欄開合狀態
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // 活動編輯/新增彈窗狀態
   const [activityFormOpen, setActivityFormOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [activityFormError, setActivityFormError] = useState<string | null>(null);
   const [activitySaving, setActivitySaving] = useState(false);
+
+  // 活動刪除確認狀態
+  const [deleteActivityConfirmOpen, setDeleteActivityConfirmOpen] = useState(false);
   const [activityDeleting, setActivityDeleting] = useState(false);
   const [activityDeleteError, setActivityDeleteError] = useState<string | null>(null);
-  const [activitySearch, setActivitySearch] = useState('');
+
+  // 快速新增紀錄彈窗狀態
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+
+  // 交接摘要報告預覽彈窗狀態
+  const [handoverModalOpen, setHandoverModalOpen] = useState(false);
+  const [handoverSummary, setHandoverSummary] = useState('');
+
+  // 跨子面板資料版本同步計數器
   const [meetingVersion, setMeetingVersion] = useState(0);
   const [scheduleVersion, setScheduleVersion] = useState(0);
-  const [currentTab, setCurrentTab] = useState('overview');
+
   const currentActivity = activities.find((activity) => activity.id === selectedActivityId) ?? null;
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // ... (保留你原本的 messages, input, loading 等對話狀態) ...
-
-  // ==========================================
-  // 新增：畫面切換與側邊欄狀態
-  // ==========================================
-  // 控制目前顯示的畫面，預設為 'activities' (活動列表)
-  const [currentView, setCurrentView] = useState('activities');
-
-  // 控制左側主選單是否開啟 (預設為收合；由側邊小按鈕控制展開)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // 控制右側 AI 歷史參考抽屜是否開啟
-  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
-
-  // 控制左側邊欄「AI 功能」下拉選單展開/收合 (預設展開)
-  const [isAiNavOpen, setIsAiNavOpen] = useState(true);
-
-  // 封裝一個切換畫面的小函式：點擊切換頁面時自動收起側邊欄
-  const handleSetView = (view: string) => {
+  // 封裝切換畫面小函式：點擊切換頁面時自動收起側邊欄
+  const handleSetView = (view: string, activityId?: number) => {
+    if (activityId !== undefined) {
+      setSelectedActivityId(activityId);
+    }
     setCurrentView(view);
     setIsSidebarOpen(false);
   };
 
-  // 找出狀態為「已完成」的活動數量，當作已建立交接報告的指標
-  const archivedCount = activities.filter(act => act.status === '已完成').length;
-
-  // 控制 Modal 的 Ref
-  const recordModalRef = useRef<HTMLDialogElement>(null);
-  // 控制交接摘要 Modal 的變數
-  const handoverModalRef = useRef<HTMLDialogElement>(null);
-  // 來記錄在 Modal 裡面選擇了哪一個活動 (預設可以代入第一筆活動的 ID)
-  const [quickAddActivityId, setQuickAddActivityId] = useState<string>('');
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
+  // 載入活動清單
   const loadActivities = () => {
     setActivitiesLoading(true);
     setActivitiesError(null);
     activityApi.listActivities()
       .then((rows) => {
         setActivities(rows);
-        setSelectedActivityId((current) => current != null && rows.some((item) => item.id === current) ? current : null);
+        setSelectedActivityId((current) =>
+          current != null && rows.some((item) => item.id === current) ? current : null
+        );
       })
       .catch((requestError: Error) => {
         setActivitiesError(requestError.message);
@@ -159,13 +91,14 @@ export default function App() {
     loadActivities();
   }, []);
 
-  // 當切換到活動工作台或總覽時，自動重新載入活動清單以確保最新狀態
+  // 當切換回活動工作台或總覽時，重新載入活動清單確保狀態最新
   useEffect(() => {
     if (currentView === 'activities' || currentView === 'overview') {
       loadActivities();
     }
   }, [currentView]);
 
+  // 切換或重設 Vault 後更新狀態
   const handleVaultChanged = () => {
     setSelectedActivityId(null);
     loadActivities();
@@ -173,29 +106,24 @@ export default function App() {
     setMeetingVersion((v) => v + 1);
   };
 
-  const visibleActivities = activities.filter((activity) => {
-    const keyword = activitySearch.trim().toLocaleLowerCase('zh-TW');
-    return !keyword || [activity.name, activity.activity_type, activity.coordinator, activity.venue]
-      .some((value) => value?.toLocaleLowerCase('zh-TW').includes(keyword));
-  });
-  const activeCount = activities.filter((activity) => ['準備中', '進行中'].includes(activity.status)).length;
-  const completedCount = activities.filter((activity) => activity.status === '已完成').length;
-
-  const selectActivity = (activityId: number) => {
+  // 點擊選擇活動並進入總覽
+  const handleSelectActivity = (activityId: number) => {
     setSelectedActivityId(activityId);
     setActivityFormOpen(false);
     setEditingActivity(null);
     setActivityFormError(null);
     setActivityDeleteError(null);
-    handleSetView('overview');
+    handleSetView('overview', activityId);
   };
 
+  // 開啟建立活動彈窗
   const openCreateActivity = () => {
     setEditingActivity(null);
     setActivityFormError(null);
     setActivityFormOpen(true);
   };
 
+  // 開啟編輯活動彈窗
   const openEditActivity = () => {
     if (!currentActivity) return;
     setEditingActivity(currentActivity);
@@ -203,13 +131,14 @@ export default function App() {
     setActivityFormOpen(true);
   };
 
+  // 儲存活動 (新增或更新)
   const saveActivity = async (payload: ActivityInput) => {
     setActivitySaving(true);
     setActivityFormError(null);
     try {
       if (editingActivity) {
         const updated = await activityApi.updateActivity(editingActivity.id, payload);
-        setActivities((current) => current.map((activity) => activity.id === updated.id ? updated : activity));
+        setActivities((current) => current.map((activity) => (activity.id === updated.id ? updated : activity)));
       } else {
         const created = await activityApi.createActivity(payload);
         setActivities((current) => [created, ...current]);
@@ -225,13 +154,7 @@ export default function App() {
     }
   };
 
-  const [deleteActivityConfirmOpen, setDeleteActivityConfirmOpen] = useState(false);
-
-  const requestDeleteCurrentActivity = async () => {
-    if (!currentActivity) return;
-    setDeleteActivityConfirmOpen(true);
-  };
-
+  // 確認刪除當前活動
   const handleConfirmDeleteActivity = async () => {
     if (!currentActivity) return;
     setDeleteActivityConfirmOpen(false);
@@ -249,655 +172,77 @@ export default function App() {
     }
   };
 
-  const handleUpload = () => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.md,.txt';
-
-    fileInput.onchange = async (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      if (!target.files || target.files.length === 0) return;
-
-      const file = target.files[0];
-      const formData = new FormData();
-      formData.append('file', file);
-
-      setUploading(true);
-      try {
-        const response = await fetch('http://127.0.0.1:8000/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `[Success] Successfully uploaded **${file.name}**. ${data.message} (Added ${data.chunks_added} chunks)`
-          }]);
-        } else {
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `[Failed] Failed to upload document: ${data.detail || 'Unknown error'}`
-          }]);
-        }
-      } catch (error: any) {
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: `[Warning] Connection error: Make sure the FastAPI backend is running. (${error.message})`
-        }]);
-      } finally {
-        setUploading(false);
-      }
-    };
-    fileInput.click();
+  // 處理快速新增目標跳轉
+  const handleQuickAddTarget = (activityId: number, targetView: string) => {
+    setSelectedActivityId(activityId);
+    setCurrentView(targetView);
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
-
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-
-    try {
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `Echo: You asked "${userMessage.content}". (Query API pending connection)`
-        }]);
-        setLoading(false);
-      }, 1000);
-    } catch (error: any) {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `Query failed: ${error.message}`
-      }]);
-      setLoading(false);
-    }
+  // 處理開啟交接摘要預覽
+  const handleOpenHandover = (aiText: string) => {
+    setHandoverSummary(aiText);
+    setHandoverModalOpen(true);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const isWorkspaceActive = currentActivity != null && !['activities', 'chat', 'extract', 'vault'].includes(currentView);
 
-  const MIN_ROWS = 6;
-  const emptyRowsCount = Math.max(1, MIN_ROWS - visibleActivities.length);
-
-  // 處理快速新增的跳轉邏輯
-  const handleQuickJump = (viewToOpen: string) => {
-    if (!quickAddActivityId) return;
-
-    // 關鍵修改：用 Number() 把字串轉換回數字型別，才能符合你的狀態定義
-    setSelectedActivityId(Number(quickAddActivityId));
-
-    // 切換畫面並關閉 Modal
-    setCurrentView(viewToOpen);
-    recordModalRef.current?.close();
-  };
-
-  // 儲存 AI 產生的真資料
-  const [handoverSummary, setHandoverSummary] = useState<string>('');
-  const [handoverSaved, setHandoverSaved] = useState<boolean>(false);
-  const [isSavingHandover, setIsSavingHandover] = useState<boolean>(false);
-  const [handoverSaveMessage, setHandoverSaveMessage] = useState<string | null>(null);
-  const [handoverSaveError, setHandoverSaveError] = useState<string | null>(null);
-
-  // 存入紀錄庫處理函數
-  const handleSaveHandoverToKnowledgeBase = async () => {
-    if (!handoverSummary || isSavingHandover) return;
-    setIsSavingHandover(true);
-    setHandoverSaveMessage(null);
-    setHandoverSaveError(null);
-    try {
-      const activityName = currentActivity?.name || '活動';
-      const result = await activityApi.saveHandover({
-        activity_id: currentActivity?.id,
-        activity_name: activityName,
-        content: handoverSummary,
-      });
-      setHandoverSaved(true);
-      setHandoverSaveMessage(result.message || '已成功存入紀錄庫並完成向量化！');
-    } catch (err: any) {
-      setHandoverSaveError(err.message || '存入紀錄庫失敗');
-    } finally {
-      setIsSavingHandover(false);
-    }
-  };
-
-  // 建立一個 Ref 用來綁定你要印出來的畫面
-  const pdfExportRef = useRef<HTMLDivElement>(null);
-  // 撰寫匯出 PDF 的邏輯
-  const handleExportPDF = () => {
-    const element = pdfExportRef.current;
-    if (!element) return;
-
-    // 1. 取得今天的日期 (格式：YYYYMMDD)
-    const today = new Date();
-    const dateString = `${today.getFullYear()}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
-
-    // 2. 取得活動名稱，如果找不到就用預設值
-    const activityName = currentActivity?.name || '活動';
-
-    // 3. 組合出動態檔名
-    const dynamicFilename = `${activityName}_交接報告_${dateString}.pdf`;
-
-    const opt: any = {
-      margin: 15,
-      filename: dynamicFilename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    // @ts-ignore
-    html2pdf().set(opt).from(element).save();
-  };
-
-  // ==========================================
-  // 2. 原型 UI 結構 (已轉換 className、閉合標籤與 inline style)
-  // ==========================================
   return (
     <>
       <div className={`app-shell ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
-        <aside className="sidebar" id="primary-sidebar" aria-label="主選單">
-          <a className="brand" href="#activities" data-route="activities" aria-label="回到活動首頁" onClick={(e) => { e.preventDefault(); handleSetView('activities'); }}>
-            <span className="brand-mark" aria-hidden="true">D</span>
-            <span><strong>DASH</strong><small>活動管理與決策工作台</small></span>
-          </a>
-          {/* 側邊欄邊緣小半圓箭頭收合/展開按鈕 */}
-          <button
-            className="sidebar-tab-toggle"
-            id="sidebar-toggle"
-            type="button"
-            aria-label={isSidebarOpen ? "收合側邊欄" : "展開側邊欄"}
-            title={isSidebarOpen ? "收合側邊欄" : "展開側邊欄"}
-            onClick={() => setIsSidebarOpen(prev => !prev)}
-          >
-            {isSidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-          </button>
+        {/* 全域導航側邊欄 */}
+        <AppSidebar
+          currentView={currentView}
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen((prev) => !prev)}
+          onNavigate={(view) => handleSetView(view)}
+          onVaultChanged={handleVaultChanged}
+        />
 
-          <nav className="main-nav">
-            <a
-              className={`nav-item ${currentView === 'activities' ? 'active' : ''}`}
-              href="#activities"
-              data-route="activities"
-              aria-current={currentView === 'activities' ? 'page' : undefined}
-              onClick={(e) => {
-                e.preventDefault();
-                handleSetView('activities');
-              }}
-            >
-              <span className="nav-icon" aria-hidden="true"><LayoutGrid size={16} /></span>
-              <span>活動</span>
-            </a>
-
-            {/* AI 功能下拉折疊分組選單 */}
-            <div className="nav-group">
-              <button
-                type="button"
-                className={`nav-group-toggle ${['chat', 'extract'].includes(currentView) ? 'active' : ''}`}
-                onClick={() => setIsAiNavOpen((prev) => !prev)}
-                aria-expanded={isAiNavOpen}
-              >
-                <div className="nav-group-left">
-                  <span className="nav-icon" aria-hidden="true"><Bot size={16} /></span>
-                  <span>DASH Agent</span>
-                </div>
-                <span className="nav-group-arrow">
-                  {isAiNavOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </span>
-              </button>
-
-              {isAiNavOpen && (
-                <div className="nav-sub-list">
-                  {/* 子選項 1：AI 對話 */}
-                  <button
-                    type="button"
-                    className={`nav-sub-item ${currentView === 'chat' ? 'active' : ''}`}
-                    onClick={() => handleSetView('chat')}
-                  >
-                    <MessageSquare size={14} />
-                    <span>對話</span>
-                  </button>
-
-                  {/* 子選項 2：會議紀錄整理 */}
-                  <button
-                    type="button"
-                    className={`nav-sub-item ${currentView === 'extract' ? 'active' : ''}`}
-                    onClick={() => handleSetView('extract')}
-                  >
-                    <FileScan size={14} />
-                    <span>會議紀錄整理</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* DASH OUT 全量交接導出項目 */}
-            <a
-              className={`nav-item ${currentView === 'vault' ? 'active' : ''}`}
-              href="#vault"
-              data-route="vault"
-              aria-current={currentView === 'vault' ? 'page' : undefined}
-              onClick={(e) => {
-                e.preventDefault();
-                handleSetView('vault');
-              }}
-            >
-              <span className="nav-icon" aria-hidden="true"><Archive size={16} /></span>
-              <span>DASH Out</span>
-            </a>
-          </nav>
-
-          {/* 側邊欄底部 Vault 管理列 */}
-          <VaultManagerBar onVaultChanged={handleVaultChanged} />
-        </aside>
-        <button className="nav-backdrop" id="nav-backdrop" type="button" aria-label="關閉選單" tabIndex={-1} hidden={!isSidebarOpen} onClick={() => setIsSidebarOpen(false)}></button>
-
+        {/* 主工作內容區 */}
         <main className={`main ${['chat', 'extract'].includes(currentView) ? 'chat-mode' : ''}`} id="main-content">
-          <section className="page" id="activity-list-view" hidden={currentView !== 'activities'}>
-            <div className="page-heading">
-              <div>
-                <p className="eyebrow">ACTIVITY HUB</p>
-                <h1>活動工作台</h1>
-                <p>從籌備、執行到檢討，把每一屆的經驗留下來。</p>
-              </div>
-              <div className="heading-actions">
-                {currentView === 'activities' && (
-                  <>
-                    <button
-                      className="button secondary"
-                      type="button"
-                      onClick={loadActivities}
-                      disabled={activitiesLoading}
-                      title="重新整理活動清單"
-                    >
-                      <RefreshCw size={14} className={activitiesLoading ? 'spin' : ''} />
-                      <span>重新整理</span>
-                    </button>
-                    <button className="button secondary open-record" type="button" onClick={() => recordModalRef.current?.showModal()}>+ 新增紀錄</button>
-                    <button className="button primary" id="open-new-activity" type="button" onClick={openCreateActivity}>+ 新增活動</button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="summary-strip" aria-label="活動摘要">
-              <article><span>全部活動</span><strong>{activities.length}</strong><small>SQLite 中的真實資料</small></article>
-              <article><span>正在處理</span><strong>{activeCount}</strong><small>準備中或進行中</small></article>
-              <article><span>已完成</span><strong>{completedCount}</strong><small>可進入活動後檢討</small></article>
-              <article className="accent-card"><span>AI 紀錄庫累積</span><strong>{archivedCount} 份已完成報告</strong><small>成功轉化為組織決策記憶</small></article>
-            </div>
-
-            <div className="surface">
-              <div className="toolbar">
-                <div className="year-switch" aria-label="資料來源"><strong>全部年度</strong></div>
-                <label className="search-field">
-                  <span aria-hidden="true">⌕</span>
-                  <input type="search" placeholder="搜尋活動" aria-label="搜尋活動" value={activitySearch} onChange={(event) => setActivitySearch(event.target.value)} />
-                </label>
-              </div>
-
-              {activitiesError && <div className="api-message error" role="alert">{activitiesError}</div>}
-              {activitiesLoading && <div className="api-state">載入活動中…</div>}
-              {!activitiesLoading && !activitiesError && visibleActivities.length === 0 && <div className="api-state empty"><h3>沒有活動資料</h3><p>建立第一個活動後即可開始管理會議與待辦。</p><button className="button primary" type="button" onClick={openCreateActivity}>新增活動</button></div>}
-
-              <div className="table-wrap" hidden={activitiesLoading || visibleActivities.length === 0}>
-                <table className="activity-table">
-                  <thead><tr><th>活動</th><th>日期</th><th>狀態</th><th>地點/預算</th><th>負責人</th><th><span className="sr-only">操作</span></th></tr></thead>
-                  <tbody>
-                    {visibleActivities.map((activity, index) => (
-                      <tr
-                        key={activity.id}
-                        className="activity-row"
-                        tabIndex={0}
-                        onClick={() => selectActivity(activity.id)}
-                        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') selectActivity(activity.id); }}
-                      >
-                        <td>
-                          <span className={`activity-glyph ${GLYPH_COLORS[index % GLYPH_COLORS.length]}`}>{activity.name.charAt(0)}</span>
-                          <span><strong>{activity.name}</strong><small>{activity.activity_type || '未分類'}・{activity.expected_attendees == null ? '人數未定' : `${activity.expected_attendees} 人`}</small></span>
-                        </td>
-                        <td>{formatActivityDate(activity)}</td>
-                        <td><span className={`status ${getStatusClass(activity.status)}`}>{activity.status}</span></td>
-                        <td><strong>{activity.venue || '地點未定'}</strong><small>預算 {activity.budget == null ? '未填寫' : new Intl.NumberFormat('zh-TW').format(activity.budget)}</small></td>
-                        <td><span className="person">{(activity.coordinator || '?').charAt(0)}</span>{activity.coordinator || '未指定'}</td>
-                        <td>›</td>
-                      </tr>
-                    ))}
-
-                    {Array.from({ length: emptyRowsCount }).map((_, index) => (
-                      <tr
-                        key={`empty-${index}`}
-                        className="activity-row empty-row"
-                        aria-hidden="true"
-                      >
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-
-          {currentActivity && (
-            <section className="page activity-workspace" id="activity-workspace" hidden={['activities', 'chat', 'extract', 'vault'].includes(currentView)}>
-              <BreadcrumbNav
-                activityName={currentActivity.name}
-                currentView={currentView}
-                onNavigate={(view) => setCurrentView(view)}
-              />
-              <div className="activity-heading">
-                <div className="title-lockup">
-                  <span className={`activity-glyph ${GLYPH_COLORS[currentActivity.id % GLYPH_COLORS.length]}`}>{currentActivity.name.charAt(0)}</span>
-                  <div>
-                    <p className="eyebrow">{currentActivity.year} 年度</p>
-                    <h1 style={{ color: 'var(--ink)', margin: '0' }}>{currentActivity.name}</h1>
-                    <div className="activity-meta">
-                      <span className={`status ${getStatusClass(currentActivity.status)}`}>{currentActivity.status}</span>
-                      <span>{formatActivityDate(currentActivity)}</span>
-                      <span>{currentActivity.venue || '地點未定'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <nav className="stage-tabs" aria-label="活動階段">
-                <button
-                  className={`stage-tab ${currentView === 'overview' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setCurrentView('overview')}
-                >
-                  <span>01</span>總覽
-                </button>
-                <button
-                  className={`stage-tab ${currentView === 'before' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setCurrentView('before')}
-                >
-                  <span>02</span>活動前
-                </button>
-                <button
-                  className={`stage-tab ${currentView === 'during' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setCurrentView('during')}
-                >
-                  <span>03</span>活動中
-                </button>
-                <button
-                  className={`stage-tab ${currentView === 'after' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setCurrentView('after')}
-                >
-                  <span>04</span>活動後
-                </button>
-              </nav>
-              <div className="workspace-main">
-                <div className="workspace-content">
-                  {/* 01 總覽 */}
-                  {currentView === 'overview' && (
-                    <OverviewPanel
-                      currentActivity={currentActivity}
-                      currentView={currentView}
-                      setCurrentView={setCurrentView}
-                      onEdit={openEditActivity}
-                      onDelete={requestDeleteCurrentActivity}
-                      deleting={activityDeleting}
-                      deleteError={activityDeleteError}
-                    />
-                  )}
-
-                  {/* 02 活動前 - 主畫面 (點擊頂部標籤時顯示) */}
-                  {currentView === 'before' && (
-                    <BeforePanel currentActivity={currentActivity} currentView={currentView} setCurrentView={setCurrentView} />
-                  )}
-
-                  {/* 02 活動前 - 籌備會議 */}
-                  {currentView === 'meeting' && (
-                    <MeetingPanel key={`meeting-${currentActivity.id}`} activityId={currentActivity.id} activityName={currentActivity.name} currentView={currentView} setCurrentView={setCurrentView} onMeetingsChanged={() => setMeetingVersion((value) => value + 1)} />
-                  )}
-
-                  {/* 02 活動前 - 待辦事項 */}
-                  {currentView === 'tasks' && (
-                    <TasksPanel key={`tasks-${currentActivity.id}`} activityId={currentActivity.id} currentView={currentView} meetingVersion={meetingVersion} />
-                  )}
-
-                  {/* 02 活動前 - 決策 */}
-                  {currentView === 'decisions' && (
-                    <DecisionsPanel key={`decisions-${currentActivity.id}`} activityId={currentActivity.id} currentView={currentView} meetingVersion={meetingVersion} />
-                  )}
-
-                  {/* 02 活動前 - 流程規劃 */}
-                  {currentView === 'schedule' && (
-                    <SchedulePanel key={`schedule-${currentActivity.id}`} activityId={currentActivity.id} currentView={currentView} meetingVersion={meetingVersion} onSchedulesChanged={() => setScheduleVersion((value) => value + 1)} />
-                  )}
-
-                  {/* 03 活動中 */}
-                  {currentView === 'during' && (
-                    <DuringPanel key={`during-${currentActivity.id}`} activityId={currentActivity.id} currentView={currentView} setCurrentView={setCurrentView} scheduleVersion={scheduleVersion} />
-                  )}
-
-                  {/* 04 活動後 */}
-                  {currentView === 'after' && (
-                    <>
-                      <AfterPanel
-                        currentView={currentView}
-                        activityId={currentActivity?.id}
-                        scheduleVersion={scheduleVersion}
-                        onOpenHandover={(aiText: string) => {
-                          setHandoverSummary(aiText);
-                          setHandoverSaved(false);
-                          setHandoverSaveMessage(null);
-                          setHandoverSaveError(null);
-                          handoverModalRef.current?.showModal();
-                        }}
-                      />
-                      <SourceRecordPanel currentView={currentView} setCurrentView={setCurrentView} />
-                    </>
-                  )}
-
-                </div>
-
-                <aside className="module-nav" id="activity-module-nav">
-                  <div className="module-nav-head">
-                    <p>活動內容</p>
-                    <button className="module-nav-toggle" id="module-nav-toggle" type="button">›</button>
-                  </div>
-                  <button className={`module-link ${currentView === 'overview' ? 'active' : ''}`} type="button" onClick={() => setCurrentView('overview')}>
-                    <span>⌂</span><em>總覽</em>
-                  </button>
-                  <button className={`module-link ${['before', 'meeting', 'tasks', 'decisions', 'schedule'].includes(currentView) ? 'active' : ''}`} type="button" onClick={() => setCurrentView('before')}>
-                    <span>◫</span><em>活動前</em>
-                  </button>
-                  <div className="module-subnav" hidden={!['before', 'meeting', 'tasks', 'decisions', 'schedule'].includes(currentView)}>
-                    <button className={currentView === 'meeting' ? 'active' : ''} type="button" onClick={() => setCurrentView('meeting')}>籌備會議</button>
-                    <button className={currentView === 'tasks' ? 'active' : ''} type="button" onClick={() => setCurrentView('tasks')}>待辦事項</button>
-                    <button className={currentView === 'decisions' ? 'active' : ''} type="button" onClick={() => setCurrentView('decisions')}>決策</button>
-                    <button className={currentView === 'schedule' ? 'active' : ''} type="button" onClick={() => setCurrentView('schedule')}>流程規劃</button>
-                  </div>
-                  <button className={`module-link ${currentView === 'during' ? 'active' : ''}`} type="button" onClick={() => setCurrentView('during')}>
-                    <span>▶</span><em>活動中</em>
-                  </button>
-                  <button className={`module-link ${currentView === 'after' ? 'active' : ''}`} type="button" onClick={() => setCurrentView('after')}>
-                    <span>◎</span><em>活動後</em>
-                  </button>
-                </aside>
-              </div>
-            </section>
+          {/* 1. 活動列表工作台首頁 */}
+          {currentView === 'activities' && (
+            <ActivityListView
+              activities={activities}
+              loading={activitiesLoading}
+              error={activitiesError}
+              onRefresh={loadActivities}
+              onSelectActivity={handleSelectActivity}
+              onCreateActivity={openCreateActivity}
+              onOpenQuickAdd={() => setQuickAddOpen(true)}
+            />
           )}
 
-          {/* 9. LLM 聊天大面板視圖 */}
+          {/* 2. 活動詳細四階段工作區 */}
+          {isWorkspaceActive && (
+            <ActivityWorkspace
+              currentActivity={currentActivity}
+              currentView={currentView}
+              meetingVersion={meetingVersion}
+              scheduleVersion={scheduleVersion}
+              activityDeleting={activityDeleting}
+              activityDeleteError={activityDeleteError}
+              onNavigate={(view) => setCurrentView(view)}
+              onEditActivity={openEditActivity}
+              onDeleteActivity={() => setDeleteActivityConfirmOpen(true)}
+              onMeetingsChanged={() => setMeetingVersion((v) => v + 1)}
+              onSchedulesChanged={() => setScheduleVersion((v) => v + 1)}
+              onOpenHandover={handleOpenHandover}
+            />
+          )}
+
+          {/* 3. LLM 聊天大面板視圖 */}
           {currentView === 'chat' && <ChatPanel />}
 
-          {/* 10. AI 會議紀錄整理視圖 (常駐掛載避免切換面板時預覽資料遺失) */}
+          {/* 4. AI 會議紀錄整理視圖 (常駐掛載避免切換面板時預覽資料遺失) */}
           <MeetingExtractPanel hidden={currentView !== 'extract'} />
 
-          {/* 11. DASH OUT 本地交接導出視圖 */}
-          {currentView === 'vault' && (
-            <DashOutPanel />
-          )}
+          {/* 5. DASH OUT 本地交接導出視圖 */}
+          {currentView === 'vault' && <DashOutPanel />}
         </main>
       </div>
 
-      {/* 7. 綁定 Drawer 半透明背景關閉事件 */}
-      <div className="drawer-backdrop" id="drawer-backdrop" hidden={!isAiDrawerOpen} onClick={() => setIsAiDrawerOpen(false)}></div>
-
-      {/* 8. AI 抽屜狀態綁定 */}
-      <aside className={`ai-drawer ${isAiDrawerOpen ? 'open' : ''}`} id="ai-drawer" aria-label="AI 歷史參考" aria-hidden={!isAiDrawerOpen}>
-        <div className="drawer-head"><div><p className="eyebrow">HISTORY MEMORY</p><h2>歷史參考</h2></div>
-          <button className="close-button" type="button" id="close-ai" aria-label="關閉歷史參考" onClick={() => setIsAiDrawerOpen(false)}>×</button></div>
-
-        {/* 對話訊息顯示區 */}
-        <div className="messages-container" style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {messages.map(msg => (
-            <div key={msg.id} className={`message-wrapper ${msg.role}`} style={{ display: 'flex', gap: '12px' }}>
-              <div className="avatar">
-                {msg.role === 'assistant' ? <Bot size={20} /> : <User size={20} />}
-              </div>
-              <div className="message-content" style={{ background: msg.role === 'user' ? '#e3f2fd' : '#f5f5f5', padding: '12px', borderRadius: '8px', flex: 1 }}>
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="message-wrapper assistant" style={{ display: 'flex', gap: '12px' }}>
-              <div className="avatar"><Bot size={20} /></div>
-              <div className="message-content loading" style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Loader2 className="spinner" size={20} />
-                <span>Searching documents...</span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* 底部輸入框與上傳按鈕 */}
-        <div className="input-area" style={{ padding: '16px', borderTop: '1px solid var(--border)', background: 'white' }}>
-          <div className="input-box" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <button
-              className="action-btn upload-btn"
-              onClick={handleUpload}
-              disabled={uploading}
-              title="Upload Markdown File"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
-            >
-              {uploading ? <Loader2 className="spinner" size={20} /> : <Paperclip size={20} />}
-            </button>
-
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="詢問歷史活動資料…"
-              rows={1}
-              disabled={loading}
-              style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--border)' }}
-            />
-
-            <button
-              className="action-btn send-btn"
-              onClick={handleSend}
-              disabled={!input.trim() || loading}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
-            >
-              <Send size={20} />
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* ========================================== */}
-      {/* 4. 保留所有原型的 Dialog Modal */}
-      {/* ========================================== */}
-      {/* 快速新增紀錄的 Modal */}
-      <dialog ref={recordModalRef} className="modal" id="record-modal">
-        <form method="dialog">
-          <div className="modal-head">
-            <div>
-              <p className="eyebrow">QUICK ADD</p>
-              <h2>新增紀錄</h2>
-            </div>
-            {/* 關閉按鈕 */}
-            <button className="close-button" value="cancel" aria-label="關閉">×</button>
-          </div>
-
-          {/* 1. 活動選擇下拉選單 */}
-          <label className="field">
-            <span>選擇所屬活動</span>
-            <select
-              id="record-activity-select"
-              value={quickAddActivityId}
-              onChange={(e) => setQuickAddActivityId(e.target.value)}
-            >
-              <option value="" disabled>請選擇活動...</option>
-              {/* 用迴圈把所有的活動印出來當選項 */}
-              {activities.map(activity => (
-                <option key={activity.id} value={activity.id}>
-                  {activity.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <p className="modal-copy">要新增哪一種紀錄加入此活動？</p>
-
-          {/* 2. 四種紀錄按鈕 */}
-          <div className="record-options">
-            <QuickAddButton
-              label="籌備會議"
-              targetView="meeting" // 假設你的會議頁面 state 叫做 'meetings'
-              activityId={quickAddActivityId}
-              onAction={handleQuickJump}
-            />
-            <QuickAddButton
-              label="待辦事項"
-              targetView="tasks" // 假設待辦事項叫做 'tasks'
-              activityId={quickAddActivityId}
-              onAction={handleQuickJump}
-            />
-            <QuickAddButton
-              label="決策"
-              targetView="decisions"
-              activityId={quickAddActivityId}
-              onAction={handleQuickJump}
-            />
-            <QuickAddButton
-              label="流程規劃"
-              targetView="schedule"
-              activityId={quickAddActivityId}
-              onAction={handleQuickJump}
-            />
-          </div>
-        </form>
-      </dialog>
-
-      <dialog className="modal small-modal" id="incident-modal">
-        <form method="dialog"><div className="modal-head"><div><p className="eyebrow">QUICK NOTE</p><h2>新增臨時紀錄</h2></div><button className="close-button" value="cancel" aria-label="關閉">×</button></div>
-          <div className="two-fields"><label className="field"><span>發生時間</span><input id="incident-time" type="time" defaultValue="16:15" /></label><label className="field"><span>處理狀態</span><select id="incident-status"><option>處理中</option><option>已處理</option><option>待追蹤</option></select></label></div>
-          <label className="field"><span>發生什麼狀況？</span><textarea rows={4} placeholder="例如：大地遊戲延遲 20 分鐘"></textarea></label>
-          <label className="field"><span>對應流程</span><select id="incident-flow"><option>團康活動・10:30</option><option>午餐・12:00</option><option>大地遊戲・13:30</option></select></label>
-          <div className="two-fields"><label className="field"><span>處理人</span><input id="incident-handler" type="text" placeholder="例如：陳怡安" /></label><label className="field"><span>處理方式</span><input id="incident-action" type="text" placeholder="例如：調整下一段開始時間" /></label></div>
-          <div className="modal-actions"><button className="button secondary" value="cancel">取消</button><button className="button primary" id="save-incident" value="default">儲存紀錄</button></div>
-        </form>
-      </dialog>
-
+      {/* 活動建立/編輯彈窗 */}
       {activityFormOpen && (
         <ActivityFormModal
           activity={editingActivity}
@@ -908,77 +253,23 @@ export default function App() {
         />
       )}
 
-      <dialog className="modal small-modal" id="meeting-upload-modal">
-        <form method="dialog" id="meeting-upload-form"><div className="modal-head"><div><p className="eyebrow">MEETING FILE</p><h2>上傳會議紀錄</h2></div><button className="close-button" type="button" aria-label="關閉">×</button></div>
-          <p className="modal-copy">選擇這份紀錄所屬的會議；prototype 只顯示操作結果，不會保存檔案。</p>
-          <label className="field"><span>所屬會議</span><select id="meeting-upload-target"></select></label>
-          <label className="upload-field"><input id="meeting-upload-file" type="file" accept=".txt,.md,.doc,.docx,.pdf" /><span>選擇會議紀錄檔案</span><small>支援 TXT、Markdown、Word、PDF</small></label>
-          <div className="modal-actions"><button className="button secondary" type="button" value="cancel">取消</button><button className="button primary" type="submit">使用此檔案</button></div>
-        </form>
-      </dialog>
+      {/* 快速新增紀錄彈窗 */}
+      <QuickAddModal
+        isOpen={quickAddOpen}
+        activities={activities}
+        onClose={() => setQuickAddOpen(false)}
+        onSelectTarget={handleQuickAddTarget}
+      />
 
-      <dialog className="modal small-modal" id="action-modal">
-        <form method="dialog" id="action-form"><div className="modal-head"><div><p className="eyebrow" id="action-eyebrow">EDIT</p><h2 id="action-title">編輯資料</h2></div><button className="close-button" value="cancel" aria-label="關閉">×</button></div>
-          <div id="action-fields"></div>
-          <div className="modal-actions"><button className="button secondary" value="cancel">取消</button><button className="button primary" id="action-submit" value="default">完成</button></div>
-        </form>
-      </dialog>
+      {/* 交接摘要預覽彈窗 */}
+      <HandoverModal
+        isOpen={handoverModalOpen}
+        currentActivity={currentActivity}
+        handoverSummary={handoverSummary}
+        onClose={() => setHandoverModalOpen(false)}
+      />
 
-      <dialog ref={handoverModalRef} className="modal" id="handover-modal">
-        <form method="dialog">
-          <div className="modal-head">
-            <div>
-              <p className="eyebrow">AI HANDOVER</p>
-              <h2>交接摘要預覽</h2>
-            </div>
-            <button className="close-button" value="cancel" aria-label="關閉">×</button>
-          </div>
-
-          {handoverSaveMessage && (
-            <div className="modal-banner success">{handoverSaveMessage}</div>
-          )}
-          {handoverSaveError && (
-            <div className="modal-banner error">{handoverSaveError}</div>
-          )}
-
-          {/* 1. 將 ref 綁定在這裡，這樣 PDF 就會只抓取這塊區域的畫面 */}
-          <div ref={pdfExportRef} className="handover-modal-body">
-
-            {/* 加一個 PDF 專屬的標題，讓印出來的報表看起來更正式 */}
-            <h1 className="handover-report-title">
-              活動交接摘要報告
-            </h1>
-
-            <div className="handover-report-markdown">
-              {handoverSummary ? (
-                <ReactMarkdown>{handoverSummary}</ReactMarkdown>
-              ) : (
-                <p className="handover-loading-text">載入中...</p>
-              )}
-            </div>
-          </div>
-
-          <div className="modal-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
-            <button
-              className="button secondary"
-              type="button"
-              onClick={handleSaveHandoverToKnowledgeBase}
-              disabled={isSavingHandover || handoverSaved || !handoverSummary}
-            >
-              {isSavingHandover ? '存入中...' : handoverSaved ? '已存入紀錄庫' : '存入紀錄庫'}
-            </button>
-            <button
-              className="button primary"
-              type="button"
-              onClick={handleExportPDF}
-              data-toast="交接摘要已匯出"
-            >
-              匯出為 PDF
-            </button>
-          </div>
-        </form>
-      </dialog>
-
+      {/* 刪除活動確認對話框 */}
       <ConfirmModal
         isOpen={deleteActivityConfirmOpen}
         title="確認刪除活動"
@@ -990,22 +281,7 @@ export default function App() {
         onCancel={() => setDeleteActivityConfirmOpen(false)}
       />
 
-      <div className="toast" id="toast" role="status" aria-live="polite"></div>
+      <div className="toast" id="toast" role="status" aria-live="polite" />
     </>
   );
-}
-
-const GLYPH_COLORS = ['cyan', 'violet', 'orange', 'pink'];
-
-function getStatusClass(status: string): string {
-  if (status === '已完成') return 'completed';
-  if (status === '進行中') return 'ongoing';
-  if (status === '準備中') return 'preparing';
-  return 'not-started';
-}
-
-function formatActivityDate(activity: Activity): string {
-  if (!activity.start_date && !activity.end_date) return '日期未定';
-  if (!activity.end_date || activity.start_date === activity.end_date) return activity.start_date || activity.end_date || '日期未定';
-  return `${activity.start_date || '未定'} ～ ${activity.end_date}`;
 }

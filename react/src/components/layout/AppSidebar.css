@@ -1,0 +1,17 @@
+/**
+ * AppSidebar.css
+ * 應用程式全域側邊欄樣式模組
+ */
+
+/* 側邊欄額外微調樣式 (核心樣式繼承自 index.css) */
+.sidebar .nav-group-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar .nav-group-arrow {
+  display: flex;
+  align-items: center;
+}
+
