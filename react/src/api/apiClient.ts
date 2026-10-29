@@ -3,7 +3,7 @@
  * 統一管理 HTTP 請求、錯誤攔截與後端連線異常捕捉
  */
 
-export const API_BASE_URL = 'http://127.0.0.1:8000';
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
 
 /**
  * 自訂 API 錯誤類別，攜帶 HTTP 狀態碼與後端詳細錯誤說明

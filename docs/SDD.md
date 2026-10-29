@@ -22,6 +22,15 @@ DASH 是一套結合活動與決策管理、LLM + RAG 歷史檢索問答，以�
     - **向量化**: fastembed (輕量級、無須 PyTorch 的 ONNX 推理引擎)
     - **LLM API**: litellm (統一接口，支援 OpenAI/Claude)
 
+### 容器化與部屬架構 (Docker Compose)
+- **架構模式**: 單一 docker-compose.yml 統整三容器微服務拓撲
+- **資料庫容器 (dash-db)**: pgvector/pgvector:pg16（整合式關聯資料表與 HNSW 向量儲存）
+- **後端容器 (dash-backend)**: Python FastAPI + Uvicorn，處理核心業務與 RAG 向量相似度檢索
+- **前端容器 (dash-frontend)**: Nginx 託管 React SPA，並透過 /api/ 反向代理轉發後端通訊
+- **資料卷 (Volumes)**:
+  - postgres-data: PostgreSQL 核心關聯與向量持久化卷
+  - ./data/markdown: 宿主機與後端掛載之 Markdown 原始檔案庫
+
 ### 資料庫與多 Vault 儲存架構 (~/.dash/)
 - **全域設定**: 存於使用者家目錄 `~/.dash/config.json`，記錄當前使用中的 `active_vault`
 - **Vault 集中目錄**: 統一收攏於 `~/.dash/vaults/<vault_name>/`
@@ -37,6 +46,15 @@ DASH 是一套結合活動與決策管理、LLM + RAG 歷史檢索問答，以�
 ### 模型
 - **Embedding**: fastembed（使用 ONNX Runtime 於 CPU 運行之 Embedding 模型）
 - **LLM**: 透過 `litellm` 統一介面呼叫雲端或本地相容模型
+
+### 容器化與部屬架構 (Docker Compose)
+- **架構模式**: 單一 docker-compose.yml 統整三容器微服務拓撲
+- **資料庫容器 (dash-db)**: pgvector/pgvector:pg16（整合式關聯資料表與 HNSW 向量儲存）
+- **後端容器 (dash-backend)**: Python FastAPI + Uvicorn，處理核心業務與 RAG 向量相似度檢索
+- **前端容器 (dash-frontend)**: Nginx 託管 React SPA，並透過 /api/ 反向代理轉發後端通訊
+- **資料卷 (Volumes)**:
+  - postgres-data: PostgreSQL 核心關聯與向量持久化卷
+  - ./data/markdown: 宿主機與後端掛載之 Markdown 原始檔案庫
 
 ## 3. 專案結構
 ```
