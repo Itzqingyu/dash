@@ -67,7 +67,7 @@
 
 ### 資料庫 (Database Layer)
 - `database.py`: 統一資料庫存取層（全面改用 PostgreSQL 16 + pgvector）。
-  - 連線池管理：使用 `psycopg_pool.ConnectionPool` 搭配 `psycopg.rows.dict_row` 與 `pgvector.psycopg.register_vector`，支援環境變數 `DATABASE_URL`。
+  - 連線池管理：使用 `psycopg_pool.ConnectionPool` 搭配 `psycopg.rows.dict_row` 與 `pgvector.psycopg.register_vector`，支援環境變數 `DATABASE_URL`。在建立連線池前自動執行 `_ensure_vector_extension` 單次獨立連線啟用 `vector` 擴充套件，並於 `_configure_connection` 提供容錯機制，徹底解決全新資料庫環境下的初始化死結。
   - 多 Vault 實體隔離：以 PostgreSQL 原生 Schema 命名空間 (`vault_<name>`) 實作租戶隔離，每次連線自動指定 `SET search_path TO "vault_{name}", public;`。
   - 核心資料表自動建置：管理 `documents`, `document_chunks` (含 768 維 HNSW 索引), `activities`, `meetings`, `tasks`, `decisions`, `schedules`, `incidents`, `sessions`, `chat_messages` 共 10 張核心表與所有外鍵級聯及索引。
   - 全面使用標準 PostgreSQL 語法（`%s` 佔位符與 `RETURNING id / *`），零過渡補丁與零死代碼。

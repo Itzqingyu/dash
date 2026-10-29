@@ -11,6 +11,7 @@
 import json
 import os
 import re
+import time
 import atexit
 from contextlib import contextmanager
 from datetime import datetime
@@ -31,16 +32,37 @@ def get_database_url() -> str:
     return os.getenv("DATABASE_URL", default_url)
 
 
+def _ensure_vector_extension(db_url: str) -> None:
+    """在建立連線池前，先以單次連線確保 PostgreSQL vector 擴充套件已啟用。
+
+    避免全新資料庫尚未建立 vector 擴充時，連線池 configure 階段註冊 pgvector 失敗引發死結。
+    若資料庫剛啟動中，進行最多 5 次短暫重試。
+    """
+    for attempt in range(5):
+        try:
+            with psycopg.connect(db_url, autocommit=True) as conn:
+                conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+            break
+        except Exception:
+            if attempt < 4:
+                time.sleep(1)
+
+
 def _configure_connection(conn: psycopg.Connection) -> None:
-    """連線池新建立連線時自動註冊 pgvector 型別。"""
-    register_vector(conn)
+    """連線池新建立連線時自動註冊 pgvector 型別。若尚未安裝擴充則容錯略過。"""
+    try:
+        register_vector(conn)
+    except Exception:
+        # 當資料庫尚未安裝 vector 擴充套件時避免連線池直接中斷
+        pass
 
 
 def get_pool() -> ConnectionPool:
-    """取得或初始化全域 PostgreSQL 連線池。"""
+    """取得或初始化全域 PostgreSQL 連線池。在初始化前先確認啟用 vector 擴充套件。"""
     global _pool
     if _pool is None:
         db_url = get_database_url()
+        _ensure_vector_extension(db_url)
         _pool = ConnectionPool(
             conninfo=db_url,
             min_size=2,
