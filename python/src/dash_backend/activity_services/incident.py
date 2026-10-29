@@ -1,6 +1,5 @@
-"""Incident 的 SQLite CRUD 邏輯。"""
+"""Incident 的 PostgreSQL CRUD 邏輯。"""
 
-import sqlite3
 from typing import Any, Dict, List, Optional
 
 from dash_backend.activity_services.activity_common import (
@@ -13,7 +12,6 @@ from dash_backend.activity_services.activity_common import (
     utc_now,
 )
 from dash_backend.database import get_connection, init_db
-
 
 INCIDENT_FIELDS = {
     "activity_id",
@@ -44,14 +42,14 @@ def _normalize_fields(values: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _ensure_schedule_matches_activity(
-    conn: sqlite3.Connection,
+    conn: Any,
     schedule_id: Optional[int],
     activity_id: int,
 ) -> None:
     if schedule_id is None:
         return
     row = conn.execute(
-        "SELECT activity_id FROM schedules WHERE id = ?", (schedule_id,)
+        "SELECT activity_id FROM schedules WHERE id = %s", (schedule_id,)
     ).fetchone()
     if row is None:
         raise ValueError(f"schedule_id {schedule_id} 不存在")
@@ -67,6 +65,7 @@ def create_incident(
     cause: Optional[str] = None,
     suggestion: Optional[str] = None,
     *,
+    vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """建立突發狀況紀錄，並驗證 Schedule 與 Activity 的一致性。"""
@@ -80,21 +79,22 @@ def create_incident(
             "suggestion": suggestion,
         }
     )
-    init_db(db_path)
+    init_db(vault_name=vault_name)
     now = utc_now()
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         ensure_activity_exists(conn, values["activity_id"])
         _ensure_schedule_matches_activity(
             conn, values["schedule_id"], values["activity_id"]
         )
-        cursor = conn.execute(
+        row = conn.execute(
             """
             INSERT INTO incidents (
                 activity_id, schedule_id, content, occurred_at, cause,
                 suggestion, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING *;
             """,
             (
                 values["activity_id"],
@@ -106,32 +106,34 @@ def create_incident(
                 now,
                 now,
             ),
-        )
-        incident_id = cursor.lastrowid
-        conn.commit()
-        row = conn.execute(
-            "SELECT * FROM incidents WHERE id = ?", (incident_id,)
         ).fetchone()
+
     return dict(row)
 
 
 def get_incident(
-    incident_id: int, *, db_path: Optional[str] = None
+    incident_id: int,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     positive_id(incident_id, "incident_id")
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
-            "SELECT * FROM incidents WHERE id = ?", (incident_id,)
+            "SELECT * FROM incidents WHERE id = %s", (incident_id,)
         ).fetchone()
     return dict(row) if row else None
 
 
 def list_incidents(
-    activity_id: Optional[int] = None, *, db_path: Optional[str] = None
+    activity_id: Optional[int] = None,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         if activity_id is None:
             rows = conn.execute(
                 "SELECT * FROM incidents ORDER BY occurred_at DESC, id DESC"
@@ -141,7 +143,7 @@ def list_incidents(
             rows = conn.execute(
                 """
                 SELECT * FROM incidents
-                WHERE activity_id = ?
+                WHERE activity_id = %s
                 ORDER BY occurred_at DESC, id DESC
                 """,
                 (normalized_id,),
@@ -152,6 +154,7 @@ def list_incidents(
 def update_incident(
     incident_id: int,
     *,
+    vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
     **changes: Any,
 ) -> Optional[Dict[str, Any]]:
@@ -159,11 +162,11 @@ def update_incident(
     if not changes:
         raise ValueError("至少需要提供一個要更新的欄位")
     normalized = _normalize_fields(changes)
-    init_db(db_path)
+    init_db(vault_name=vault_name)
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         current_row = conn.execute(
-            "SELECT * FROM incidents WHERE id = ?", (incident_id,)
+            "SELECT * FROM incidents WHERE id = %s", (incident_id,)
         ).fetchone()
         if current_row is None:
             return None
@@ -174,33 +177,35 @@ def update_incident(
         ensure_activity_exists(conn, next_activity_id)
         _ensure_schedule_matches_activity(conn, next_schedule_id, next_activity_id)
 
-        assignments = [f"{field_name} = ?" for field_name in normalized]
+        assignments = [f"{field_name} = %s" for field_name in normalized]
         values = list(normalized.values())
-        assignments.append("updated_at = ?")
+        assignments.append("updated_at = %s")
         values.append(utc_now(after=current["updated_at"]))
         values.append(incident_id)
-        conn.execute(
-            f"UPDATE incidents SET {', '.join(assignments)} WHERE id = ?", values
-        )
-        conn.commit()
+
         updated_row = conn.execute(
-            "SELECT * FROM incidents WHERE id = ?", (incident_id,)
+            f"UPDATE incidents SET {', '.join(assignments)} WHERE id = %s RETURNING *;",
+            values,
         ).fetchone()
-    return dict(updated_row)
+
+    return dict(updated_row) if updated_row else None
 
 
 def delete_incident(
-    incident_id: int, *, db_path: Optional[str] = None
+    incident_id: int,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     positive_id(incident_id, "incident_id")
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
-            "SELECT * FROM incidents WHERE id = ?", (incident_id,)
+            "SELECT * FROM incidents WHERE id = %s", (incident_id,)
         ).fetchone()
         if row is None:
             return None
         deleted = dict(row)
-        conn.execute("DELETE FROM incidents WHERE id = ?", (incident_id,))
-        conn.commit()
+        conn.execute("DELETE FROM incidents WHERE id = %s", (incident_id,))
+
     return deleted

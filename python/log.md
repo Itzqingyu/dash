@@ -39,19 +39,19 @@
 - `tests/test_vault.py`: 多 Vault 系統單元測試，驗證開箱 default 建立、新建空白 Vault、切換 Vault、重新命名、刪除防呆、DASH OUT ZIP 打包、DASH IN 匯入為新庫、非法 ZIP 檢驗阻擋以及完整 FastAPI 端點。
 
 ### 業務與事項管理微服務套件 (`activity_services/`)
-- `activity_services/activity.py`: 負責活動 (Activity) 後端業務邏輯與 SQLite CRUD 操作。
-- `activity_services/meeting_task.py`: 負責會議 (Meeting) 與待辦事項 (Task) 的 SQLite CRUD 與 Activity／Meeting 關聯驗證。
+- `activity_services/activity.py`: 負責活動 (Activity) 後端業務邏輯與 PostgreSQL CRUD 操作。
+- `activity_services/meeting_task.py`: 負責會議 (Meeting) 與待辦事項 (Task) 的 PostgreSQL CRUD 與 Activity／Meeting 關聯驗證。
   - Meeting 的 nullable `source_document_id` 關聯 `documents.id`；來源文件刪除時以 `ON DELETE SET NULL` 保留 Meeting 及其 Task／Decision。
-- `activity_services/decision.py`: 負責決策 (Decision) CRUD、確認狀態、選項 JSON 與 Activity／Meeting 關聯驗證。
-- `activity_services/schedule.py`: 負責活動流程 (Schedule) CRUD、時間範圍與 Activity／Meeting 關聯驗證。
-- `activity_services/incident.py`: 負責臨時紀錄 (Incident) CRUD，並驗證可選 Schedule 與 Activity 的一致性。
-- `activity_services/activity_common.py`: 提供活動管理模組共用的正整數 ID、必填文字、ISO 8601 時間及跨模組關聯驗證工具。
+- `activity_services/decision.py`: 負責決策 (Decision) PostgreSQL CRUD、確認狀態、選項 JSON 與 Activity／Meeting 關聯驗證。
+- `activity_services/schedule.py`: 負責活動流程 (Schedule) PostgreSQL CRUD、時間範圍與 Activity／Meeting 關聯驗證。
+- `activity_services/incident.py`: 負責突發狀況 (Incident) PostgreSQL CRUD，並驗證可選 Schedule 與 Activity 的一致性。
+- `activity_services/activity_common.py`: 提供活動管理模組共用的驗證工具與 ISO 8601 時間工具，相容 PostgreSQL 資料庫連線。
 
 ### AI 與檢索核心服務套件 (`ai_services/`)
-- `ai_services/rag_engine.py`: 整合 `chunker`, `embedding`, `reranker`, `retriever` 模組。
+- `ai_services/rag_engine.py`: 整合 `chunker`, `embedding`, `reranker`, `retriever` 模組（全面遷移至 pgvector，徹底廢除 ChromaDB）。
   - **split_markdown**: 讀取 Markdown 並以 `RecursiveCharacterTextSplitter` 切片 (預設 500 字，50 重疊)。
-  - **get_embeddings / get_reranker**: 採用 Lazy Singletons 載入 Embedding 模型與重排序模型。
-  - **add_document / search / delete_document / list_documents**: 協調文件向量化、ChromaDB 寫入、物理 `.md` 檔案清理與 SQLite 紀錄。全面取消 `add_document` 之 `force` 覆蓋參數，遇重複檔案直接拋出 `FileExistsError`，杜絕覆蓋時先刪實體檔案引發崩潰之風險。
+  - **get_embeddings / get_reranker**: 採用 Lazy Singletons 載入 Embedding 模型 (Jina AI 繁中 768 維) 與重排序模型 (Jina AI 多語言 Reranker)。
+  - **add_document / search / delete_document / list_documents**: 切片計算 768 維向量後直接寫入 PostgreSQL `document_chunks` 表；檢索時利用 pgvector 餘弦距離 `embedding <=> %s::vector` 搭配 HNSW 索引快速取樣，再經由 Cross-Encoder 重排序取前 top_k 個最佳片段。刪除文件時由資料庫 `ON DELETE CASCADE` 自動原子化清除關聯向量。
 - `ai_services/llm_service.py`: 負責與 LLM 互動與 Prompt 檔案動態載入。
   - 提供 `chat_with_context` 函數處理對話與 RAG 問答生成，支援多輪對話上下文記憶、Clean Context Isolation 隔離過往檢索資料、以及普通對話與 RAG 模式動態切換。
   - 提供 `extract_structured_meeting_data` 函數，實現單檔 1-shot 全文 Prompt 結構化提取。
@@ -66,11 +66,11 @@
 - `prompts/chat_general.md`: 定義普通對話模式 (General Chat) 下 AI 智能助手的 System Prompt 範本。
 
 ### 資料庫 (Database Layer)
-- `database.py`: 統一資料庫存取層（結合原 `sqlite_db` 與 `chroma_db`）。
-  - 提供共用 SQLite `get_connection`（自動啟用 `PRAGMA foreign_keys = ON`）與 `init_db` 表結構初始化（資料庫檔位在 `python/data/rag_database.sqlite`）。
-  - 管理文件 Metadata (包含 `markdown_path` 與 `markdown_content`) 以及 Activity、Meeting、Task、Decision、Schedule、Incident 的 SQLite 資料表與索引。
-  - 管理對話會話 (`sessions`) 與對話歷史 (`chat_messages`) 資料表，提供 `create_session`, `get_session`, `list_sessions`, `update_session_title`, `delete_session`, `add_chat_message`, `get_chat_messages` 等 CRUD 函數。
-  - 提供 `get_vectorstore()` 回傳 Chroma 向量資料庫單例（儲存位在 `python/data/chroma_db/`）。
+- `database.py`: 統一資料庫存取層（全面改用 PostgreSQL 16 + pgvector）。
+  - 連線池管理：使用 `psycopg_pool.ConnectionPool` 搭配 `psycopg.rows.dict_row` 與 `pgvector.psycopg.register_vector`，支援環境變數 `DATABASE_URL`。
+  - 多 Vault 實體隔離：以 PostgreSQL 原生 Schema 命名空間 (`vault_<name>`) 實作租戶隔離，每次連線自動指定 `SET search_path TO "vault_{name}", public;`。
+  - 核心資料表自動建置：管理 `documents`, `document_chunks` (含 768 維 HNSW 索引), `activities`, `meetings`, `tasks`, `decisions`, `schedules`, `incidents`, `sessions`, `chat_messages` 共 10 張核心表與所有外鍵級聯及索引。
+  - 全面使用標準 PostgreSQL 語法（`%s` 佔位符與 `RETURNING id / *`），零過渡補丁與零死代碼。
 
 
 ---
@@ -226,3 +226,22 @@
 
 
 
+
+---
+
+## 3. 架構演進與重大變更歷史
+
+### 2026-10-29: 全面遷移至 PostgreSQL 16 + pgvector 與原生 Schema 多租戶架構
+1. **資料存儲全面 PostgreSQL 化**:
+   - 廢除 SQLite 與本機獨立檔案模式，全專案後端存儲統整於 PostgreSQL 16。
+   - 廢除 ChromaDB 與 `langchain-chroma`，向量庫全數遷移至 `pgvector` 原生擴充，建立 768 維向量欄位並配置 HNSW 餘弦距離索引。
+2. **多 Vault 實體隔離 (PostgreSQL Schema 方案)**:
+   - 各 Vault 自動建立獨立之 `vault_<name>` Schema，資料庫請求依當前使用中 Vault 動態配置 `search_path`，達成 100% 物理隔離，絕無跨庫漏失風險。
+   - 公用清冊收攏於 `public.vaults` 與 `public.system_settings`。
+   - DASH OUT 導出 `dash_data.json` 與託管 Markdown；DASH IN 具備向下相容解析，能讀取舊版 SQLite 與新版 JSON 自動轉存至 PostgreSQL。
+3. **全面標準 PostgreSQL 語法重構**:
+   - 所有 SQL 佔位符徹底改為 `%s`，主鍵回傳全面改用 `RETURNING id / *`，絕無遺留 SQLite 過渡補丁與死代碼。
+4. **死套件修剪**:
+   - 經測試驗證通過後，自 `pyproject.toml` 正式清理並移除 `chromadb`、`langchain-chroma` 及其 29 個子相依套件。
+5. **測試套件標準化**:
+   - 於 `python/tests/` 建立 `test_database.py`、`test_rag_engine.py`、`test_activity_services.py`、`test_vault_manager.py` 全自動化單元測試。

@@ -31,31 +31,25 @@ DASH 是一套結合活動與決策管理、LLM + RAG 歷史檢索問答，以�
   - postgres-data: PostgreSQL 核心關聯與向量持久化卷
   - ./data/markdown: 宿主機與後端掛載之 Markdown 原始檔案庫
 
-### 資料庫與多 Vault 儲存架構 (~/.dash/)
-- **全域設定**: 存於使用者家目錄 `~/.dash/config.json`，記錄當前使用中的 `active_vault`
-- **Vault 集中目錄**: 統一收攏於 `~/.dash/vaults/<vault_name>/`
-- **開箱即用**: 首次啟動自動建立純淨的 `~/.dash/vaults/default/` 作為預設紀錄庫
-- **單一 Vault 內部結構**:
-  - `dash_manifest.json`: Vault 專屬身分識別檔（身分證），記載 vault_id、名稱、版本與建檔時間
-  - `dash_database.sqlite`: SQLite 核心資料庫（活動業務表、會議、決策、日程、突發事件、對話會話等）
-  - `chroma_db/`: ChromaDB 向量檢索索引切塊庫
-  - `markdown/`: 託管之標準 Markdown 文本文件庫
-- **DASH OUT (全量導出)**: 獨立工作面板，可一鍵將當前使用中 Vault 打包為內含 manifest 身分證的標準 `.zip` 檔案
-- **DASH IN (安全匯入)**: 側邊欄底部 Vault 控制列支援匯入 `.zip`，經身分證檢驗後解壓縮建立為全新獨立 Vault 並自動切換（絕不覆蓋舊資料）
+### 資料庫與多 Vault 儲存架構 (PostgreSQL + pgvector)
+- **多租戶隔離**: 基於 PostgreSQL Schema 命名空間（
+ault_<name>）達成各紀錄庫在實體層面的絕對隔離
+- **公用設定與清冊**: 存於 public.vaults 與 public.system_settings，記錄所有紀錄庫清冊與當前使用中的 ctive_vault
+- **開箱即用**: 啟動自動建立純淨的 
+ault_default Schema 作為預設紀錄庫
+- **單一 Vault 資料庫實體**:
+  - 核心關聯資料表：活動主表 (ctivities)、會議紀錄 (meetings)、待辦事項 (	asks)、決策紀錄 (decisions)、流程日程 (schedules)、突發事件 (incidents)、對話會話 (sessions) 與對話訊息 (chat_messages)
+  - 向量切塊表：document_chunks（使用 
+ector(768) 配合 HNSW 餘弦距離索引，全面取代 ChromaDB）
+  - 文件紀錄表：documents（具備外鍵級聯 ON DELETE CASCADE 自動清理向量切塊）
+  - 實體檔案目錄：託管於掛載之 Markdown 目錄（支援 DASH_DATA_DIR）
+- **DASH OUT (全量導出)**: 獨立工作面板，可一鍵將當前使用中 Vault 的資料結構（dash_data.json）、Manifest 身分證與 Markdown 檔案打包為標準 .zip 檔案
+- **DASH IN (安全匯入)**: 側邊欄底部 Vault 控制列支援匯入 .zip，同時相容新版 JSON 與舊版 SQLite 資料包，自動建立為全新獨立 Vault 並熱切換載入（絕不覆蓋既有資料）
 
 ### 模型
-- **Embedding**: fastembed（使用 ONNX Runtime 於 CPU 運行之 Embedding 模型）
-- **LLM**: 透過 `litellm` 統一介面呼叫雲端或本地相容模型
-
-### 容器化與部屬架構 (Docker Compose)
-- **架構模式**: 單一 docker-compose.yml 統整三容器微服務拓撲
-- **資料庫容器 (dash-db)**: pgvector/pgvector:pg16（整合式關聯資料表與 HNSW 向量儲存）
-- **後端容器 (dash-backend)**: Python FastAPI + Uvicorn，處理核心業務與 RAG 向量相似度檢索
-- **前端容器 (dash-frontend)**: Nginx 託管 React SPA，並透過 /api/ 反向代理轉發後端通訊
-- **資料卷 (Volumes)**:
-  - postgres-data: PostgreSQL 核心關聯與向量持久化卷
-  - ./data/markdown: 宿主機與後端掛載之 Markdown 原始檔案庫
-
+- **Embedding**: fastembed（使用 Jina AI 繁中模型 jinaai/jina-embeddings-v2-base-zh，維度 768）
+- **Reranker**: fastembed（使用 Jina AI 多語言重排序模型 jinaai/jina-reranker-v2-base-multilingual）
+- **LLM**: 透過 litellm 統一介面呼叫雲端或本地相容模型
 ## 3. 專案結構
 ```
 rag-project/
