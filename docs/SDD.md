@@ -6,18 +6,16 @@ DASH 是一套結合活動與決策管理、LLM + RAG 歷史檢索問答，以�
 ## 2. 技術選型
 
 ### 前端
-- **框架**: React + TypeScript
-- **打包**: Electron (跨平台桌面應用)
-- **通訊**:
-  - 前端與主進程: Electron IPC + JSON
-  - 主進程與 Python 後端: HTTP API (RESTful)
-- **前端實用套件**: react-markdown (對話渲染), lucide-react (圖示庫)
+- **框架**: React 19 + TypeScript
+- **構建工具**: Vite 5 (Web SPA 單頁應用)
+- **通訊**: HTTP API (RESTful)，統一透過 apiClient 客戶端直接與後端 FastAPI 連線
+- **前端實用套件**: react-markdown (對話渲染), lucide-react (圖示庫), html2pdf.js (交接報告 PDF 匯出)
 
 ### 後端
 - **語言**: Python 3.10+
 - **套件管理**: uv
 - **套件清單**
-    - **Web 框架**: FastAPI + uvicorn (提供本地 API 供 Electron 呼叫)
+    - **Web 框架**: FastAPI + uvicorn (提供本地 RESTful API 供前端 Web 呼叫)
     - **打包工具**: PyInstaller (編譯為獨立執行檔，無須使用者安裝 Python)
     - **環境變數管理**: python-dotenv (管理雲端模型 API Key 等機密資訊)
     - **RAG 套件**: LangChain (流程编排)
@@ -43,8 +41,9 @@ DASH 是一套結合活動與決策管理、LLM + RAG 歷史檢索問答，以�
 ## 3. 專案結構
 ```
 rag-project/
-├── react/                        # Electron + Vite + React 前端
+├── react/                        # React + Vite + TypeScript Web 前端
 │   ├── src/
+│   │   ├── main.tsx              # Web 應用渲染入口 (createRoot)
 │   │   ├── App.tsx               # 頂層主畫面與導航路由 (活動工作台 vs AI 對話 vs DASH OUT)
 │   │   ├── api/                  # 後端 API 通訊服務層 (統一透過 apiClient 呼叫)
 │   │   │   ├── apiClient.ts      # HTTP 請求核心封裝、錯誤攔截與狀態解析 (Base URL & Methods)
