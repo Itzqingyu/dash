@@ -1,16 +1,29 @@
 /**
  * 歷史紀錄文件管理服務模組 (documentService.ts)
- * 負責串接 Python FastAPI 之 RAG Document 相關端點 (文檔列表、檔案上傳與檔案刪除)
+ * 負責串接 Python FastAPI 之 RAG Document 相關端點 (文檔列表、檔案上傳、檔案刪除與全文讀取)
  */
 
 import { apiClient } from './apiClient';
-import { BackendDocument, UploadDocumentResponse } from '../types/document';
+import {
+  BackendDocument,
+  UploadDocumentResponse,
+  DocumentContentResponse,
+} from '../types/document';
 
 /**
  * 取得已入庫的歷史紀錄文件列表
  */
 export async function fetchDocuments(): Promise<BackendDocument[]> {
   return await apiClient.get<BackendDocument[]>('/documents');
+}
+
+/**
+ * 讀取指定文件的 Markdown 原始全文內容
+ */
+export async function fetchDocumentContent(
+  docId: number
+): Promise<DocumentContentResponse> {
+  return await apiClient.get<DocumentContentResponse>(`/documents/${docId}/content`);
 }
 
 /**

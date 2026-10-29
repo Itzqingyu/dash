@@ -435,3 +435,99 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* 成員管理與邀請碼彈窗樣式 */
+.vault-modal-card.wide {
+  max-width: 540px;
+}
+
+.vault-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--canvas);
+}
+
+.vault-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
+.vault-member-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vault-member-email {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vault-member-role-btn {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vault-member-role-btn:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.vault-invite-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+}
+
+.vault-invite-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px dashed var(--cyan);
+}
+
+.vault-invite-code-text {
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 1px;
+}

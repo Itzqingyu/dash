@@ -11,12 +11,13 @@
 import json
 import os
 import re
+import secrets
 import shutil
 import sqlite3
 import tempfile
 import uuid
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from dash_backend import database
@@ -163,8 +164,54 @@ def list_vaults() -> List[Dict[str, Any]]:
     return vault_list
 
 
-def init_vault(vault_name: str, description: str = "") -> Dict[str, Any]:
-    """初始化並建立一個全新的空白 Vault (PostgreSQL Schema 與清冊紀錄)。"""
+def list_user_vaults(user_id: int) -> List[Dict[str, Any]]:
+    """列出指定使用者有權限存取的所有 Vault 清冊 (含成員角色與統計數據)。"""
+    ensure_default_vault()
+    active_name = get_active_vault_name()
+    vault_list: List[Dict[str, Any]] = []
+
+    try:
+        pool = database.get_pool()
+        with pool.connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT v.*, vm.role AS user_role, vm.joined_at
+                FROM public.vault_members vm
+                JOIN public.vaults v ON vm.vault_name = v.name
+                WHERE vm.user_id = %s
+                ORDER BY vm.joined_at ASC;
+                """,
+                (user_id,),
+            ).fetchall()
+            for r in rows:
+                v_name = r["name"]
+                is_active = (v_name == active_name)
+                stats = get_vault_stats(v_name)
+                vault_list.append({
+                    "name": v_name,
+                    "display_name": r.get("display_name", v_name),
+                    "vault_id": r.get("vault_id", f"v-{v_name}"),
+                    "created_at": r.get("created_at"),
+                    "updated_at": r.get("updated_at"),
+                    "description": r.get("description", ""),
+                    "is_active": is_active,
+                    "user_role": r.get("user_role", "user"),
+                    "joined_at": r.get("joined_at").isoformat() if r.get("joined_at") else None,
+                    "stats": stats,
+                })
+    except Exception:
+        pass
+
+    vault_list.sort(key=lambda x: (not x["is_active"], x["name"].lower()))
+    return vault_list
+
+
+def init_vault(
+    vault_name: str,
+    description: str = "",
+    owner_user_id: Optional[int] = None,
+) -> Dict[str, Any]:
+    """初始化並建立一個全新的空白 Vault (PostgreSQL Schema 與清冊紀錄)，並可指定 owner。"""
     clean_name = sanitize_vault_name(vault_name)
     if not clean_name:
         raise ValueError("Vault 名稱不能為空。")
@@ -187,6 +234,17 @@ def init_vault(vault_name: str, description: str = "") -> Dict[str, Any]:
             (clean_name, clean_name, vault_id, description or f"紀錄庫: {clean_name}", now, now),
         )
 
+        # 若指定了 owner_user_id，將其寫入 public.vault_members 作為唯一 owner
+        if owner_user_id is not None:
+            conn.execute(
+                """
+                INSERT INTO public.vault_members (vault_name, user_id, role)
+                VALUES (%s, %s, 'owner')
+                ON CONFLICT (vault_name, user_id) DO NOTHING;
+                """,
+                (clean_name, owner_user_id),
+            )
+
     # 建立 Schema 與 10 核心表
     database.init_db(clean_name)
     get_markdown_dir(clean_name)
@@ -199,6 +257,7 @@ def init_vault(vault_name: str, description: str = "") -> Dict[str, Any]:
         "created_at": now,
         "updated_at": now,
         "description": description or f"紀錄庫: {clean_name}",
+        "owner_id": owner_user_id,
     }
 
     return {
@@ -314,7 +373,7 @@ def rename_vault(old_name: str, new_name: str) -> Dict[str, Any]:
     }
 
 
-def delete_vault(vault_name: str) -> Dict[str, Any]:
+def delete_vault(vault_name: str, caller_user_id: Optional[int] = None) -> Dict[str, Any]:
     """刪除指定的非當前使用中 Vault (CASCADE 刪除 Schema 與所有實體檔案)。"""
     clean_name = sanitize_vault_name(vault_name)
     active_name = get_active_vault_name()
@@ -331,10 +390,19 @@ def delete_vault(vault_name: str) -> Dict[str, Any]:
         if not row:
             raise FileNotFoundError(f"找不到欲刪除的 Vault: {clean_name}")
 
+        # 若有指定操作者，嚴格校驗是否為唯一 owner
+        if caller_user_id is not None:
+            m_row = conn.execute(
+                "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
+                (clean_name, caller_user_id),
+            ).fetchone()
+            if not m_row or m_row["role"] != "owner":
+                raise PermissionError("權限不足：只有 owner 才能刪除此紀錄庫。")
+
         # 1. CASCADE 刪除 Schema
         conn.execute(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE;')
 
-        # 2. 刪除 public.vaults 清冊
+        # 2. 刪除 public.vaults 清冊 (外鍵級聯刪除 vault_members 與 vault_invitations)
         conn.execute("DELETE FROM public.vaults WHERE name = %s;", (clean_name,))
 
     # 3. 刪除對應的實體 Markdown 目錄
@@ -345,6 +413,203 @@ def delete_vault(vault_name: str) -> Dict[str, Any]:
         "status": "success",
         "message": f"已成功刪除 Vault「{clean_name}」",
         "deleted_vault": clean_name,
+    }
+
+
+# ==========================================
+# 2.1 Vault 成員管理與邀請機制 (RBAC & Invites)
+# ==========================================
+
+def create_invite_code(
+    vault_name: str,
+    created_by_user_id: int,
+    default_role: str = "user",
+    expires_in_days: int = 7,
+    max_uses: Optional[int] = None,
+) -> Dict[str, Any]:
+    """由 Vault 的 owner 或 admin 建立安全邀請碼。"""
+    clean_name = sanitize_vault_name(vault_name)
+    if default_role not in ("admin", "user"):
+        raise ValueError("邀請角色僅能設定為 admin 或 user。")
+
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        # 驗證建立者身分
+        m_row = conn.execute(
+            "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
+            (clean_name, created_by_user_id),
+        ).fetchone()
+        if not m_row or m_row["role"] not in ("owner", "admin"):
+            raise PermissionError("只有 owner 或 admin 才能建立邀請碼。")
+
+        # 產生格式如 DASH-A1B2C3D4 的邀請碼
+        code = f"DASH-{secrets.token_hex(4).upper()}"
+        expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+
+        conn.execute(
+            """
+            INSERT INTO public.vault_invitations
+            (invite_code, vault_name, created_by, default_role, expires_at, max_uses, used_count)
+            VALUES (%s, %s, %s, %s, %s, %s, 0);
+            """,
+            (code, clean_name, created_by_user_id, default_role, expires_at, max_uses),
+        )
+
+    return {
+        "invite_code": code,
+        "vault_name": clean_name,
+        "default_role": default_role,
+        "expires_at": expires_at.isoformat(),
+        "max_uses": max_uses,
+        "used_count": 0,
+    }
+
+
+def join_vault_by_invite(invite_code: str, user_id: int) -> Dict[str, Any]:
+    """使用者憑邀請碼加入指定 Vault。"""
+    clean_code = invite_code.strip()
+    if not clean_code:
+        raise ValueError("邀請碼不能為空。")
+
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        inv = conn.execute(
+            "SELECT * FROM public.vault_invitations WHERE invite_code = %s",
+            (clean_code,),
+        ).fetchone()
+        if not inv:
+            raise ValueError("邀請碼不存在或無效。")
+
+        now = datetime.now(timezone.utc)
+        if inv.get("expires_at") and inv["expires_at"] < now:
+            raise ValueError("此邀請碼已過期。")
+
+        if inv.get("max_uses") is not None and inv["used_count"] >= inv["max_uses"]:
+            raise ValueError("此邀請碼已達使用次數上限。")
+
+        target_vault = inv["vault_name"]
+
+        # 檢查是否已在該 Vault
+        existing = conn.execute(
+            "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
+            (target_vault, user_id),
+        ).fetchone()
+        if existing:
+            raise ValueError(f"您已經是紀錄庫「{target_vault}」的成員 ({existing['role']})。")
+
+        # 加入成員清單
+        assigned_role = inv.get("default_role") or "user"
+        conn.execute(
+            """
+            INSERT INTO public.vault_members (vault_name, user_id, role)
+            VALUES (%s, %s, %s);
+            """,
+            (target_vault, user_id, assigned_role),
+        )
+
+        # 累加使用計數
+        conn.execute(
+            """
+            UPDATE public.vault_invitations
+            SET used_count = used_count + 1
+            WHERE id = %s;
+            """,
+            (inv["id"],),
+        )
+
+    return {
+        "status": "success",
+        "message": f"成功加入紀錄庫「{target_vault}」！",
+        "vault_name": target_vault,
+        "role": assigned_role,
+    }
+
+
+def list_vault_members(vault_name: str) -> List[Dict[str, Any]]:
+    """列出特定 Vault 的所有成員與角色。"""
+    clean_name = sanitize_vault_name(vault_name)
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT vm.id, vm.vault_name, vm.user_id, vm.role, vm.joined_at, u.email
+            FROM public.vault_members vm
+            JOIN public.users u ON vm.user_id = u.id
+            WHERE vm.vault_name = %s
+            ORDER BY
+                CASE vm.role
+                    WHEN 'owner' THEN 1
+                    WHEN 'admin' THEN 2
+                    WHEN 'user' THEN 3
+                    ELSE 4
+                END,
+                vm.joined_at ASC;
+            """,
+            (clean_name,),
+        ).fetchall()
+
+        return [
+            {
+                "id": r["id"],
+                "user_id": r["user_id"],
+                "email": r["email"],
+                "role": r["role"],
+                "joined_at": r["joined_at"].isoformat() if r.get("joined_at") else None,
+            }
+            for r in rows
+        ]
+
+
+def update_member_role(
+    vault_name: str,
+    target_user_id: int,
+    new_role: str,
+    caller_user_id: int,
+) -> Dict[str, Any]:
+    """由 owner 變更成員角色 (只允許調整為 admin 或 user，不可有第二個 owner)。"""
+    clean_name = sanitize_vault_name(vault_name)
+    if new_role not in ("admin", "user"):
+        raise ValueError("只能將成員身分調整為 admin 或 user，不可變更為 owner。")
+
+    if target_user_id == caller_user_id:
+        raise ValueError("無法調整自己的角色。")
+
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        # 檢查操作者是否為 owner
+        caller_row = conn.execute(
+            "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
+            (clean_name, caller_user_id),
+        ).fetchone()
+        if not caller_row or caller_row["role"] != "owner":
+            raise PermissionError("只有 owner 才能調整成員角色。")
+
+        # 檢查目標成員
+        target_row = conn.execute(
+            "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
+            (clean_name, target_user_id),
+        ).fetchone()
+        if not target_row:
+            raise FileNotFoundError("目標使用者不是該紀錄庫成員。")
+
+        if target_row["role"] == "owner":
+            raise ValueError("無法調整 owner 的角色。")
+
+        conn.execute(
+            """
+            UPDATE public.vault_members
+            SET role = %s
+            WHERE vault_name = %s AND user_id = %s;
+            """,
+            (new_role, clean_name, target_user_id),
+        )
+
+    return {
+        "status": "success",
+        "message": f"已成功將成員角色更新為 {new_role}",
+        "vault_name": clean_name,
+        "user_id": target_user_id,
+        "role": new_role,
     }
 
 

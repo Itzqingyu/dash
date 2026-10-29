@@ -33,11 +33,13 @@ export interface VaultItem {
   name: string;
   display_name: string;
   vault_id: string;
-  path: string;
+  path?: string;
   created_at: string;
   updated_at: string;
   description: string;
   is_active: boolean;
+  user_role?: 'owner' | 'admin' | 'user';
+  joined_at?: string;
   stats: VaultStats;
 }
 
@@ -86,4 +88,3 @@ export interface ImportVaultResponse {
   manifest: VaultManifest;
   stats: VaultStats;
 }
-

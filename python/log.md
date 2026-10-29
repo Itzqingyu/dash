@@ -245,3 +245,30 @@
    - 經測試驗證通過後，自 `pyproject.toml` 正式清理並移除 `chromadb`、`langchain-chroma` 及其 29 個子相依套件。
 5. **測試套件標準化**:
    - 於 `python/tests/` 建立 `test_database.py`、`test_rag_engine.py`、`test_activity_services.py`、`test_vault_manager.py` 全自動化單元測試。
+
+
+### 2026-10-29: 使用者身分認證 (JWT/bcrypt)、三級角色權限 (RBAC) 與安全邀請碼機制
+1. **安全認證核心模組 (`auth/security.py`)**:
+   - `hash_password` / `verify_password`: 採用 bcrypt 12 rounds 密碼雜湊與驗證。
+   - `create_access_token` / `decode_access_token`: 採用 PyJWT HS256 簽署與解碼，有效期限 7 天。
+   - `get_current_user`: FastAPI 依賴注入，驗證 Bearer Token 並至 `public.users` 取得登入者資料。
+   - `require_vault_role`: 驗證使用者在指定紀錄庫是否具備 `owner: 3 > admin: 2 > user: 1` 權重門檻，未達標自動拋出 403 Forbidden。
+2. **多租戶成員與邀請機制 (`vault_manager.py`)**:
+   - `init_vault`: 新增 `owner_user_id` 參數，將建立者自動登記為 `public.vault_members` 之唯一 `owner`。
+   - `list_user_vaults`: 依 `user_id` 篩選其所屬紀錄庫清單，回傳各庫之成員角色與資料庫統計數據。
+   - `create_invite_code`: 驗證建立者身分（必須為 owner 或 admin），產生 7 天效期之 `DASH-XXXXXXXX` 隨機邀請碼。
+   - `join_vault_by_invite`: 校驗邀請碼時效、使用上限與重複加入防呆，自動登記為成員並遞增使用計數。
+   - `list_vault_members`: 查詢特定紀錄庫成員名單，依 owner > admin > user 排序。
+   - `update_member_role`: 僅允許 owner 調整成員身分為 admin 或 user，不可變更 owner 或產生第二個 owner。
+   - `delete_vault`: 新增 `caller_user_id` 校驗，限制僅 owner 具備刪除紀錄庫之權限。
+3. **API 端點擴展 (`main.py`)**:
+   - 認證端點：`POST /auth/register`、`POST /auth/login`、`GET /auth/me`。
+   - 紀錄庫成員與邀請端點：`POST /vaults/invite-code`、`POST /vaults/join`、`GET /vaults/{vault_name}/members`、`PATCH /vaults/{vault_name}/members/{user_id}/role`。
+   - 文件全文端點：`GET /documents/{doc_id}/content` 讀取實體 Markdown 原始文本供前端即時檢視。
+4. **單元測試套件 (`python/tests/test_auth_rbac.py`)**:
+   - 包含密碼雜湊與錯誤密碼阻擋、重複 Email 註冊防呆、JWT Token 簽發驗證。
+   - 包含多 Vault 建立、Owner 身分綁定與跨租戶隔離驗證。
+   - 包含邀請碼生成、加入、重複加入防呆，以及非管理者嘗試建立邀請碼之 403 阻擋。
+   - 包含 Owner 晉升與降級成員角色、禁止晉升為 Owner、非 Owner 調整身分之權限防護。
+   - 包含非 Owner 刪除紀錄庫之安全阻擋，以及 Owner 執行 CASCADE 刪除之清理驗證。
+   - 單元測試 100% 通過。

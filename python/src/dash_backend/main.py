@@ -4,21 +4,37 @@ import shutil
 import tempfile
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Depends, status
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
+from dash_backend import database
+from dash_backend.auth.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+    get_current_user,
+    require_vault_role,
+    bearer_scheme,
+)
 from dash_backend.vault_manager import (
     ensure_default_vault,
     get_active_vault_name,
     get_vault_stats,
     list_vaults,
+    list_user_vaults,
     init_vault,
     switch_vault,
     rename_vault,
     delete_vault,
+    create_invite_code,
+    join_vault_by_invite,
+    list_vault_members,
+    update_member_role,
     export_vault_to_zip,
     import_vault_from_zip,
     verify_vault_zip,
@@ -316,9 +332,139 @@ class VaultRenameRequest(BaseModel):
     new_name: str
 
 
+class UserRegisterRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class InviteCodeCreateRequest(BaseModel):
+    vault_name: str
+    default_role: str = 'user'
+    expires_in_days: int = 7
+    max_uses: Optional[int] = None
+
+
+class VaultJoinRequest(BaseModel):
+    invite_code: str
+
+
+class MemberRoleUpdateRequest(BaseModel):
+    role: str
+
+
 # ==========================================
 # 系統與 RAG/轉檔 端點
 # ==========================================
+
+
+# ==========================================
+# 使用者認證端點 (Authentication)
+# ==========================================
+
+@app.post("/auth/register", tags=["Authentication"])
+@app.post("/api/auth/register", tags=["Authentication"])
+def api_register(payload: UserRegisterRequest):
+    """註冊新使用者並簽發 JWT Token"""
+    email = payload.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="請提供有效的 Email 地址")
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="密碼長度至少需 6 個字元")
+
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        existing = conn.execute(
+            "SELECT id FROM public.users WHERE email = %s", (email,)
+        ).fetchone()
+        if existing:
+            raise HTTPException(status_code=400, detail="該 Email 已經被註冊")
+
+        hashed = hash_password(payload.password)
+        user_row = conn.execute(
+            """
+            INSERT INTO public.users (email, hashed_password)
+            VALUES (%s, %s)
+            RETURNING id, email, created_at;
+            """,
+            (email, hashed),
+        ).fetchone()
+
+    user_id = user_row["id"]
+    token = create_access_token(user_id=user_id, email=email)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user_id,
+            "email": email,
+            "created_at": user_row["created_at"].isoformat() if user_row.get("created_at") else None,
+        },
+    }
+
+
+@app.post("/auth/login", tags=["Authentication"])
+@app.post("/api/auth/login", tags=["Authentication"])
+def api_login(payload: UserLoginRequest):
+    """使用者登入驗證並簽發 JWT Token"""
+    email = payload.email.strip().lower()
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        user_row = conn.execute(
+            "SELECT id, email, hashed_password, created_at FROM public.users WHERE email = %s",
+            (email,),
+        ).fetchone()
+        if not user_row or not verify_password(payload.password, user_row["hashed_password"]):
+            raise HTTPException(status_code=401, detail="Email 或密碼錯誤")
+
+    user_id = user_row["id"]
+    token = create_access_token(user_id=user_id, email=email)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user_id,
+            "email": email,
+            "created_at": user_row["created_at"].isoformat() if user_row.get("created_at") else None,
+        },
+    }
+
+
+@app.get("/auth/me", tags=["Authentication"])
+@app.get("/api/auth/me", tags=["Authentication"])
+def api_get_me(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """查詢當前登入之使用者基本資料"""
+    return {
+        "user": current_user
+    }
+
+
+@app.get("/documents/{doc_id}/content", tags=["RAG Document"])
+@app.get("/api/documents/{doc_id}/content", tags=["RAG Document"])
+def get_document_content(doc_id: int):
+    """讀取指定文件的 Markdown 全文內容供前端閱讀器呈現"""
+    doc = get_doc_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="找不到指定的文件紀錄")
+    file_path = doc.get("file_path")
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="實體文件檔案不存在")
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {
+            "id": doc_id,
+            "filename": doc.get("filename"),
+            "file_path": file_path,
+            "content": content,
+            "upload_date": doc.get("upload_date"),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"讀取文件失敗: {str(exc)}")
 
 @app.get("/ping", response_model=PingResponse, tags=["System"])
 def ping():
@@ -951,8 +1097,17 @@ def api_save_handover(payload: HandoverSaveRequest):
 # ==========================================
 
 @app.get("/vaults", tags=["Vault Management"])
-def api_list_vaults():
-    """列出 ~/.dash/vaults/ 底下所有合法 Vault 與狀態"""
+@app.get("/api/vaults", tags=["Vault Management"])
+def api_list_vaults(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)):
+    """若提供有效 Bearer Token 則列出該登入使用者所屬之 Vault；未提供或無效時回傳公開/預設 Vault 清冊"""
+    if credentials and credentials.credentials:
+        try:
+            payload = decode_access_token(credentials.credentials)
+            user_id = int(payload.get("sub", 0))
+            if user_id > 0:
+                return list_user_vaults(user_id)
+        except Exception:
+            pass
     return list_vaults()
 
 
@@ -980,10 +1135,22 @@ def api_switch_vault(payload: VaultSwitchRequest):
 
 
 @app.post("/vaults/create", tags=["Vault Management"])
-def api_create_vault(payload: VaultCreateRequest):
-    """建立全新的空白 Vault 並自動切換至新 Vault"""
+@app.post("/api/vaults/create", tags=["Vault Management"])
+def api_create_vault(
+    payload: VaultCreateRequest,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    """建立全新的空白 Vault 並自動切換至新 Vault。若使用者已登入，將其設為唯一 owner。"""
+    user_id = None
+    if credentials and credentials.credentials:
+        try:
+            payload_data = decode_access_token(credentials.credentials)
+            user_id = int(payload_data.get("sub", 0))
+        except Exception:
+            pass
+
     try:
-        init_result = init_vault(payload.vault_name, payload.description or "")
+        init_result = init_vault(payload.vault_name, payload.description or "", owner_user_id=user_id)
         switch_result = switch_vault(init_result["name"])
         return {
             "status": "success",
@@ -1011,16 +1178,119 @@ def api_rename_vault(payload: VaultRenameRequest):
 
 
 @app.delete("/vaults/{vault_name}", tags=["Vault Management"])
-def api_delete_vault(vault_name: str):
-    """刪除指定的非使用中 Vault（包含所有實體檔案）"""
+@app.delete("/api/vaults/{vault_name}", tags=["Vault Management"])
+def api_delete_vault(
+    vault_name: str,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
+    """刪除指定的非使用中 Vault（若登入者存在，需具備 owner 權限）"""
+    caller_id = None
+    if credentials and credentials.credentials:
+        try:
+            payload = decode_access_token(credentials.credentials)
+            caller_id = int(payload.get("sub", 0))
+        except Exception:
+            pass
+
     try:
-        return delete_vault(vault_name)
+        return delete_vault(vault_name, caller_user_id=caller_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"刪除 Vault 失敗: {str(exc)}")
+
+
+@app.post("/vaults/invite-code", tags=["Vault Management"])
+@app.post("/api/vaults/invite-code", tags=["Vault Management"])
+def api_create_invite_code(
+    payload: InviteCodeCreateRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """由 owner 或 admin 建立紀錄庫專屬邀請碼"""
+    try:
+        require_vault_role(payload.vault_name, "admin", current_user)
+        return create_invite_code(
+            vault_name=payload.vault_name,
+            created_by_user_id=current_user["id"],
+            default_role=payload.default_role,
+            expires_in_days=payload.expires_in_days,
+            max_uses=payload.max_uses,
+        )
+    except HTTPException:
+        raise
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"建立邀請碼失敗: {str(exc)}")
+
+
+@app.post("/vaults/join", tags=["Vault Management"])
+@app.post("/api/vaults/join", tags=["Vault Management"])
+def api_join_vault(
+    payload: VaultJoinRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """已登入使用者憑邀請碼加入指定紀錄庫"""
+    try:
+        return join_vault_by_invite(
+            invite_code=payload.invite_code,
+            user_id=current_user["id"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"加入紀錄庫失敗: {str(exc)}")
+
+
+@app.get("/vaults/{vault_name}/members", tags=["Vault Management"])
+@app.get("/api/vaults/{vault_name}/members", tags=["Vault Management"])
+def api_list_vault_members(
+    vault_name: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """查詢紀錄庫成員名單 (紀錄庫成員皆可查看)"""
+    try:
+        require_vault_role(vault_name, "user", current_user)
+        return list_vault_members(vault_name)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"取得成員名單失敗: {str(exc)}")
+
+
+@app.patch("/vaults/{vault_name}/members/{user_id}/role", tags=["Vault Management"])
+@app.patch("/api/vaults/{vault_name}/members/{user_id}/role", tags=["Vault Management"])
+def api_update_member_role(
+    vault_name: str,
+    user_id: int,
+    payload: MemberRoleUpdateRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """變更成員角色 (只有 owner 可將成員晉升/降級為 admin 或 user)"""
+    try:
+        require_vault_role(vault_name, "owner", current_user)
+        return update_member_role(
+            vault_name=vault_name,
+            target_user_id=user_id,
+            new_role=payload.role,
+            caller_user_id=current_user["id"],
+        )
+    except HTTPException:
+        raise
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"變更成員角色失敗: {str(exc)}")
 
 
 @app.get("/vault/stats", tags=["Vault Management"])

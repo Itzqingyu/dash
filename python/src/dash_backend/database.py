@@ -226,6 +226,48 @@ def init_db(
             );
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS public.users (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                hashed_password VARCHAR(255) NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS public.vault_members (
+                id SERIAL PRIMARY KEY,
+                vault_name VARCHAR(100) NOT NULL REFERENCES public.vaults(name) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+                role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('owner', 'admin', 'user')),
+                joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(vault_name, user_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_vault_members_user ON public.vault_members(user_id);
+            CREATE INDEX IF NOT EXISTS idx_vault_members_vault ON public.vault_members(vault_name);
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS public.vault_invitations (
+                id SERIAL PRIMARY KEY,
+                invite_code VARCHAR(32) UNIQUE NOT NULL,
+                vault_name VARCHAR(100) NOT NULL REFERENCES public.vaults(name) ON DELETE CASCADE,
+                created_by INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+                default_role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (default_role IN ('admin', 'user')),
+                expires_at TIMESTAMPTZ,
+                max_uses INTEGER DEFAULT NULL,
+                used_count INTEGER DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_invitations_code ON public.vault_invitations(invite_code);
+            """
+        )
 
         # 4. 建立 Vault 內的 10 個核心實體資料表
         # 4.1 文件紀錄表

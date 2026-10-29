@@ -24,3 +24,10 @@ export interface DeleteDocumentResponse {
   message: string;
 }
 
+export interface DocumentContentResponse {
+  id: number;
+  filename: string;
+  file_path: string;
+  content: string;
+  upload_date: string;
+}
