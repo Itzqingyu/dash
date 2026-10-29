@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 /**
  * 全域環境型別宣告 (global.d.ts)
  */
