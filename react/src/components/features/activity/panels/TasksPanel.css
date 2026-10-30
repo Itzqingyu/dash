@@ -12,7 +12,7 @@
   padding: 7px 12px;
   border-radius: 8px;
   background: var(--canvas);
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.72rem;
   font-weight: 800;
   cursor: pointer;
@@ -21,8 +21,8 @@
 }
 
 .filter.active {
-  background: var(--ink, #101928);
-  color: #ffffff;
+  background: var(--ink);
+  color: var(--white);
 }
 
 .task-board {
@@ -34,7 +34,7 @@
 
 .task-column {
   padding: 13px;
-  border-radius: var(--radius, 12px);
+  border-radius: var(--radius);
   background: var(--canvas);
 }
 
@@ -43,7 +43,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 3px 4px 12px;
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.75rem;
   font-weight: 900;
 }
@@ -56,15 +56,15 @@
   border-radius: 999px;
   background: var(--line);
   font-size: 0.65rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .task-card {
   margin-top: 9px;
   padding: 15px;
-  border: 1px solid var(--line, #dfe4eb);
+  border: 1px solid var(--line);
   border-radius: 9px;
-  background: #ffffff;
+  background: var(--white);
   box-shadow: 0 3px 10px rgba(16, 25, 40, 0.04);
 }
 
@@ -81,12 +81,12 @@
   margin: 13px 0 7px;
   font-size: 0.8rem;
   line-height: 1.4;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .task-card p {
   margin: 0;
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.69rem;
 }
 
@@ -95,12 +95,12 @@
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid var(--line);
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.63rem;
 }
 
 .task-card.completed h3 {
-  color: var(--muted, #758097);
+  color: var(--muted);
   text-decoration: line-through;
 }
 

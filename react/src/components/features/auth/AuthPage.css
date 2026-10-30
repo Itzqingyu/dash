@@ -39,7 +39,7 @@
   background-color: var(--panel);
   border-radius: var(--radius);
   border: 1px solid var(--line);
-  box-shadow: 0 8px 32px rgba(16, 25, 40, 0.08);
+  box-shadow: var(--shadow-lg);
   padding: 32px;
   display: flex;
   flex-direction: column;

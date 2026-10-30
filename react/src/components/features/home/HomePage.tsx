@@ -20,6 +20,7 @@ import {
   Activity,
   X,
   ChevronRight,
+  Home,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { vaultApi, VaultItem } from '../../../api/vaultApi';
@@ -210,61 +211,82 @@ export const HomePage: React.FC<HomePageProps> = ({
         onChange={handleFileSelected}
       />
 
-      {/* 頂部精緻帳戶狀態條 */}
-      <div className="home-account-bar">
-        <div className="account-bar-left">
-          <span className="account-brand-mark">DASH</span>
-          <div className="account-user-pill">
-            <Users size={14} />
-            <span>{user?.email}</span>
+      {/* 頂部極簡導航欄 (與 Vault Hub 導航欄位置樣式一致) */}
+      <nav className="home-nav-bar" aria-label="首頁導航">
+        <span className="home-crumb-active">
+          <Home size={14} />
+          <span>首頁</span>
+        </span>
+      </nav>
+
+      {/* 中央主視覺 DASH 基本資料卡片 (與 Vault Hub 基本資料卡片位置與規格完全一致) */}
+      <header className="home-dash-header">
+        <div className="home-dash-title-row">
+          <div className="home-dash-title-left">
+            <div className="home-dash-icon-badge">
+              <Activity size={28} />
+            </div>
+            <div className="home-dash-title-group">
+              <div className="home-dash-name-wrap">
+                <h1 className="home-dash-title">DASH</h1>
+                <div className="home-user-pill">
+                  <Users size={13} />
+                  <span>{user?.email}</span>
+                </div>
+              </div>
+              <p className="home-dash-desc">
+                團隊決策、活動歷程、流程規劃與紀錄庫中樞
+              </p>
+            </div>
+          </div>
+
+          {/* 帳號與全局操作群 */}
+          <div className="home-dash-actions">
+            <button
+              type="button"
+              className="home-btn"
+              onClick={handleTriggerImport}
+            >
+              <FolderInput size={15} />
+              <span>匯入備份包 (DASH IN)</span>
+            </button>
+            <button
+              type="button"
+              className="home-btn"
+              onClick={() => {
+                setInviteCode('');
+                setJoinError(null);
+                setShowJoinModal(true);
+              }}
+            >
+              <Ticket size={15} />
+              <span>輸入邀請碼</span>
+            </button>
+            <button
+              type="button"
+              className="home-btn primary"
+              onClick={() => {
+                setNewVaultName('');
+                setNewVaultDesc('');
+                setCreateError(null);
+                setShowCreateModal(true);
+              }}
+            >
+              <FolderPlus size={15} />
+              <span>建立新紀錄庫</span>
+            </button>
+            <button
+              type="button"
+              className="home-btn danger"
+              onClick={logout}
+              title="登出目前帳號"
+            >
+              <LogOut size={15} />
+              <span>登出</span>
+            </button>
           </div>
         </div>
-
-        <div className="account-bar-actions">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleTriggerImport}
-          >
-            <FolderInput size={15} />
-            <span>匯入備份包 (DASH IN)</span>
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setInviteCode('');
-              setJoinError(null);
-              setShowJoinModal(true);
-            }}
-          >
-            <Ticket size={15} />
-            <span>輸入邀請碼</span>
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => {
-              setNewVaultName('');
-              setNewVaultDesc('');
-              setCreateError(null);
-              setShowCreateModal(true);
-            }}
-          >
-            <FolderPlus size={15} />
-            <span>建立新紀錄庫</span>
-          </button>
-          <button
-            type="button"
-            className="btn-logout"
-            onClick={logout}
-            title="登出目前帳號"
-          >
-            <LogOut size={16} />
-            <span>登出</span>
-          </button>
-        </div>
-      </div>
+      </header>
 
       {/* 主體區塊：我的紀錄庫清單 */}
       <main className="home-main">

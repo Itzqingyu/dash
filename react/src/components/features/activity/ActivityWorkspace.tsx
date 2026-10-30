@@ -12,7 +12,7 @@ import AfterPanel from './panels/AfterPanel';
 import SourceRecordPanel from './panels/SourceRecordPanel';
 import './ActivityWorkspace.css';
 
-const GLYPH_COLORS = ['cyan', 'violet', 'orange', 'pink'];
+const GLYPH_COLORS = ['cyan', 'navy'];
 
 function getStatusClass(status: string): string {
   if (status === '已完成') return 'completed';

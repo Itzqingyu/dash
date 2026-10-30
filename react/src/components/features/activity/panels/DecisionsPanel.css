@@ -16,9 +16,9 @@
 
 .decision-list-item {
   padding: 15px;
-  border: 1px solid var(--line, #dfe4eb);
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--white);
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -29,8 +29,8 @@
 }
 
 .decision-list-item.active {
-  border-color: var(--cyan, #4776e6);
-  box-shadow: inset 3px 0 var(--cyan, #4776e6);
+  border-color: var(--cyan);
+  box-shadow: inset 3px 0 var(--cyan);
   background: var(--canvas);
 }
 
@@ -43,20 +43,20 @@
   margin: 10px 0 6px;
   font-size: 0.8rem;
   line-height: 1.4;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .decision-list-item small {
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.65rem;
 }
 
 .decision-detail {
   padding: 23px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.04);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
 }
 
 .decision-detail-head {
@@ -65,25 +65,25 @@
   justify-content: space-between;
   gap: 15px;
   padding-bottom: 17px;
-  border-bottom: 1px solid var(--line, #dfe4eb);
+  border-bottom: 1px solid var(--line);
 }
 
 .decision-detail-head h3 {
   margin: 10px 0 0;
   font-size: 1.18rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .decision-section,
 .decision-answer {
   padding: 17px 0;
-  border-bottom: 1px solid var(--line, #dfe4eb);
+  border-bottom: 1px solid var(--line);
 }
 
 .decision-section > span,
 .decision-answer > span,
 .decision-meta span {
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.66rem;
   font-weight: 800;
 }
@@ -91,7 +91,7 @@
 .decision-section ol {
   margin: 10px 0 0;
   padding-left: 19px;
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.8rem;
   line-height: 1.8;
 }
@@ -100,12 +100,12 @@
   display: block;
   margin: 8px 0 5px;
   font-size: 0.9rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .decision-answer p {
   margin: 0;
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.76rem;
   line-height: 1.6;
 }
@@ -121,7 +121,7 @@
   display: block;
   margin-top: 6px;
   font-size: 0.76rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .source-link {
@@ -131,7 +131,7 @@
   align-items: center;
   gap: 11px;
   padding: 13px;
-  border: 1px solid var(--line, #dfe4eb);
+  border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--canvas);
   text-align: left;
@@ -144,8 +144,8 @@
   width: 29px;
   height: 29px;
   border-radius: 7px;
-  background: var(--cyan-soft, #e8efff);
-  color: var(--cyan, #4776e6);
+  background: var(--cyan-soft);
+  color: var(--cyan);
 }
 
 .source-link strong,
@@ -155,19 +155,19 @@
 
 .source-link strong {
   font-size: 0.72rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .source-link small {
   margin-top: 3px;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.63rem;
 }
 
 .historical-match {
   margin-top: 16px;
   padding: 16px;
-  border-left: 3px solid var(--cyan, #4776e6);
+  border-left: 3px solid var(--cyan);
   border-radius: 8px;
   background: var(--cyan-soft);
 }
@@ -176,12 +176,12 @@
   display: block;
   margin: 7px 0 5px;
   font-size: 0.8rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .historical-match > p:not(.eyebrow) {
   margin: 0 0 9px;
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.71rem;
   line-height: 1.55;
 }

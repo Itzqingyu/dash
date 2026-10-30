@@ -6,15 +6,15 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   margin-bottom: 16px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
-  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
   overflow: hidden;
 }
 
 .after-summary article {
   padding: 18px;
-  border-right: 1px solid var(--line, #dfe4eb);
+  border-right: 1px solid var(--line);
 }
 
 .after-summary article:last-child {
@@ -29,22 +29,22 @@
 
 .after-summary span,
 .after-summary small {
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.67rem;
 }
 
 .after-summary strong {
   margin: 5px 0;
   font-size: 1.25rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .review-card {
   padding: 22px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.04);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
 }
 
 .review-head {
@@ -56,7 +56,7 @@
 .review-head h3 {
   margin: 6px 0 0;
   font-size: 1.02rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .plan-actual {
@@ -76,12 +76,12 @@
   display: block;
   margin: 6px 0 3px;
   font-size: 0.85rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .plan-actual p {
   margin: 0;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.69rem;
 }
 
@@ -121,14 +121,14 @@
 
 .review-grid div {
   padding: 16px;
-  border: 1px solid var(--line, #dfe4eb);
+  border: 1px solid var(--line);
   border-radius: 9px;
-  background: #ffffff;
+  background: var(--white);
 }
 
 .review-grid p {
   margin: 7px 0 0;
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.72rem;
   line-height: 1.55;
 }
@@ -140,8 +140,8 @@
   gap: 22px;
   margin-top: 16px;
   padding: 20px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: var(--cyan-soft);
 }
 
@@ -152,11 +152,11 @@
 
 .handover-card h3 {
   font-size: 0.94rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .handover-card p:last-child {
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.73rem;
 }
 
@@ -165,9 +165,9 @@
   align-items: flex-start;
   gap: 8px;
   font-size: .75rem;
-  color: var(--danger, #e53935);
-  background: #fff0f0;
-  border: 1px solid var(--danger, #e53935);
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
   border-radius: 6px;
   padding: 8px 10px;
   margin-top: 16px;
@@ -187,7 +187,7 @@
   border: none;
   font-size: .7rem;
   font-weight: 700;
-  color: var(--danger, #e53935);
+  color: var(--danger);
   cursor: pointer;
   text-decoration: underline;
   padding: 0;
@@ -207,7 +207,7 @@
   max-height: 65vh;
   overflow-y: auto;
   padding: 18px 24px;
-  background: #ffffff;
+  background: var(--white);
   border-radius: 8px;
   border: 1px solid var(--line);
   line-height: 1.7;

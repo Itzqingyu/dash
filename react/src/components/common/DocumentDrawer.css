@@ -8,15 +8,15 @@
   right: 0;
   width: 380px;
   height: 100vh;
-  background: #ffffff;
-  color: var(--ink, #101928);
-  border-left: 2px solid var(--line, #dfe4eb);
+  background: var(--white);
+  color: var(--ink);
+  border-left: 2px solid var(--line);
   z-index: 100;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
   transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-modal);
 }
 
 .doc-drawer.open {
@@ -28,16 +28,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 2px solid var(--line, #dfe4eb);
-  background: #ffffff;
-  color: var(--ink, #101928);
+  border-bottom: 2px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
 }
 
 .doc-drawer-head h2 {
   font-size: 1.15rem;
   font-weight: 900;
   margin: 4px 0 0;
-  color: #101928 !important;
+  color: var(--ink) !important;
 }
 
 .doc-upload-box {
@@ -46,14 +46,14 @@
 }
 
 .doc-upload-dropzone {
-  border: 2px dashed var(--line, #dfe4eb);
+  border: 2px dashed var(--line);
   border-radius: 10px;
   padding: 20px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: var(--canvas, #f3f5f8);
+  background: var(--canvas);
   cursor: pointer;
   transition: all .15s ease;
 }
@@ -64,19 +64,19 @@
 }
 
 .upload-icon {
-  color: var(--cyan, #4776e6);
+  color: var(--cyan);
   margin-bottom: 8px;
 }
 
 .doc-upload-dropzone strong {
   font-size: .88rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
   margin-bottom: 4px;
 }
 
 .doc-upload-dropzone small {
   font-size: .72rem;
-  color: var(--muted, #758097);
+  color: var(--muted);
 }
 
 .doc-upload-dropzone.uploading {
@@ -99,9 +99,9 @@
   align-items: flex-start;
   gap: 8px;
   font-size: .75rem;
-  color: var(--danger, #e53935);
-  background: #fff0f0;
-  border: 1px solid var(--danger, #e53935);
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
   border-radius: 6px;
   padding: 8px 10px;
   margin-top: 8px;
@@ -121,7 +121,7 @@
   border: none;
   font-size: .7rem;
   font-weight: 700;
-  color: var(--danger, #e53935);
+  color: var(--danger);
   cursor: pointer;
   text-decoration: underline;
   padding: 0;
@@ -132,7 +132,7 @@
   align-items: center;
   gap: 6px;
   font-size: .72rem;
-  color: var(--muted, #758097);
+  color: var(--muted);
   margin-top: 8px;
 }
 
@@ -148,13 +148,13 @@
 .doc-list-title {
   font-size: .82rem;
   font-weight: 800;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .doc-list-count {
   font-size: .75rem;
   font-weight: 700;
-  color: var(--muted, #758097);
+  color: var(--muted);
 }
 
 .doc-list-scroll {
@@ -170,7 +170,7 @@
   justify-content: center;
   text-align: center;
   padding: 40px 16px;
-  color: var(--muted, #758097);
+  color: var(--muted);
 }
 
 .doc-empty-state .empty-icon {
@@ -181,13 +181,13 @@
 .doc-empty-state p {
   font-size: .9rem;
   font-weight: 800;
-  color: var(--ink, #101928);
+  color: var(--ink);
   margin-bottom: 4px;
 }
 
 .doc-empty-state small {
   font-size: .75rem;
-  color: var(--muted, #758097);
+  color: var(--muted);
 }
 
 .doc-items-container {
@@ -201,14 +201,14 @@
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--line, #dfe4eb);
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 2px 2px 0 var(--line, #dfe4eb);
+  background: var(--white);
+  box-shadow: 2px 2px 0 var(--line);
 }
 
 .doc-item-icon {
-  color: var(--cyan, #4776e6);
+  color: var(--cyan);
   display: grid;
   place-items: center;
 }
@@ -221,7 +221,7 @@
 .doc-item-name {
   display: block;
   font-size: .84rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -232,7 +232,7 @@
   align-items: center;
   gap: 6px;
   font-size: .7rem;
-  color: var(--muted, #758097);
+  color: var(--muted);
   margin-top: 2px;
 }
 
@@ -256,6 +256,6 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--backdrop);
   z-index: 99;
 }

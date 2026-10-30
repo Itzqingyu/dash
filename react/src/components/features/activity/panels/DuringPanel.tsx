@@ -210,7 +210,7 @@ export default function DuringPanel({ activityId, currentView, setCurrentView, s
         <div className="card-title"><h3>執行紀錄</h3><span className="updated">依時間排序</span></div>
         <div className="record-timeline">
           {sortedIncidents.map((incident) => <section key={incident.id} className="meeting-content">
-            <div className="card-title"><div><span style={{ color: '#758097', fontSize: '0.8rem', fontWeight: 800 }}>{formatIncidentTime(incident.occurred_at)}</span><h3 style={{ wordBreak: 'break-all' }}>{incident.content}</h3></div><div className="heading-actions" style={{ flexShrink: 0 }}><button className="button secondary" type="button" onClick={() => openEdit(incident)}>編輯</button><button className="button danger" type="button" onClick={() => void handleDelete(incident)} disabled={deletingId === incident.id}>{deletingId === incident.id ? '刪除中…' : '刪除'}</button></div></div>
+            <div className="card-title"><div><span style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 800 }}>{formatIncidentTime(incident.occurred_at)}</span><h3 style={{ wordBreak: 'break-all' }}>{incident.content}</h3></div><div className="heading-actions" style={{ flexShrink: 0 }}><button className="button secondary" type="button" onClick={() => openEdit(incident)}>編輯</button><button className="button danger" type="button" onClick={() => void handleDelete(incident)} disabled={deletingId === incident.id}>{deletingId === incident.id ? '刪除中…' : '刪除'}</button></div></div>
             <p>對應流程：{incident.schedule_id == null ? '未綁定' : scheduleNames.get(incident.schedule_id) || `流程 #${incident.schedule_id}`}</p>
             {incident.cause && <p>原因：{incident.cause}</p>}
             {incident.suggestion && <p>改善建議：{incident.suggestion}</p>}

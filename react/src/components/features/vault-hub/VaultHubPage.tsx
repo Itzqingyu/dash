@@ -296,7 +296,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
           tabIndex={0}
         >
           <div className="hub-card-top">
-            <div className="hub-card-icon violet">
+            <div className="hub-card-icon cyan">
               <FileText size={22} />
             </div>
             <div className="hub-card-info">
@@ -323,7 +323,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
           tabIndex={0}
         >
           <div className="hub-card-top">
-            <div className="hub-card-icon orange">
+            <div className="hub-card-icon navy">
               <MessageSquare size={22} />
             </div>
             <div className="hub-card-info">

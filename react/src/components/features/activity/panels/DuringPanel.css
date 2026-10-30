@@ -4,13 +4,13 @@
 
 .live-heading {
   padding: 17px 20px;
-  border-radius: var(--radius, 12px);
-  background: var(--ink, #101928);
-  color: #ffffff;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--white);
 }
 
 .live-heading .eyebrow {
-  color: var(--cyan, #4776e6);
+  color: var(--cyan);
 }
 
 .live-heading p:last-child {
@@ -43,8 +43,8 @@
   align-items: center;
   padding: 25px;
   border-radius: 13px;
-  background: var(--cyan, #4776e6);
-  color: #ffffff;
+  background: var(--cyan);
+  color: var(--white);
   box-shadow: 0 12px 28px rgba(71, 118, 230, 0.2);
 }
 
@@ -91,8 +91,8 @@
 }
 
 .button.inverse {
-  background: #ffffff;
-  color: var(--ink, #101928);
+  background: var(--white);
+  color: var(--ink);
 }
 
 .next-strip {
@@ -102,13 +102,13 @@
   align-items: center;
   margin-top: 12px;
   padding: 14px 18px;
-  border: 1px solid var(--line, #dfe4eb);
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--white);
 }
 
 .next-strip > span {
-  color: var(--cyan, #4776e6);
+  color: var(--cyan);
   font-size: 0.62rem;
   font-weight: 950;
   letter-spacing: 0.12em;
@@ -117,12 +117,12 @@
 .next-strip time,
 .next-strip strong {
   font-size: 0.8rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .next-strip p {
   margin: 0;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.7rem;
 }
 
@@ -140,7 +140,7 @@
   gap: 4px 13px;
   padding: 19px;
   border: 1px dashed var(--danger);
-  border-radius: var(--radius, 12px);
+  border-radius: var(--radius);
   background: var(--danger-soft);
   color: var(--danger);
   text-align: left;
@@ -155,7 +155,7 @@
   height: 35px;
   border-radius: 50%;
   background: var(--danger);
-  color: #ffffff;
+  color: var(--white);
   font-size: 1.15rem;
 }
 
@@ -170,14 +170,14 @@
 
 .execution-actions article {
   padding: 18px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
-  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
 }
 
 .execution-actions article span,
 .execution-actions article small {
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.67rem;
 }
 
@@ -185,7 +185,7 @@
   display: block;
   margin: 5px 0 8px;
   font-size: 1.1rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .execution-actions article small {

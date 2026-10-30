@@ -12,9 +12,9 @@
 
 .record-options button {
   padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
   color: var(--ink);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -22,9 +22,9 @@
 }
 
 .record-options button:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: var(--accent-light, #f0f7ff);
-  color: var(--accent);
+  border-color: var(--cyan);
+  background: var(--cyan-soft);
+  color: var(--cyan);
 }
 
 .record-options button:disabled {

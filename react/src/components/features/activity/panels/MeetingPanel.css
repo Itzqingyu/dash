@@ -20,7 +20,7 @@
   align-items: center;
   gap: 13px;
   margin: -5px 0 18px;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.72rem;
 }
 
@@ -34,7 +34,7 @@
   width: 29px;
   height: 29px;
   margin-left: -5px;
-  border: 2px solid var(--canvas, #f3f5f8);
+  border: 2px solid var(--canvas);
   border-radius: 50%;
   background: var(--canvas);
   color: var(--ink-soft);
@@ -48,16 +48,16 @@
 }
 
 .avatar-stack i:last-child {
-  background: var(--ink, #101928);
-  color: #ffffff;
+  background: var(--ink);
+  color: var(--white);
 }
 
 .ai-summary-block {
   padding: 20px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.04);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
 }
 
 .source-chip,
@@ -65,7 +65,7 @@
   padding: 5px 8px;
   border-radius: 7px;
   background: var(--canvas);
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.65rem;
 }
 
@@ -78,16 +78,16 @@
 
 .extraction-stats button {
   padding: 13px;
-  border: 1px solid var(--line, #dfe4eb);
+  border: 1px solid var(--line);
   border-radius: 9px;
-  background: #ffffff;
+  background: var(--white);
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
 }
 
 .extraction-stats button:hover {
-  border-color: var(--cyan, #4776e6);
+  border-color: var(--cyan);
   box-shadow: 0 2px 8px rgba(16, 25, 40, 0.06);
 }
 
@@ -97,13 +97,13 @@
 }
 
 .extraction-stats b {
-  color: var(--ink, #101928);
+  color: var(--ink);
   font-size: 1.2rem;
 }
 
 .extraction-stats span {
   margin-top: 3px;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.67rem;
 }
 
@@ -124,7 +124,7 @@
 
 .proposal-card p {
   margin: 0 0 5px;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.65rem;
 }
 
@@ -132,11 +132,11 @@
   display: block;
   margin-bottom: 15px;
   font-size: 0.83rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .proposal-card small {
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.67rem;
 }
 
@@ -153,12 +153,12 @@
   background: var(--canvas);
   font-size: 0.8rem;
   font-weight: 800;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .change-row .new-value {
-  background: var(--cyan-soft, #e8efff);
-  color: var(--cyan, #4776e6);
+  background: var(--cyan-soft);
+  color: var(--cyan);
 }
 
 .proposal-actions {
@@ -170,34 +170,34 @@
 
 .proposal-actions button {
   padding: 6px 10px;
-  border: 1px solid var(--line, #dfe4eb);
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: #ffffff;
-  color: var(--ink-soft, #43506a);
+  background: var(--white);
+  color: var(--ink-soft);
   font-size: 0.68rem;
   font-weight: 800;
   cursor: pointer;
 }
 
 .proposal-actions button:last-child {
-  border-color: var(--cyan, #4776e6);
-  background: var(--cyan, #4776e6);
-  color: #ffffff;
+  border-color: var(--cyan);
+  background: var(--cyan);
+  color: var(--white);
 }
 
 .transcript {
   margin-top: 16px;
   padding: 18px 20px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
-  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
 }
 
 .transcript-body {
   margin-top: 17px;
   padding-top: 15px;
-  border-top: 1px solid var(--line, #dfe4eb);
-  color: var(--ink-soft, #43506a);
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
   font-size: 0.78rem;
   line-height: 1.7;
 }
@@ -211,7 +211,7 @@
   padding: 22px;
   border: 1px solid var(--line);
   border-radius: 13px;
-  background: #fff;
+  background: var(--white);
 }
 
 .meeting-detail-card .card-title {
@@ -250,7 +250,7 @@
   height: 6px;
 }
 .meeting-tabs-container::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: var(--line);
   border-radius: 4px;
 }
 
@@ -262,7 +262,7 @@
   max-width: 240px;
   padding: 12px 16px;
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
@@ -271,15 +271,15 @@
 
 /* 滑鼠移過去的效果：微微浮起 */
 .meeting-tab:hover {
-  border-color: #4776e6; /* 這裡的顏色可以配合你們的藍色 */
+  border-color: var(--cyan); /* 這裡的顏色可以配合你們的藍色 */
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(71, 118, 230, 0.1);
 }
 
 /* 被選中的卡片樣式：變成藍底藍字 */
 .meeting-tab.active {
-  background: #f0f4ff;
-  border-color: #4776e6;
+  background: var(--cyan-soft);
+  border-color: var(--cyan);
 }
 
 /* 卡片上半部的序號與日期 */
@@ -293,25 +293,25 @@
 
 .tab-index {
   font-weight: 700;
-  color: #a0aec0;
+  color: var(--muted);
 }
 .meeting-tab.active .tab-index {
-  color: #4776e6; /* 選中時序號變藍色 */
+  color: var(--cyan); /* 選中時序號變藍色 */
 }
 
 .tab-date {
-  color: #718096;
+  color: var(--muted);
 }
 
 /* 會議名稱 */
 .tab-name {
   font-size: 15px;
-  color: #2d3748;
+  color: var(--ink);
   width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .meeting-tab.active .tab-name {
-  color: #2b6cb0; /* 選中時名稱變深藍色 */
+  color: var(--navy); /* 選中時名稱變深藍色 */
 }

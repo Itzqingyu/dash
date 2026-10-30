@@ -168,21 +168,21 @@ export default function AfterPanel({ currentView, activityId, scheduleVersion, o
 
       {/* ==================== 流程結果區塊 ==================== */}
       <div className="section-heading compact subsection-heading">
-        <div><p className="eyebrow" style={{ color: '#11225f' }}>FLOW RESULTS</p><h3 style={{ color: '#11225f' }}>流程結果</h3><p style = {{ marginTop: '2px', marginBottom: '10px'}}>在原本流程上補充實際時間、問題、原因與下次建議。</p></div>
+        <div><p className="eyebrow" style={{ color: 'var(--navy)' }}>FLOW RESULTS</p><h3 style={{ color: 'var(--navy)' }}>流程結果</h3><p style = {{ marginTop: '2px', marginBottom: '10px'}}>在原本流程上補充實際時間、問題、原因與下次建議。</p></div>
       </div>
       <div className="flow-result-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {sortedSchedules.map((schedule) => {
           const isEditing = editingScheduleId === schedule.id;
 
           return (
-            <article key={schedule.id} className="info-card" style={{ padding: '20px', marginBottom: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)', border: 'none' }}>
+            <article key={schedule.id} className="info-card" style={{ padding: '20px', marginBottom: '16px', boxShadow: 'var(--shadow-md)', border: 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' }}>
                 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ color: 'var(--ink-soft)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     原訂：{formatTime(schedule.start_time)} ~ {formatTime(schedule.end_time)}
                   </div>
-                  <h4 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <h4 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {schedule.name}
                   </h4>
                   
@@ -191,8 +191,8 @@ export default function AfterPanel({ currentView, activityId, scheduleVersion, o
                     <textarea
                       style={{ 
                         width: '100%', marginTop: '16px', padding: '14px 16px', 
-                        borderRadius: '8px', border: '1px solid #94a3b8', 
-                        background: '#fff', fontSize: '0.9rem', resize: 'vertical',
+                        borderRadius: 'var(--radius)', border: '1px solid var(--line)', 
+                        background: 'var(--panel)', fontSize: '0.9rem', resize: 'vertical',
                         wordBreak: 'break-all'
                       }}
                       rows={3}
@@ -202,9 +202,9 @@ export default function AfterPanel({ currentView, activityId, scheduleVersion, o
                     />
                   ) : (
                     <div style={{ 
-                      marginTop: '16px', padding: '14px 16px', background: schedule.outcome_note ? '#f8fafc' : '#f1f5f9', 
-                      border: schedule.outcome_note ? '1px solid #cbd5e1' : '1px dashed #94a3b8', 
-                      borderRadius: '8px', fontSize: '0.9rem', color: schedule.outcome_note ? '#334155' : '#475569',
+                      marginTop: '16px', padding: '14px 16px', background: schedule.outcome_note ? 'var(--canvas)' : 'var(--canvas)', 
+                      border: schedule.outcome_note ? '1px solid var(--line)' : '1px dashed var(--line)', 
+                      borderRadius: 'var(--radius)', fontSize: '0.9rem', color: schedule.outcome_note ? 'var(--ink-soft)' : 'var(--muted)',
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-all'
                     }}>
@@ -238,21 +238,21 @@ export default function AfterPanel({ currentView, activityId, scheduleVersion, o
 
       {/* ==================== 決策執行結果區塊 ==================== */}
       <div className="section-heading compact subsection-heading">
-        <div><p className="eyebrow" style = {{ marginTop: '8px', color: '#11225f' }}>DECISION RESULTS</p><h3 style={{ color: '#11225f' }}>決策執行結果</h3><p style = {{ marginTop: '2px', marginBottom: '10px'}}>確認每筆決策是否有效，補齊下一屆需要知道的結果。</p></div>
+        <div><p className="eyebrow" style = {{ marginTop: '8px', color: 'var(--navy)' }}>DECISION RESULTS</p><h3 style={{ color: 'var(--navy)' }}>決策執行結果</h3><p style = {{ marginTop: '2px', marginBottom: '10px'}}>確認每筆決策是否有效，補齊下一屆需要知道的結果。</p></div>
       </div>
       <div className="decision-result-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {decisions.map((decision) => {
           const isEditing = editingDecisionId === decision.id;
 
           return (
-            <article key={decision.id} className="info-card" style={{ padding: '20px', marginBottom: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)', border: 'none' }}>
+            <article key={decision.id} className="info-card" style={{ padding: '20px', marginBottom: '16px', boxShadow: 'var(--shadow-md)', border: 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' }}>
                 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ color: 'var(--ink-soft)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {decision.problem || '未命名決策'}
                   </div>
-                  <h4 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <h4 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {decision.title}
                   </h4>
                   
@@ -261,8 +261,8 @@ export default function AfterPanel({ currentView, activityId, scheduleVersion, o
                     <textarea
                       style={{ 
                         width: '100%', marginTop: '16px', padding: '14px 16px', 
-                        borderRadius: '8px', border: '1px solid #94a3b8', 
-                        background: '#fff', fontSize: '0.9rem', resize: 'vertical',
+                        borderRadius: 'var(--radius)', border: '1px solid var(--line)', 
+                        background: 'var(--panel)', fontSize: '0.9rem', resize: 'vertical',
                         wordBreak: 'break-all'
                       }}
                       rows={3}
@@ -272,9 +272,9 @@ export default function AfterPanel({ currentView, activityId, scheduleVersion, o
                     />
                   ) : (
                     <div style={{ 
-                      marginTop: '16px', padding: '14px 16px', background: decision.outcome_note ? '#f8fafc' : '#f1f5f9', 
-                      border: decision.outcome_note ? '1px solid #cbd5e1' : '1px dashed #94a3b8', 
-                      borderRadius: '8px', fontSize: '0.9rem', color: decision.outcome_note ? '#334155' : '#475569',
+                      marginTop: '16px', padding: '14px 16px', background: decision.outcome_note ? 'var(--canvas)' : 'var(--canvas)', 
+                      border: decision.outcome_note ? '1px solid var(--line)' : '1px dashed var(--line)', 
+                      borderRadius: 'var(--radius)', fontSize: '0.9rem', color: decision.outcome_note ? 'var(--ink-soft)' : 'var(--muted)',
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-all'
                     }}>

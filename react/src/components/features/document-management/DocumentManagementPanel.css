@@ -243,8 +243,8 @@
   gap: 4px;
   padding: 3px 8px;
   border-radius: 6px;
-  background-color: var(--violet-soft);
-  color: var(--violet);
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
   font-size: 0.75rem;
   font-weight: 700;
 }

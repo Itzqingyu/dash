@@ -64,7 +64,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  box-shadow: 0 4px 20px rgba(16, 25, 40, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .vault-hub-title-row {
@@ -181,7 +181,7 @@
 
 .hub-card:hover {
   border-color: var(--cyan);
-  box-shadow: 0 8px 24px rgba(16, 25, 40, 0.08);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
 
@@ -206,19 +206,9 @@
   color: var(--cyan);
 }
 
-.hub-card-icon.violet {
-  background-color: var(--violet-soft);
-  color: var(--violet);
-}
-
-.hub-card-icon.orange {
-  background-color: var(--orange-soft);
-  color: var(--orange);
-}
-
 .hub-card-icon.navy {
   background-color: var(--navy-soft);
-  color: #ffffff;
+  color: var(--panel);
 }
 
 .hub-card-info {

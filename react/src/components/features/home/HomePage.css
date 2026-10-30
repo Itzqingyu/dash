@@ -16,111 +16,146 @@
   margin: 0 auto;
 }
 
-/* 頂部精緻帳戶狀態條 (Account Status Bar) */
-.home-account-bar {
+/* 頂部極簡導航欄 (與 Vault Hub 導航欄位置樣式完全一致) */
+.home-nav-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.home-crumb-active {
+  font-weight: 700;
+  color: var(--ink);
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 中央主視覺 DASH 基本資料卡片 (與 Vault Hub 基本資料卡片位置與規格完全一致) */
+.home-dash-header {
   background-color: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.03);
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.home-dash-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
 }
 
-.account-bar-left {
+.home-dash-title-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.home-dash-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background-color: var(--navy);
+  color: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.home-dash-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home-dash-name-wrap {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.account-brand-mark {
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: var(--navy);
+.home-dash-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--ink);
   letter-spacing: -0.02em;
+  margin: 0;
 }
 
-.account-user-pill {
-  display: flex;
+.home-user-pill {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 4px 10px;
   border-radius: 999px;
   background-color: var(--canvas);
   border: 1px solid var(--line);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--ink-soft);
 }
 
-.account-bar-actions {
+.home-dash-desc {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.home-dash-actions {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-/* 按鈕風格 */
-.btn-secondary {
+/* 操作按鈕風格 (與 Vault Hub 規格統一) */
+.home-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 9px 16px;
   border-radius: var(--radius);
-  background-color: var(--canvas);
-  border: 1px solid var(--line);
-  color: var(--ink-soft);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  border: 1px solid var(--line);
+  background-color: var(--canvas);
+  color: var(--ink-soft);
 }
 
-.btn-secondary:hover {
+.home-btn:hover {
   background-color: var(--line);
   color: var(--ink);
 }
 
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: var(--radius);
+.home-btn.primary {
   background-color: var(--cyan);
-  border: 1px solid var(--cyan);
+  border-color: var(--cyan);
   color: var(--panel);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
 }
 
-.btn-primary:hover {
+.home-btn.primary:hover {
   filter: brightness(1.1);
 }
 
-.btn-logout {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  background-color: transparent;
-  border: 1px solid transparent;
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
+.home-btn.danger {
+  color: var(--danger);
 }
 
-.btn-logout:hover {
-  color: var(--danger);
+.home-btn.danger:hover {
   background-color: var(--danger-soft);
+  border-color: var(--danger);
 }
 
 /* 主體內容容器 */
@@ -189,7 +224,7 @@
 
 .vault-entry-card:hover {
   border-color: var(--cyan);
-  box-shadow: 0 8px 24px rgba(16, 25, 40, 0.07);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 

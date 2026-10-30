@@ -8,26 +8,26 @@
   justify-content: space-between;
   gap: 15px;
   padding-bottom: 18px;
-  border-bottom: 1px solid var(--line, #dfe4eb);
+  border-bottom: 1px solid var(--line);
 }
 
 .source-record-title h2 {
   margin: 6px 0;
   font-size: 1.65rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .source-record-title p {
   margin: 0;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.85rem;
 }
 
 .source-record-card {
   margin-top: 20px;
   padding: 24px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.04);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
 }

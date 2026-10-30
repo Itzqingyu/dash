@@ -14,7 +14,7 @@
   padding: 7px 12px;
   border-radius: 7px;
   background: transparent;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.72rem;
   font-weight: 800;
   cursor: pointer;
@@ -23,16 +23,16 @@
 }
 
 .day-switch button.active {
-  background: #ffffff;
-  color: var(--ink, #101928);
+  background: var(--white);
+  color: var(--ink);
   box-shadow: 0 2px 7px rgba(16, 25, 40, 0.08);
 }
 
 .timeline {
   padding: 8px 19px;
-  border: 1px solid var(--line, #dfe4eb);
-  border-radius: var(--radius, 12px);
-  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
 }
 
 .timeline article {
@@ -44,7 +44,7 @@
 
 .timeline time {
   padding-top: 24px;
-  color: var(--ink, #101928);
+  color: var(--ink);
   font-size: 0.76rem;
   font-weight: 900;
 }
@@ -63,9 +63,9 @@
   left: -5px;
   width: 9px;
   height: 9px;
-  border: 2px solid var(--cyan, #4776e6);
+  border: 2px solid var(--cyan);
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--white);
 }
 
 .timeline article > div {
@@ -80,12 +80,12 @@
 .timeline h3 {
   margin: 7px 0 4px;
   font-size: 0.9rem;
-  color: var(--ink, #101928);
+  color: var(--ink);
 }
 
 .timeline p {
   margin: 0;
-  color: var(--muted, #758097);
+  color: var(--muted);
   font-size: 0.71rem;
 }
 
@@ -103,23 +103,24 @@
 }
 
 .category.checkin {
-  background: var(--violet-soft);
-  color: var(--violet);
+  background: var(--cyan-soft);
+  color: var(--cyan);
 }
 
 .category.ceremony {
-  background: var(--pink-soft);
-  color: var(--pink);
+  background: var(--navy-soft);
+  color: var(--panel);
 }
 
 .category.activity {
-  background: var(--cyan-soft, #e8efff);
-  color: var(--cyan, #4776e6);
+  background: var(--cyan-soft);
+  color: var(--cyan);
 }
 
 .category.meal {
-  background: var(--orange-soft);
-  color: var(--orange);
+  background: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
 }
 
 .detail-tags {
@@ -133,6 +134,6 @@
   padding: 4px 7px;
   border-radius: 5px;
   background: var(--canvas);
-  color: var(--ink-soft, #43506a);
+  color: var(--ink-soft);
   font-size: 0.62rem;
 }
