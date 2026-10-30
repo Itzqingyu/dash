@@ -17,6 +17,7 @@ import type { Activity, ActivityInput } from './types/activity';
 import AppSidebar from './components/layout/AppSidebar';
 
 // 業務視圖組件
+import { AuthPage } from './components/features/auth/AuthPage';
 import { HomePage } from './components/features/home/HomePage';
 import ActivityListView from './components/features/activity/ActivityListView';
 import ActivityWorkspace from './components/features/activity/ActivityWorkspace';
@@ -250,18 +251,9 @@ export default function App() {
     );
   }
 
-  // 2. 若使用者尚未登入，一律顯示 HomePage 進行身分驗證
+  // 2. 若使用者尚未登入，顯示純淨專屬的登入/註冊介面 (正中間的大大 DASH 與登入卡片)
   if (!user) {
-    return (
-      <HomePage
-        activeVaultName={activeVaultName}
-        onEnterWorkspace={() => handleSetView('activities')}
-        onVaultChange={(newVault) => {
-          setActiveVaultName(newVault);
-          handleVaultChanged();
-        }}
-      />
-    );
+    return <AuthPage />;
   }
 
   // 3. 使用者已登入且選擇造訪主頁視圖

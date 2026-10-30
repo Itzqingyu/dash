@@ -1,10 +1,10 @@
 /**
- * DASH 全局主頁與登入導航面板 (HomePage.tsx)
+ * DASH 全局系統主頁 (HomePage.tsx)
  * 職責：
- * 1. 品牌展示與價值傳達 (Decision, Activity, Schedule, History)。
- * 2. 未登入狀態：清晰直覺的 Email/Password 登入與註冊入口。
- * 3. 已登入狀態：歡迎總覽、我的紀錄庫清單 (含 Owner/Admin/User 角色身分)、
- *    快速進入工作台、建立新紀錄庫、輸入邀請碼加入既有紀錄庫。
+ * 已登入使用者的首頁儀表板：
+ * 1. 歡迎總覽與當前紀錄庫顯示。
+ * 2. 我的紀錄庫清單 (含 Owner/Admin/User 角色標籤、活動與文件數據)。
+ * 3. 快速進入工作台、建立新紀錄庫、輸入邀請碼加入既有紀錄庫、切換與刪除紀錄庫。
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,14 +13,10 @@ import {
   Layers,
   FolderPlus,
   Ticket,
-  LogIn,
-  UserPlus,
   LogOut,
   ArrowRight,
-  Shield,
   Trash2,
   Users,
-  CheckCircle2,
   AlertCircle,
   FileText,
   Activity,
@@ -41,14 +37,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onEnterWorkspace,
   onVaultChange,
 }) => {
-  const { user, login, register, logout, isLoading: authLoading } = useAuth();
-
-  // 登入 / 註冊表單狀態
-  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [submittingAuth, setSubmittingAuth] = useState(false);
+  const { user, logout } = useAuth();
 
   // 紀錄庫清單狀態
   const [vaults, setVaults] = useState<VaultItem[]>([]);
@@ -88,28 +77,6 @@ export const HomePage: React.FC<HomePageProps> = ({
   useEffect(() => {
     loadVaults();
   }, [loadVaults, activeVaultName]);
-
-  // 處理身分驗證提交 (登入 / 註冊)
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    setSubmittingAuth(true);
-
-    try {
-      if (authTab === 'login') {
-        await login(email, password);
-      } else {
-        await register(email, password);
-      }
-      setEmail('');
-      setPassword('');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '身分驗證失敗，請檢查輸入內容';
-      setAuthError(msg);
-    } finally {
-      setSubmittingAuth(false);
-    }
-  };
 
   // 建立新紀錄庫
   const handleCreateVault = async (e: React.FormEvent) => {
@@ -223,7 +190,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         <div className="home-nav-actions">
-          {user ? (
+          {user && (
             <>
               <div className="home-user-pill">
                 <Users size={16} />
@@ -249,290 +216,157 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <span>登出</span>
               </button>
             </>
-          ) : (
-            <div className="home-user-pill">
-              <Shield size={16} />
-              <span>尚未登入</span>
-            </div>
           )}
         </div>
       </header>
 
       {/* 主體區塊 */}
       <main className="home-main">
-        {authLoading ? (
-          <div className="onboarding-card">
-            <p>載入使用者狀態中...</p>
-          </div>
-        ) : !user ? (
-          /* 未登入狀態：Hero + 登入/註冊卡片 */
-          <div className="auth-hero-section">
-            <div className="hero-text-block">
-              <div className="hero-tag">
-                <Database size={14} />
-                <span>全流程結構化紀錄庫</span>
-              </div>
-              <h2 className="hero-title">
-                跨團隊決策交接，<br />從此清晰可查。
+        <div className="user-dashboard">
+          <div className="dashboard-hero-banner">
+            <div className="dashboard-greeting">
+              <h2 className="dashboard-greeting-title">
+                歡迎回來，{user?.email}
               </h2>
-              <p className="hero-desc">
-                DASH (Decision, Activity, Schedule, History) 專為社團、組織與專案團隊打造。
-                透過全量結構化資料庫、多成員安全隔離與語意智庫，讓活動交接與歷史沉澱不隨人員更迭流失。
+              <p className="dashboard-greeting-sub">
+                當前使用中紀錄庫：<strong>{activeVaultName || '未選取'}</strong>
               </p>
-
-              <div className="hero-features">
-                <div className="hero-feature-item">
-                  <CheckCircle2 size={18} className="hero-feature-icon" />
-                  <span>多租戶紀錄庫隔離：一人可擁有多個專案紀錄庫，專案資料完全獨立</span>
-                </div>
-                <div className="hero-feature-item">
-                  <CheckCircle2 size={18} className="hero-feature-icon" />
-                  <span>三級角色權限 (Owner / Admin / User)：保障核心決策與紀錄安全</span>
-                </div>
-                <div className="hero-feature-item">
-                  <CheckCircle2 size={18} className="hero-feature-icon" />
-                  <span>邀請碼加入機制：安全邀請團隊成員，零手動配置</span>
-                </div>
-                <div className="hero-feature-item">
-                  <CheckCircle2 size={18} className="hero-feature-icon" />
-                  <span>獨立文件管理與 Markdown 向量檢索：會議紀錄與規章開箱即查</span>
-                </div>
-              </div>
             </div>
 
-            {/* 登入 / 註冊表單卡片 */}
-            <div className="auth-card">
-              <div className="auth-tabs">
-                <button
-                  type="button"
-                  className={`auth-tab-btn ${authTab === 'login' ? 'active' : ''}`}
-                  onClick={() => {
-                    setAuthTab('login');
-                    setAuthError(null);
-                  }}
-                >
-                  使用者登入
-                </button>
-                <button
-                  type="button"
-                  className={`auth-tab-btn ${authTab === 'register' ? 'active' : ''}`}
-                  onClick={() => {
-                    setAuthTab('register');
-                    setAuthError(null);
-                  }}
-                >
-                  註冊新帳號
-                </button>
-              </div>
-
-              {authError && (
-                <div className="auth-error-banner">
-                  <AlertCircle size={16} />
-                  <span>{authError}</span>
-                </div>
-              )}
-
-              <form className="auth-form" onSubmit={handleAuthSubmit}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="auth-email">
-                    電子郵件 (Email)
-                  </label>
-                  <input
-                    id="auth-email"
-                    type="email"
-                    className="form-input"
-                    placeholder="name@organization.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="auth-password">
-                    密碼 (Password)
-                  </label>
-                  <input
-                    id="auth-password"
-                    type="password"
-                    className="form-input"
-                    placeholder="請輸入至少 6 位字元密碼"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="btn-auth-submit"
-                  disabled={submittingAuth}
-                >
-                  {submittingAuth ? (
-                    <span>驗證中...</span>
-                  ) : authTab === 'login' ? (
-                    <>
-                      <LogIn size={18} />
-                      <span>立即登入</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus size={18} />
-                      <span>建立帳號並登入</span>
-                    </>
-                  )}
-                </button>
-              </form>
+            <div className="dashboard-actions-row">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowJoinModal(true)}
+              >
+                <Ticket size={16} />
+                <span>輸入邀請碼加入</span>
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <FolderPlus size={16} />
+                <span>建立新紀錄庫</span>
+              </button>
             </div>
           </div>
-        ) : (
-          /* 已登入狀態：歡迎看板 + 紀錄庫清單 */
-          <div className="user-dashboard">
-            <div className="dashboard-hero-banner">
-              <div className="dashboard-greeting">
-                <h2 className="dashboard-greeting-title">
-                  歡迎回來，{user.email}
-                </h2>
-                <p className="dashboard-greeting-sub">
-                  當前使用中紀錄庫：<strong>{activeVaultName || '未選取'}</strong>
-                </p>
-              </div>
 
-              <div className="dashboard-actions-row">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setShowJoinModal(true)}
-                >
-                  <Ticket size={16} />
-                  <span>輸入邀請碼加入</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  <FolderPlus size={16} />
-                  <span>建立新紀錄庫</span>
-                </button>
+          {/* 紀錄庫區域 */}
+          <div className="vaults-section">
+            <div className="vaults-section-header">
+              <div className="section-title-wrap">
+                <h3 className="section-title">我的紀錄庫</h3>
+                <span className="section-count-badge">{vaults.length}</span>
               </div>
             </div>
 
-            {/* 紀錄庫區域 */}
-            <div className="vaults-section">
-              <div className="vaults-section-header">
-                <div className="section-title-wrap">
-                  <h3 className="section-title">我的紀錄庫</h3>
-                  <span className="section-count-badge">{vaults.length}</span>
+            {loadingVaults ? (
+              <p>讀取紀錄庫中...</p>
+            ) : vaults.length === 0 ? (
+              /* 新用戶導引 (Onboarding) */
+              <div className="onboarding-card">
+                <div className="onboarding-icon-wrap">
+                  <Database size={28} />
+                </div>
+                <h4 className="onboarding-title">您尚未加入任何紀錄庫</h4>
+                <p className="onboarding-desc">
+                  您可以立即建立全新的空白紀錄庫作為唯一 Owner，或是輸入團隊 Admin 提供的邀請碼加入既有紀錄庫。
+                </p>
+                <div className="onboarding-actions">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    <FolderPlus size={16} />
+                    <span>建立新紀錄庫</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setShowJoinModal(true)}
+                  >
+                    <Ticket size={16} />
+                    <span>輸入邀請碼</span>
+                  </button>
                 </div>
               </div>
+            ) : (
+              /* 紀錄庫卡片列表 */
+              <div className="vaults-grid">
+                {vaults.map((v) => {
+                  const isCurrent = v.name === activeVaultName;
+                  const isOwner = v.user_role === 'owner';
 
-              {loadingVaults ? (
-                <p>讀取紀錄庫中...</p>
-              ) : vaults.length === 0 ? (
-                /* 新用戶導引 (Onboarding) */
-                <div className="onboarding-card">
-                  <div className="onboarding-icon-wrap">
-                    <Database size={28} />
-                  </div>
-                  <h4 className="onboarding-title">您尚未加入任何紀錄庫</h4>
-                  <p className="onboarding-desc">
-                    您可以立即建立全新的空白紀錄庫作為唯一 Owner，或是輸入團隊 Admin 提供的邀請碼加入既有紀錄庫。
-                  </p>
-                  <div className="onboarding-actions">
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={() => setShowCreateModal(true)}
+                  return (
+                    <div
+                      key={v.name}
+                      className={`vault-card ${isCurrent ? 'active-vault' : ''}`}
                     >
-                      <FolderPlus size={16} />
-                      <span>建立新紀錄庫</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      onClick={() => setShowJoinModal(true)}
-                    >
-                      <Ticket size={16} />
-                      <span>輸入邀請碼</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* 紀錄庫卡片列表 */
-                <div className="vaults-grid">
-                  {vaults.map((v) => {
-                    const isCurrent = v.name === activeVaultName;
-                    const isOwner = v.user_role === 'owner';
+                      <div className="vault-card-header">
+                        <h4 className="vault-card-title">{v.display_name || v.name}</h4>
+                        <span className={`role-badge ${getRoleClass(v.user_role)}`}>
+                          {getRoleLabel(v.user_role)}
+                        </span>
+                      </div>
 
-                    return (
-                      <div
-                        key={v.name}
-                        className={`vault-card ${isCurrent ? 'active-vault' : ''}`}
-                      >
-                        <div className="vault-card-header">
-                          <h4 className="vault-card-title">{v.display_name || v.name}</h4>
-                          <span className={`role-badge ${getRoleClass(v.user_role)}`}>
-                            {getRoleLabel(v.user_role)}
-                          </span>
+                      <p className="vault-card-desc">
+                        {v.description || '無描述說明'}
+                      </p>
+
+                      <div className="vault-stats-row">
+                        <div className="vault-stat-item">
+                          <Activity size={14} />
+                          <span>{v.stats?.activities_count || 0} 項活動</span>
                         </div>
-
-                        <p className="vault-card-desc">
-                          {v.description || '無描述說明'}
-                        </p>
-
-                        <div className="vault-stats-row">
-                          <div className="vault-stat-item">
-                            <Activity size={14} />
-                            <span>{v.stats?.activities_count || 0} 項活動</span>
-                          </div>
-                          <div className="vault-stat-item">
-                            <FileText size={14} />
-                            <span>{v.stats?.documents_count || 0} 份文件</span>
-                          </div>
-                        </div>
-
-                        <div className="vault-card-footer">
-                          {isCurrent ? (
-                            <button
-                              type="button"
-                              className="btn-primary"
-                              onClick={onEnterWorkspace}
-                            >
-                              <span>進入工作台</span>
-                              <ArrowRight size={14} />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn-secondary"
-                              onClick={() => handleSwitchVault(v.name)}
-                            >
-                              <span>切換為目前</span>
-                            </button>
-                          )}
-
-                          {isOwner && !isCurrent && (
-                            <button
-                              type="button"
-                              className="btn-secondary"
-                              onClick={() => handleDeleteVault(v.name)}
-                              disabled={deletingVaultName === v.name}
-                              title="刪除紀錄庫 (Owner 專屬)"
-                            >
-                              <Trash2 size={14} />
-                              <span>刪除</span>
-                            </button>
-                          )}
+                        <div className="vault-stat-item">
+                          <FileText size={14} />
+                          <span>{v.stats?.documents_count || 0} 份文件</span>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+
+                      <div className="vault-card-footer">
+                        {isCurrent ? (
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={onEnterWorkspace}
+                          >
+                            <span>進入工作台</span>
+                            <ArrowRight size={14} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => handleSwitchVault(v.name)}
+                          >
+                            <span>切換為目前</span>
+                          </button>
+                        )}
+
+                        {isOwner && !isCurrent && (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => handleDeleteVault(v.name)}
+                            disabled={deletingVaultName === v.name}
+                            title="刪除紀錄庫 (Owner 專屬)"
+                          >
+                            <Trash2 size={14} />
+                            <span>刪除</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </main>
 
       {/* 建立新紀錄庫彈窗 */}
@@ -669,4 +503,3 @@ export const HomePage: React.FC<HomePageProps> = ({
     </div>
   );
 };
-

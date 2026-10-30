@@ -79,7 +79,8 @@ dash/
 │   │   │   ├── common/           # 通用基礎組件 (ConfirmModal, RenameModal, DocumentDrawer)
 │   │   │   ├── layout/           # 應用骨架與導航 (AppSidebar, VaultManagerBar, BreadcrumbNav)
 │   │   │   └── features/         # 業務領域專屬面板
-│   │   │       ├── home/         # 系統首頁 (HomePage.tsx & HomePage.css)
+│   │   │       ├── auth/         # 獨立登入/註冊頁面 (AuthPage.tsx & AuthPage.css)
+│   │   │       ├── home/         # 系統首頁與儀表板 (HomePage.tsx & HomePage.css)
 │   │   │       ├── activity/     # 活動工作台 (ActivityListView, ActivityWorkspace, 四階段面板)
 │   │   │       ├── document-management/ # 獨立文件紀錄庫 (DocumentManagementPanel.tsx & .css)
 │   │   │       ├── chat/         # AI 智能對話 (ChatPanel, SessionSidebar)
@@ -110,9 +111,10 @@ dash/
 ## 4. 核心工作流
 
 ### 1. 使用者註冊與登入
-1. 使用者造訪首頁 (`HomePage`)，填寫 Email 與密碼發起註冊或登入。
+1. 使用者造訪系統時，未登入狀態呈現極簡置中的身分驗證頁面 (`AuthPage`)，填寫 Email 與密碼發起登入或註冊。
 2. 後端校驗並以 bcrypt 驗證密碼，簽發包含 `sub` 與 `email` 的 JWT Token。
 3. 前端儲存 Token 至 `localStorage` 並寫入 `AuthContext`，後續所有請求自動透過 Header 附帶 `Authorization: Bearer <token>`。
+4. 驗證通過後自動進入工作台或系統主頁 (`HomePage`)。
 
 ### 2. 紀錄庫管理與邀請加入
 1. 建立紀錄庫：使用者呼叫 `/vaults/create`，系統在 `public.vaults` 登錄紀錄庫，於獨立 Schema 初始化 10 張核心表，並在 `public.vault_members` 將建立者設為唯一 `owner`。

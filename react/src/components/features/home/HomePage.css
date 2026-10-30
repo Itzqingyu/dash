@@ -123,113 +123,7 @@
   gap: 36px;
 }
 
-/* 未登入 Hero 與登入卡片 */
-.auth-hero-section {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 48px;
-  align-items: center;
-  padding: 40px 0;
-}
-
-@media (max-width: 860px) {
-  .auth-hero-section {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-}
-
-.hero-text-block {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.hero-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background-color: var(--cyan-soft);
-  color: var(--cyan);
-  font-size: 0.8rem;
-  font-weight: 700;
-  width: fit-content;
-}
-
-.hero-title {
-  font-size: 2.25rem;
-  font-weight: 900;
-  line-height: 1.25;
-  color: var(--ink);
-  letter-spacing: -0.03em;
-}
-
-.hero-desc {
-  font-size: 1rem;
-  color: var(--ink-soft);
-  line-height: 1.6;
-}
-
-.hero-features {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.hero-feature-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
-  color: var(--ink-soft);
-  font-weight: 500;
-}
-
-.hero-feature-icon {
-  color: var(--success);
-  flex-shrink: 0;
-}
-
-/* 登入 / 註冊卡片 */
-.auth-card {
-  background-color: var(--panel);
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  box-shadow: 0 4px 24px rgba(16, 25, 40, 0.06);
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.auth-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--line);
-  gap: 8px;
-}
-
-.auth-tab-btn {
-  flex: 1;
-  padding: 10px 0;
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.auth-tab-btn.active {
-  color: var(--cyan);
-  border-bottom-color: var(--cyan);
-}
-
+/* 通用表單樣式 (彈窗使用) */
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -275,32 +169,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.btn-auth-submit {
-  width: 100%;
-  padding: 12px;
-  border-radius: var(--radius);
-  background-color: var(--navy);
-  color: var(--panel);
-  font-size: 1rem;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background-color 0.2s ease;
-}
-
-.btn-auth-submit:hover:not(:disabled) {
-  background-color: var(--navy-soft);
-}
-
-.btn-auth-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* 已登入使用者面板 (Dashboard) */
