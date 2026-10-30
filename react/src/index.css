@@ -14,12 +14,6 @@
   --navy-soft: #1b2943;
   --cyan: #4776e6;
   --cyan-soft: #e8efff;
-  --violet: #7657d5;
-  --violet-soft: #efe8ff;
-  --orange: #dd7b27;
-  --orange-soft: #ffe8d2;
-  --pink: #c74f7d;
-  --pink-soft: #ffe4ee;
   /* 業務狀態語意色 (Alert & Status Tokens) */
   --danger: #d93829;
   --danger-soft: #ffece8;
@@ -27,7 +21,7 @@
   --warning-soft: #fff3db;
   --success: #16a34a;
   --success-soft: #f0fdf4;
-  --radius: 12px;
+  --radius: 5px;
   font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
   color: var(--ink);
   background: var(--canvas);
@@ -42,7 +36,9 @@
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   min-height: 100vh;
   margin: 0;
@@ -56,11 +52,15 @@ body {
   overflow-x: hidden;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font: inherit;
 }
 
-button, a {
+button,
+a {
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -80,7 +80,7 @@ a {
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip: rect(0,0,0,0);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
 }
@@ -171,10 +171,25 @@ a {
   flex-shrink: 0;
 }
 
-.activity-glyph.cyan { background: var(--cyan-soft); color: var(--cyan); }
-.activity-glyph.orange { background: var(--orange-soft); color: var(--orange); }
-.activity-glyph.violet { background: var(--violet-soft); color: var(--violet); }
-.activity-glyph.pink { background: var(--pink-soft); color: var(--pink); }
+.activity-glyph.cyan {
+  background: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.activity-glyph.orange {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+
+.activity-glyph.violet {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+
+.activity-glyph.pink {
+  background: var(--pink-soft);
+  color: var(--pink);
+}
 
 /* ==========================================
    應用程式外框與側欄 (App Shell & Navigation)
@@ -439,7 +454,8 @@ a {
 }
 
 
-.avatar, .person {
+.avatar,
+.person {
   display: inline-grid;
   place-items: center;
   border-radius: 50%;
@@ -861,6 +877,7 @@ a {
   transform: translate(-50%, -50%);
   margin: 0;
 }
+
 .modal::backdrop {
   background: rgba(7, 14, 26, 0.5);
   backdrop-filter: blur(3px);
@@ -931,7 +948,7 @@ a {
   margin-top: 16px;
 }
 
-.field > span {
+.field>span {
   color: var(--ink-soft);
   font-size: 0.75rem;
   font-weight: 800;
@@ -995,12 +1012,12 @@ a {
   background: #ffffff;
 }
 
-.record-options button:disabled > span {
+.record-options button:disabled>span {
   background: var(--canvas);
   color: var(--muted);
 }
 
-.record-options button > span {
+.record-options button>span {
   display: grid;
   place-items: center;
   width: 32px;
@@ -1086,8 +1103,8 @@ a {
 }
 
 /* 強制行動版選單滑出樣式 */
-.app-shell.nav-open .sidebar { 
-  transform: translateX(0) !important; 
+.app-shell.nav-open .sidebar {
+  transform: translateX(0) !important;
 }
 
 /* ==========================================
@@ -1097,6 +1114,7 @@ a {
   .summary-strip {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .workspace-main {
     grid-template-columns: 1fr !important;
   }
@@ -1127,9 +1145,20 @@ a {
   color: #9f2d2d;
 }
 
-.api-state.empty { padding: 32px; text-align: center; }
-.api-state.empty h3 { margin: 0 0 8px; color: var(--ink); }
-.api-state.empty p { margin: 0 0 16px; color: var(--muted); }
+.api-state.empty {
+  padding: 32px;
+  text-align: center;
+}
+
+.api-state.empty h3 {
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.api-state.empty p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
 
 .button.danger {
   border-color: #e1a6a6;
@@ -1137,22 +1166,34 @@ a {
   color: #a32626;
 }
 
-.button.danger:hover { background: #ffe5e5; }
-.danger-text { color: #a32626 !important; }
+.button.danger:hover {
+  background: #ffe5e5;
+}
+
+.danger-text {
+  color: #a32626 !important;
+}
 
 /* 1. 確保 TR 寬度佔滿 100% (原本就有的) */
 .activity-row.empty-row {
-  width: 100%; /* 強制行寬佔滿 100% */
-  pointer-events: none; /* 確保滑鼠移過去不會有任何反應 (原本就有的) */
+  width: 100%;
+  /* 強制行寬佔滿 100% */
+  pointer-events: none;
+  /* 確保滑鼠移過去不會有任何反應 (原本就有的) */
 }
 
 /* 2. 原生 6 欄空白 td 修復：確保高度和完整底線，但不縮扁 */
 .activity-row.empty-row td {
-  height: 64px; /* 高度撐開 (請根據真實資料的高度微調這個數字) */
-  border-bottom: 1px solid #ddd; /* 每個 td 都應用底線，這能解決邊框斷掉的問題 */
-  background-color: transparent; /* 背景透明 */
-  width: auto !important; /* 關鍵修改：不要給 td 寬度! (移除 `width: 100%`)，讓 table 佈局自動拉伸它們。使用 !important 確保優先順序，移除 `width: 100%` 的影響。 */
-  box-sizing: border-box; /* 確保邊框包含在高度內 */
+  height: 64px;
+  /* 高度撐開 (請根據真實資料的高度微調這個數字) */
+  border-bottom: 1px solid #ddd;
+  /* 每個 td 都應用底線，這能解決邊框斷掉的問題 */
+  background-color: transparent;
+  /* 背景透明 */
+  width: auto !important;
+  /* 關鍵修改：不要給 td 寬度! (移除 `width: 100%`)，讓 table 佈局自動拉伸它們。使用 !important 確保優先順序，移除 `width: 100%` 的影響。 */
+  box-sizing: border-box;
+  /* 確保邊框包含在高度內 */
 }
 
 /* 旋轉動畫通用類別 */
@@ -1164,7 +1205,8 @@ a {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
-}
+}

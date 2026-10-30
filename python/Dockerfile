@@ -29,7 +29,6 @@ RUN uv pip install -r pyproject.toml
 
 # 複製後端原始碼與必要資源
 COPY src/ ./src
-COPY log.md ./
 
 # 建立預設掛載目錄
 RUN mkdir -p /app/data/markdown

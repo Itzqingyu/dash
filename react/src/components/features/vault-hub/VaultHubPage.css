@@ -1,0 +1,316 @@
+/* ==========================================
+   VaultHubPage.css - Vault 專屬操作介面樣式
+   繼承 index.css 統一設計變數，嚴禁 hardcode 顏色
+   ========================================== */
+
+.vault-hub-container {
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--canvas);
+  color: var(--ink);
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 頂部極簡麵包屑導航 */
+.vault-hub-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.hub-crumb-link {
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.hub-crumb-link:hover {
+  background-color: var(--panel);
+  color: var(--cyan);
+}
+
+.hub-crumb-separator {
+  color: var(--muted);
+  user-select: none;
+}
+
+.hub-crumb-active {
+  font-weight: 700;
+  color: var(--ink);
+  padding: 4px 8px;
+}
+
+/* 中央主視覺 Header 區塊 */
+.vault-hub-header {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 4px 20px rgba(16, 25, 40, 0.04);
+}
+
+.vault-hub-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.vault-hub-title-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vault-hub-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background-color: var(--navy);
+  color: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vault-hub-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vault-hub-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vault-hub-title {
+  font-size: 2.25rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--navy);
+  line-height: 1.15;
+}
+
+.vault-hub-desc {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  max-width: 680px;
+  line-height: 1.5;
+}
+
+/* 操作按鈕群 */
+.vault-hub-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hub-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--line);
+  background-color: var(--canvas);
+  color: var(--ink-soft);
+}
+
+.hub-btn:hover {
+  background-color: var(--line);
+  color: var(--ink);
+}
+
+.hub-btn.danger {
+  color: var(--danger);
+}
+
+.hub-btn.danger:hover {
+  background-color: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+/* 核心功能卡片網格 */
+.vault-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.hub-card {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.hub-card:hover {
+  border-color: var(--cyan);
+  box-shadow: 0 8px 24px rgba(16, 25, 40, 0.08);
+  transform: translateY(-2px);
+}
+
+.hub-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.hub-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hub-card-icon.cyan {
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.hub-card-icon.violet {
+  background-color: var(--violet-soft);
+  color: var(--violet);
+}
+
+.hub-card-icon.orange {
+  background-color: var(--orange-soft);
+  color: var(--orange);
+}
+
+.hub-card-icon.navy {
+  background-color: var(--navy-soft);
+  color: #ffffff;
+}
+
+.hub-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hub-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.hub-card-desc {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.hub-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.hub-card-enter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+/* 彈窗背景與卡片 */
+.hub-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 27, 46, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.hub-modal-card {
+  background-color: var(--panel);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 32px rgba(16, 25, 40, 0.2);
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+}
+
+.hub-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hub-modal-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.hub-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hub-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+

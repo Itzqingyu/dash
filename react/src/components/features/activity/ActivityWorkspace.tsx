@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Activity } from '../../../types/activity';
-import BreadcrumbNav from '../../layout/BreadcrumbNav';
+import ActivityBreadcrumb from './ActivityBreadcrumb';
 import OverviewPanel from './panels/OverviewPanel';
 import BeforePanel from './panels/BeforePanel';
 import MeetingPanel from './panels/MeetingPanel';
@@ -65,7 +65,7 @@ export const ActivityWorkspace: React.FC<ActivityWorkspaceProps> = ({
   return (
     <section className="page activity-workspace" id="activity-workspace">
       {/* 麵包屑導航 */}
-      <BreadcrumbNav
+      <ActivityBreadcrumb
         activityName={currentActivity.name}
         currentView={currentView}
         onNavigate={onNavigate}

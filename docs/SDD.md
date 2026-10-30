@@ -10,7 +10,7 @@ DASH 是一套專為團隊打造的現代化活動歷程、決策交接與智能
 - **框架**: React 19 + TypeScript
 - **構建工具**: Vite 5 (Web SPA 單頁應用)
 - **通訊**: HTTP API (RESTful)，統一透過 apiClient 客戶端直接與後端連線，自動附加 JWT Bearer Token
-- **視覺與設計規範**: 全域 Design Tokens (:root) 繼承、嚴禁 hard code 顏色、無上帝組件、領域分層管理
+- **視覺與設計規範**: 全域 Design Tokens (:root) 繼承、嚴禁 hard code 顏色、無上帝組件、領域分層管理、全新 3 級階層式 SaaS 導航架構 (Level 0 認證 -> Level 1 根首頁 -> Level 2 紀錄庫 Hub -> Level 3 獨立全寬面板與頂部麵包屑)，徹底移除舊式 Sidebar、Header 與常駐 Footer
 - **圖示庫**: lucide-react (全域禁止 emojis)
 - **其他套件**: react-markdown (對話與文件全文渲染), html2pdf.js (交接報告 PDF 匯出)
 
@@ -77,15 +77,16 @@ dash/
 │   │   │   └── document.ts       # 文件紀錄庫型別
 │   │   ├── components/           # 領域分層組件 (嚴禁上帝組件，每組件獨立 CSS)
 │   │   │   ├── common/           # 通用基礎組件 (ConfirmModal, RenameModal, DocumentDrawer)
-│   │   │   ├── layout/           # 應用骨架與導航 (AppSidebar, VaultManagerBar, BreadcrumbNav)
+│   │   │   ├── layout/           # 應用骨架與頂層導航 (VaultBreadcrumb.tsx & VaultBreadcrumb.css)
 │   │   │   └── features/         # 業務領域專屬面板
-│   │   │       ├── auth/         # 獨立登入/註冊頁面 (AuthPage.tsx & AuthPage.css)
-│   │   │       ├── home/         # 系統首頁與儀表板 (HomePage.tsx & HomePage.css)
-│   │   │       ├── activity/     # 活動工作台 (ActivityListView, ActivityWorkspace, 四階段面板)
-│   │   │       ├── document-management/ # 獨立文件紀錄庫 (DocumentManagementPanel.tsx & .css)
-│   │   │       ├── chat/         # AI 智能對話 (ChatPanel, SessionSidebar)
-│   │   │       ├── meeting-extract/ # 會議提煉 (MeetingExtractPanel)
-│   │   │       └── dash-out/     # 紀錄庫備份與導出 (DashOutPanel)
+│   │   │       ├── auth/         # Level 0 獨立登入/註冊頁面 (AuthPage.tsx & AuthPage.css)
+│   │   │       ├── home/         # Level 1 系統根首頁 (HomePage.tsx & HomePage.css，無 Header/Sidebar/Footer，含帳戶條、建立/加入、備份匯入與紀錄庫卡片)
+│   │   │       ├── vault-hub/    # Level 2 紀錄庫操作中心 (VaultHubPage.tsx & VaultHubPage.css，紀錄庫標題、成員邀請管理、重命名/刪除與五大功能入口卡片)
+│   │   │       ├── activity/     # Level 3 活動工作台 (ActivityListView, ActivityWorkspace, ActivityBreadcrumb, 四階段面板)
+│   │   │       ├── document-management/ # Level 3 獨立文件紀錄庫 (DocumentManagementPanel.tsx & .css)
+│   │   │       ├── chat/         # Level 3 AI 智能對話 (ChatPanel, SessionSidebar)
+│   │   │       ├── meeting-extract/ # Level 3 會議提煉 (MeetingExtractPanel)
+│   │   │       └── dash-out/     # Level 3 紀錄庫備份與導出 (DashOutPanel)
 │   │   └── index.css             # 全域 Design Tokens (:root)、Reset 與 App Shell 樣式
 │
 ├── python/                       # Python 後端 (FastAPI)
@@ -110,17 +111,17 @@ dash/
 
 ## 4. 核心工作流
 
-### 1. 使用者註冊與登入
+### 1. 使用者註冊、登入與全域首頁
 1. 使用者造訪系統時，未登入狀態呈現極簡置中的身分驗證頁面 (`AuthPage`)，填寫 Email 與密碼發起登入或註冊。
 2. 後端校驗並以 bcrypt 驗證密碼，簽發包含 `sub` 與 `email` 的 JWT Token。
 3. 前端儲存 Token 至 `localStorage` 並寫入 `AuthContext`，後續所有請求自動透過 Header 附帶 `Authorization: Bearer <token>`。
-4. 驗證通過後自動進入工作台或系統主頁 (`HomePage`)。
+4. 驗證通過後系統一律預設開局於系統根首頁 (`HomePage`)，展示帳戶資訊條（建立紀錄庫、輸入邀請碼、匯入備份包）與使用者所有的紀錄庫卡片清單，絕不預設進入前次工作台。
 
-### 2. 紀錄庫管理與邀請加入
-1. 建立紀錄庫：使用者呼叫 `/vaults/create`，系統在 `public.vaults` 登錄紀錄庫，於獨立 Schema 初始化 10 張核心表，並在 `public.vault_members` 將建立者設為唯一 `owner`。
-2. 邀請成員：`owner` 或 `admin` 呼叫 `/vaults/invite-code` 產生專屬邀請碼 (`DASH-XXXXXXXX`)。
-3. 加入團隊：其他註冊使用者呼叫 `/vaults/join` 憑邀請碼加入，系統在 `public.vault_members` 新增該使用者為成員。
-4. 權限控管：`owner` 可隨時變更成員為 `admin` 或 `user`；非 owner 嘗試調整權限或刪除紀錄庫一律回傳 403 Forbidden。
+### 2. 紀錄庫 Hub 與階層式導航 (Level 1 -> Level 2 -> Level 3)
+1. 進入紀錄庫：使用者在 `HomePage` 點擊任一紀錄庫卡片，自動切換 active vault 並進入該庫的專屬操作中心 (`VaultHubPage`)。
+2. 紀錄庫管理與邀請：在 `VaultHubPage` 中展示大標題與角色標籤。`owner` 或 `admin` 可點擊「成員與邀請碼」彈窗檢視成員列表、晉升降級或生成 `DASH-XXXXXXXX` 專屬邀請碼；`owner` 可進行紀錄庫重命名或執行危險刪除。
+3. 業務面板操作：從 `VaultHubPage` 的五大功能卡片進入活動工作台、文件紀錄庫、智能對話、會議提煉或備份導出（Level 3 全寬工作區）。
+4. 麵包屑導航：Level 3 各面板頂部皆常駐 `VaultBreadcrumb`（首頁 > 紀錄庫名稱 > 當前功能名稱），支援一鍵返回 Level 2 紀錄庫 Hub 或 Level 1 系統根首頁。
 
 ### 3. 文件上傳與向量智庫 (獨立文件管理面板)
 1. 使用者在「文件紀錄庫」面板拖曳或點選上傳檔案 (MD, TXT, PDF, DOCX)。

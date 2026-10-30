@@ -5,64 +5,49 @@
 
 .home-container {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
   background-color: var(--canvas);
   color: var(--ink);
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-/* 頂部導航列 */
-.home-header {
+/* 頂部精緻帳戶狀態條 (Account Status Bar) */
+.home-account-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
+  padding: 16px 24px;
   background-color: var(--panel);
-  border-bottom: 1px solid var(--line);
-}
-
-.home-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.home-logo-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  background-color: var(--navy);
-  color: var(--panel);
+  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.03);
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
-.home-brand-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-  line-height: 1.2;
-}
-
-.home-brand-sub {
-  font-size: 0.75rem;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.home-nav-actions {
+.account-bar-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.home-user-pill {
+.account-brand-mark {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--navy);
+  letter-spacing: -0.02em;
+}
+
+.account-user-pill {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: 999px;
   background-color: var(--canvas);
   border: 1px solid var(--line);
@@ -71,160 +56,86 @@
   color: var(--ink-soft);
 }
 
+.account-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 按鈕風格 */
 .btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-radius: var(--radius);
-  background-color: var(--panel);
+  background-color: var(--canvas);
   border: 1px solid var(--line);
   color: var(--ink-soft);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .btn-secondary:hover {
-  background-color: var(--canvas);
+  background-color: var(--line);
   color: var(--ink);
-  border-color: var(--muted);
 }
 
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 20px;
+  padding: 8px 16px;
   border-radius: var(--radius);
   background-color: var(--cyan);
   border: 1px solid var(--cyan);
   color: var(--panel);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .btn-primary:hover {
   filter: brightness(1.1);
 }
 
-/* 主體內容容器 */
-.home-main {
-  flex: 1;
-  max-width: 1100px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 40px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 36px;
-}
-
-/* 通用表單樣式 (彈窗使用) */
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
+.btn-logout {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-}
-
-.form-label {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.form-input {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background-color: var(--canvas);
-  color: var(--ink);
-  font-size: 0.95rem;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-.form-input:focus {
-  border-color: var(--cyan);
-  background-color: var(--panel);
-}
-
-.auth-error-banner {
-  padding: 10px 14px;
-  border-radius: var(--radius);
-  background-color: var(--danger-soft);
-  border: 1px solid var(--danger);
-  color: var(--danger);
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
   font-size: 0.85rem;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-/* 已登入使用者面板 (Dashboard) */
-.user-dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
+.btn-logout:hover {
+  color: var(--danger);
+  background-color: var(--danger-soft);
 }
 
-.dashboard-hero-banner {
-  background: linear-gradient(135deg, var(--navy), var(--navy-soft));
-  color: var(--panel);
-  border-radius: var(--radius);
-  padding: 28px 32px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 6px 20px rgba(17, 27, 46, 0.15);
-}
-
-@media (max-width: 768px) {
-  .dashboard-hero-banner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
-  }
-}
-
-.dashboard-greeting {
+/* 主體內容容器 */
+.home-main {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 24px;
 }
 
-.dashboard-greeting-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.dashboard-greeting-sub {
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.dashboard-actions-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* 紀錄庫區域列表 */
+/* 紀錄庫區域清單 */
 .vaults-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .vaults-section-header {
@@ -240,13 +151,14 @@
 }
 
 .section-title {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 800;
-  color: var(--ink);
+  color: var(--navy);
+  letter-spacing: -0.02em;
 }
 
 .section-count-badge {
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
   background-color: var(--cyan-soft);
   color: var(--cyan);
@@ -260,24 +172,28 @@
   gap: 20px;
 }
 
-.vault-card {
+/* 點擊式紀錄庫卡片 */
+.vault-entry-card {
   background-color: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 16px;
+  cursor: pointer;
   transition: all 0.2s ease;
+  text-align: left;
 }
 
-.vault-card:hover {
+.vault-entry-card:hover {
   border-color: var(--cyan);
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.05);
+  box-shadow: 0 8px 24px rgba(16, 25, 40, 0.07);
+  transform: translateY(-2px);
 }
 
-.vault-card.active-vault {
+.vault-entry-card.is-active {
   border-color: var(--cyan);
   box-shadow: 0 0 0 2px var(--cyan-soft);
 }
@@ -289,62 +205,29 @@
   gap: 12px;
 }
 
+.vault-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vault-card-icon {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
 .vault-card-title {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: var(--ink);
   word-break: break-all;
 }
 
-.role-badge {
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.role-badge.role-owner {
-  background-color: var(--violet-soft);
-  color: var(--violet);
-  border: 1px solid var(--violet);
-}
-
-.role-badge.role-admin {
-  background-color: var(--cyan-soft);
-  color: var(--cyan);
-  border: 1px solid var(--cyan);
-}
-
-.role-badge.role-user {
-  background-color: var(--canvas);
-  color: var(--ink-soft);
-  border: 1px solid var(--line);
-}
-
 .vault-card-desc {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   color: var(--ink-soft);
   line-height: 1.5;
-  min-height: 38px;
-}
-
-.vault-stats-row {
-  display: flex;
-  gap: 12px;
-  padding: 10px 12px;
-  background-color: var(--canvas);
-  border-radius: 8px;
-  font-size: 0.78rem;
-  color: var(--ink-soft);
-  font-weight: 600;
-}
-
-.vault-stat-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  min-height: 42px;
 }
 
 .vault-card-footer {
@@ -353,6 +236,29 @@
   justify-content: space-between;
   border-top: 1px solid var(--line);
   padding-top: 14px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.vault-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vault-card-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vault-card-enter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--cyan);
+  font-weight: 700;
 }
 
 /* 空白狀態 / 導引 (Onboarding) */
@@ -360,7 +266,7 @@
   background-color: var(--panel);
   border: 2px dashed var(--line);
   border-radius: var(--radius);
-  padding: 48px 32px;
+  padding: 56px 32px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -369,8 +275,8 @@
 }
 
 .onboarding-icon-wrap {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background-color: var(--cyan-soft);
   color: var(--cyan);
@@ -380,7 +286,7 @@
 }
 
 .onboarding-title {
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   font-weight: 800;
   color: var(--ink);
 }
@@ -388,7 +294,7 @@
 .onboarding-desc {
   font-size: 0.95rem;
   color: var(--ink-soft);
-  max-width: 460px;
+  max-width: 480px;
   line-height: 1.6;
 }
 
@@ -397,9 +303,11 @@
   align-items: center;
   gap: 12px;
   margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-/* 通用彈窗樣式 (Modal) */
+/* 彈窗 (Modal) */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -463,4 +371,3 @@
   border-top: 1px solid var(--line);
   padding-top: 16px;
 }
-

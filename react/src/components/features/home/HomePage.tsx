@@ -1,26 +1,25 @@
 /**
- * DASH 全局系統主頁 (HomePage.tsx)
+ * DASH 根層級主頁 (HomePage.tsx)
  * 職責：
- * 已登入使用者的首頁儀表板：
- * 1. 歡迎總覽與當前紀錄庫顯示。
- * 2. 我的紀錄庫清單 (含 Owner/Admin/User 角色標籤、活動與文件數據)。
- * 3. 快速進入工作台、建立新紀錄庫、輸入邀請碼加入既有紀錄庫、切換與刪除紀錄庫。
+ * Level 1 全局根層級儀表板：
+ * 1. 無 Header、無 Sidebar、無 Footer。
+ * 2. 頂部精緻帳戶狀態條 (Email、登出、＋建立新紀錄庫、輸入邀請碼、匯入備份包 DASH IN)。
+ * 3. 我的紀錄庫清單：點擊特定卡片直接進入 Level 2 的 VaultHubPage。
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Database,
-  Layers,
   FolderPlus,
   Ticket,
+  FolderInput,
   LogOut,
-  ArrowRight,
-  Trash2,
   Users,
   AlertCircle,
   FileText,
   Activity,
   X,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { vaultApi, VaultItem } from '../../../api/vaultApi';
@@ -28,36 +27,45 @@ import './HomePage.css';
 
 interface HomePageProps {
   activeVaultName: string;
-  onEnterWorkspace: () => void;
-  onVaultChange: (vaultName: string) => void;
+  onEnterVaultHub: (vaultName: string) => void;
+  onVaultListChanged: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
   activeVaultName,
-  onEnterWorkspace,
-  onVaultChange,
+  onEnterVaultHub,
+  onVaultListChanged,
 }) => {
   const { user, logout } = useAuth();
 
-  // 紀錄庫清單狀態
   const [vaults, setVaults] = useState<VaultItem[]>([]);
   const [loadingVaults, setLoadingVaults] = useState(false);
 
-  // 彈窗狀態
+  // 彈窗狀態：新建紀錄庫
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newVaultName, setNewVaultName] = useState('');
   const [newVaultDesc, setNewVaultDesc] = useState('');
   const [creatingVault, setCreatingVault] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  // 彈窗狀態：輸入邀請碼
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [joiningVault, setJoiningVault] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
-  const [deletingVaultName, setDeletingVaultName] = useState<string | null>(null);
+  // 彈窗狀態：DASH IN 匯入備份包
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedZipFile, setSelectedZipFile] = useState<File | null>(null);
+  const [importVaultName, setImportVaultName] = useState('');
+  const [importOriginalName, setImportOriginalName] = useState('');
+  const [importIsDuplicate, setImportIsDuplicate] = useState(false);
+  const [importingVault, setImportingVault] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
-  // 載入當前使用者的紀錄庫清單
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 載入紀錄庫清單
   const loadVaults = useCallback(async () => {
     if (!user) {
       setVaults([]);
@@ -78,6 +86,16 @@ export const HomePage: React.FC<HomePageProps> = ({
     loadVaults();
   }, [loadVaults, activeVaultName]);
 
+  // 點擊卡片直接進入該 Vault 的 Hub
+  const handleSelectVault = async (targetVaultName: string) => {
+    try {
+      await vaultApi.switchVault(targetVaultName);
+      onEnterVaultHub(targetVaultName);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '切換紀錄庫失敗');
+    }
+  };
+
   // 建立新紀錄庫
   const handleCreateVault = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,8 +109,9 @@ export const HomePage: React.FC<HomePageProps> = ({
       setNewVaultName('');
       setNewVaultDesc('');
       await loadVaults();
+      onVaultListChanged();
       if (res.vault && typeof res.vault === 'object' && 'name' in res.vault) {
-        onVaultChange(String(res.vault.name));
+        onEnterVaultHub(String(res.vault.name));
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '建立紀錄庫失敗';
@@ -114,259 +133,232 @@ export const HomePage: React.FC<HomePageProps> = ({
       setShowJoinModal(false);
       setInviteCode('');
       await loadVaults();
+      onVaultListChanged();
       if (res.vault_name) {
-        onVaultChange(res.vault_name);
+        await vaultApi.switchVault(res.vault_name);
+        onEnterVaultHub(res.vault_name);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '加入紀錄庫失敗，請確認邀請碼正確性與時效';
+      const msg = err instanceof Error ? err.message : '加入失敗，請確認邀請碼正確性與效期';
       setJoinError(msg);
     } finally {
       setJoiningVault(false);
     }
   };
 
-  // 刪除紀錄庫 (限 owner)
-  const handleDeleteVault = async (targetName: string) => {
-    if (!window.confirm(`確定要徹底刪除紀錄庫「${targetName}」嗎？此操作不可還原。`)) {
+  // 觸發選取 DASH IN 檔案
+  const handleTriggerImport = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  // 檔案選取後校驗 ZIP
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      alert('請選取副檔名為 .zip 的資料包檔案');
       return;
     }
-    setDeletingVaultName(targetName);
+
     try {
-      await vaultApi.deleteVault(targetName);
+      const inspectRes = await vaultApi.inspectZip(file);
+      setSelectedZipFile(file);
+      setImportOriginalName(inspectRes.manifest.name);
+      setImportVaultName(inspectRes.suggested_name);
+      const isDup = vaults.some((v) => v.name.toLowerCase() === inspectRes.manifest.name.toLowerCase());
+      setImportIsDuplicate(isDup);
+      setImportError(null);
+      setShowImportModal(true);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '解析資料包失敗');
+    }
+  };
+
+  // 確認匯入 ZIP
+  const handleConfirmImport = async () => {
+    if (!selectedZipFile || !importVaultName.trim() || importingVault) return;
+    setImportingVault(true);
+    setImportError(null);
+    try {
+      const res = await vaultApi.importVault(selectedZipFile, importVaultName.trim());
+      setShowImportModal(false);
+      setSelectedZipFile(null);
       await loadVaults();
+      onVaultListChanged();
+      if (res.vault_name) {
+        onEnterVaultHub(res.vault_name);
+      }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : '刪除紀錄庫失敗');
+      setImportError(err instanceof Error ? err.message : '匯入資料包失敗');
     } finally {
-      setDeletingVaultName(null);
-    }
-  };
-
-  // 切換使用中紀錄庫
-  const handleSwitchVault = async (targetName: string) => {
-    try {
-      await vaultApi.switchVault(targetName);
-      onVaultChange(targetName);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : '切換紀錄庫失敗');
-    }
-  };
-
-  const getRoleLabel = (role?: string) => {
-    switch (role) {
-      case 'owner':
-        return '建立者 (Owner)';
-      case 'admin':
-        return '管理員 (Admin)';
-      case 'user':
-      default:
-        return '成員 (User)';
-    }
-  };
-
-  const getRoleClass = (role?: string) => {
-    switch (role) {
-      case 'owner':
-        return 'role-owner';
-      case 'admin':
-        return 'role-admin';
-      case 'user':
-      default:
-        return 'role-user';
+      setImportingVault(false);
     }
   };
 
   return (
     <div className="home-container">
-      {/* 頂部導航列 */}
-      <header className="home-header">
-        <div className="home-brand">
-          <div className="home-logo-badge">
-            <Layers size={22} />
-          </div>
-          <div>
-            <h1 className="home-brand-title">DASH</h1>
-            <p className="home-brand-sub">團隊決策歷程與會議交接系統</p>
+      {/* 隱藏的 ZIP 檔案選取器 */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".zip"
+        style={{ display: 'none' }}
+        onChange={handleFileSelected}
+      />
+
+      {/* 頂部精緻帳戶狀態條 */}
+      <div className="home-account-bar">
+        <div className="account-bar-left">
+          <span className="account-brand-mark">DASH</span>
+          <div className="account-user-pill">
+            <Users size={14} />
+            <span>{user?.email}</span>
           </div>
         </div>
 
-        <div className="home-nav-actions">
-          {user && (
-            <>
-              <div className="home-user-pill">
-                <Users size={16} />
-                <span>{user.email}</span>
+        <div className="account-bar-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleTriggerImport}
+          >
+            <FolderInput size={15} />
+            <span>匯入備份包 (DASH IN)</span>
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setInviteCode('');
+              setJoinError(null);
+              setShowJoinModal(true);
+            }}
+          >
+            <Ticket size={15} />
+            <span>輸入邀請碼</span>
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              setNewVaultName('');
+              setNewVaultDesc('');
+              setCreateError(null);
+              setShowCreateModal(true);
+            }}
+          >
+            <FolderPlus size={15} />
+            <span>建立新紀錄庫</span>
+          </button>
+          <button
+            type="button"
+            className="btn-logout"
+            onClick={logout}
+            title="登出目前帳號"
+          >
+            <LogOut size={16} />
+            <span>登出</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 主體區塊：我的紀錄庫清單 */}
+      <main className="home-main">
+        <section className="vaults-section">
+          <div className="vaults-section-header">
+            <div className="section-title-wrap">
+              <h2 className="section-title">我的紀錄庫</h2>
+              <span className="section-count-badge">{vaults.length}</span>
+            </div>
+          </div>
+
+          {loadingVaults ? (
+            <p style={{ color: 'var(--muted)' }}>讀取紀錄庫中...</p>
+          ) : vaults.length === 0 ? (
+            /* 無紀錄庫引導卡片 */
+            <div className="onboarding-card">
+              <div className="onboarding-icon-wrap">
+                <Database size={30} />
               </div>
-              {vaults.length > 0 && (
+              <h3 className="onboarding-title">您尚未加入任何紀錄庫</h3>
+              <p className="onboarding-desc">
+                您可以立即建立全新的空白紀錄庫成為唯一 Owner，或輸入團隊 Admin 提供的邀請碼加入既有專案。
+              </p>
+              <div className="onboarding-actions">
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={onEnterWorkspace}
+                  onClick={() => setShowCreateModal(true)}
                 >
-                  <span>進入工作台</span>
-                  <ArrowRight size={16} />
+                  <FolderPlus size={16} />
+                  <span>建立新紀錄庫</span>
                 </button>
-              )}
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={logout}
-                title="登出目前帳號"
-              >
-                <LogOut size={16} />
-                <span>登出</span>
-              </button>
-            </>
-          )}
-        </div>
-      </header>
-
-      {/* 主體區塊 */}
-      <main className="home-main">
-        <div className="user-dashboard">
-          <div className="dashboard-hero-banner">
-            <div className="dashboard-greeting">
-              <h2 className="dashboard-greeting-title">
-                歡迎回來，{user?.email}
-              </h2>
-              <p className="dashboard-greeting-sub">
-                當前使用中紀錄庫：<strong>{activeVaultName || '未選取'}</strong>
-              </p>
-            </div>
-
-            <div className="dashboard-actions-row">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowJoinModal(true)}
-              >
-                <Ticket size={16} />
-                <span>輸入邀請碼加入</span>
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <FolderPlus size={16} />
-                <span>建立新紀錄庫</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 紀錄庫區域 */}
-          <div className="vaults-section">
-            <div className="vaults-section-header">
-              <div className="section-title-wrap">
-                <h3 className="section-title">我的紀錄庫</h3>
-                <span className="section-count-badge">{vaults.length}</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowJoinModal(true)}
+                >
+                  <Ticket size={16} />
+                  <span>輸入邀請碼</span>
+                </button>
               </div>
             </div>
+          ) : (
+            /* 紀錄庫卡片網格 (點擊直接進入 Vault Hub) */
+            <div className="vaults-grid">
+              {vaults.map((v) => {
+                const isActive = v.name === activeVaultName;
+                const role = v.user_role || 'user';
 
-            {loadingVaults ? (
-              <p>讀取紀錄庫中...</p>
-            ) : vaults.length === 0 ? (
-              /* 新用戶導引 (Onboarding) */
-              <div className="onboarding-card">
-                <div className="onboarding-icon-wrap">
-                  <Database size={28} />
-                </div>
-                <h4 className="onboarding-title">您尚未加入任何紀錄庫</h4>
-                <p className="onboarding-desc">
-                  您可以立即建立全新的空白紀錄庫作為唯一 Owner，或是輸入團隊 Admin 提供的邀請碼加入既有紀錄庫。
-                </p>
-                <div className="onboarding-actions">
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => setShowCreateModal(true)}
+                return (
+                  <div
+                    key={v.name}
+                    className={`vault-entry-card ${isActive ? 'is-active' : ''}`}
+                    onClick={() => handleSelectVault(v.name)}
+                    role="button"
+                    tabIndex={0}
                   >
-                    <FolderPlus size={16} />
-                    <span>建立新紀錄庫</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setShowJoinModal(true)}
-                  >
-                    <Ticket size={16} />
-                    <span>輸入邀請碼</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* 紀錄庫卡片列表 */
-              <div className="vaults-grid">
-                {vaults.map((v) => {
-                  const isCurrent = v.name === activeVaultName;
-                  const isOwner = v.user_role === 'owner';
-
-                  return (
-                    <div
-                      key={v.name}
-                      className={`vault-card ${isCurrent ? 'active-vault' : ''}`}
-                    >
-                      <div className="vault-card-header">
-                        <h4 className="vault-card-title">{v.display_name || v.name}</h4>
-                        <span className={`role-badge ${getRoleClass(v.user_role)}`}>
-                          {getRoleLabel(v.user_role)}
-                        </span>
+                    <div className="vault-card-header">
+                      <div className="vault-card-title-group">
+                        <Database size={20} className="vault-card-icon" />
+                        <h3 className="vault-card-title">{v.display_name || v.name}</h3>
                       </div>
+                      <span className={`role-badge role-${role}`}>
+                        {role.toUpperCase()}
+                      </span>
+                    </div>
 
-                      <p className="vault-card-desc">
-                        {v.description || '無描述說明'}
-                      </p>
+                    <p className="vault-card-desc">
+                      {v.description || '專案決策、歷程會議與規章紀錄庫'}
+                    </p>
 
-                      <div className="vault-stats-row">
-                        <div className="vault-stat-item">
+                    <div className="vault-card-footer">
+                      <div className="vault-card-stats">
+                        <div className="vault-card-stat-item">
                           <Activity size={14} />
                           <span>{v.stats?.activities_count || 0} 項活動</span>
                         </div>
-                        <div className="vault-stat-item">
+                        <div className="vault-card-stat-item">
                           <FileText size={14} />
                           <span>{v.stats?.documents_count || 0} 份文件</span>
                         </div>
                       </div>
 
-                      <div className="vault-card-footer">
-                        {isCurrent ? (
-                          <button
-                            type="button"
-                            className="btn-primary"
-                            onClick={onEnterWorkspace}
-                          >
-                            <span>進入工作台</span>
-                            <ArrowRight size={14} />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn-secondary"
-                            onClick={() => handleSwitchVault(v.name)}
-                          >
-                            <span>切換為目前</span>
-                          </button>
-                        )}
-
-                        {isOwner && !isCurrent && (
-                          <button
-                            type="button"
-                            className="btn-secondary"
-                            onClick={() => handleDeleteVault(v.name)}
-                            disabled={deletingVaultName === v.name}
-                            title="刪除紀錄庫 (Owner 專屬)"
-                          >
-                            <Trash2 size={14} />
-                            <span>刪除</span>
-                          </button>
-                        )}
+                      <div className="vault-card-enter-btn">
+                        <span>進入操作</span>
+                        <ChevronRight size={16} />
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </main>
 
       {/* 建立新紀錄庫彈窗 */}
@@ -380,7 +372,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 className="btn-close"
                 onClick={() => setShowCreateModal(false)}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -404,6 +396,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   value={newVaultName}
                   onChange={(e) => setNewVaultName(e.target.value)}
                   required
+                  autoFocus
                 />
               </div>
 
@@ -453,7 +446,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 className="btn-close"
                 onClick={() => setShowJoinModal(false)}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -477,6 +470,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
                   required
+                  autoFocus
                 />
               </div>
 
@@ -497,6 +491,74 @@ export const HomePage: React.FC<HomePageProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DASH IN: 匯入 ZIP 確認建立新 Vault 對話框 */}
+      {showImportModal && (
+        <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">DASH IN 備份包匯入確認</h3>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={() => setShowImportModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="hub-modal-body">
+              <p style={{ fontSize: '0.875rem', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+                系統將為這份備份包建立一個「全新獨立的紀錄庫」，絕不會覆蓋任何現有資料。
+              </p>
+              {importIsDuplicate && (
+                <div className="auth-error-banner">
+                  <AlertCircle size={16} />
+                  <span>本地已存在同名紀錄庫「{importOriginalName}」，已自動建議後綴名稱以防衝突。</span>
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label" htmlFor="import-name-input">
+                  新紀錄庫名稱
+                </label>
+                <input
+                  id="import-name-input"
+                  type="text"
+                  className="form-input"
+                  value={importVaultName}
+                  onChange={(e) => setImportVaultName(e.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
+              {importError && (
+                <div className="auth-error-banner">
+                  <AlertCircle size={16} />
+                  <span>{importError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowImportModal(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!importVaultName.trim() || importingVault}
+                onClick={handleConfirmImport}
+              >
+                {importingVault ? '匯入中...' : '確認匯入並開啟'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import React from 'react';
-import './BreadcrumbNav.css';
+import './ActivityBreadcrumb.css';
 
-interface BreadcrumbNavProps {
+interface ActivityBreadcrumbProps {
   activityName: string;
   currentView: string;
   onNavigate: (view: string) => void;
@@ -13,7 +13,7 @@ interface CrumbItem {
   isCurrent?: boolean;
 }
 
-export default function BreadcrumbNav({ activityName, currentView, onNavigate }: BreadcrumbNavProps) {
+export default function ActivityBreadcrumb({ activityName, currentView, onNavigate }: ActivityBreadcrumbProps) {
   // 建立動態導航層級
   const crumbs: CrumbItem[] = [
     { label: '活動工作台', view: 'activities' },
@@ -85,3 +85,4 @@ export default function BreadcrumbNav({ activityName, currentView, onNavigate }:
     </nav>
   );
 }
+

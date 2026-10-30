@@ -1,0 +1,46 @@
+/* ==========================================
+   VaultBreadcrumb.css - 極簡麵包屑導航組件樣式
+   繼承 index.css 統一設計變數，嚴禁 hardcode 顏色
+   ========================================== */
+
+.vault-breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--muted);
+  padding: 12px 24px;
+  background-color: var(--panel);
+  border-bottom: 1px solid var(--line);
+  width: 100%;
+}
+
+.crumb-nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.crumb-nav-btn:hover {
+  background-color: var(--canvas);
+  color: var(--cyan);
+}
+
+.crumb-separator {
+  color: var(--muted);
+  user-select: none;
+}
+
+.crumb-current-title {
+  font-weight: 700;
+  color: var(--ink);
+  padding: 4px 8px;
+}

@@ -1,10 +1,13 @@
 /**
  * DASH 應用頂層根組件 (App.tsx)
  * 職責：
- * 1. 認證守衛 (Auth Guard)：未登入時自動分發至 HomePage 登入卡片。
- * 2. 視圖路由分發：主頁 (home)、活動列表 (activities)、活動工作區 (overview/stages)、
- *    獨立文件紀錄庫 (documents)、AI 對話 (chat)、會議提煉 (extract)、資料備份 (vault)。
- * 3. 全域資料同步與狀態管理。
+ * 全新階層化路由分發與全域狀態管理：
+ * 1. 認證守衛 (Level 0)：未登入時分發至極簡置中的 AuthPage。
+ * 2. 根層級 (Level 1)：登入後一律首頁 (home) 開局，展示帳戶條與 Vault 卡片。
+ * 3. Vault 入口層 (Level 2)：點擊卡片進入 VaultHubPage，展示大大 Vault 名稱、成員設定與 5 大功能前往按鈕。
+ * 4. 業務面板層 (Level 3)：活動工作台、文件紀錄庫、智能對話、會議提煉、紀錄庫備份。
+ *    頂部嵌入極簡 VaultBreadcrumb 麵包屑導航，隨時一鍵返回 Vault Hub 或根首頁。
+ *    全域徹底移除 Sidebar、Header 與 Footer。
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,12 +16,13 @@ import { vaultApi } from './api/vaultApi';
 import { useAuth } from './context/AuthContext';
 import type { Activity, ActivityInput } from './types/activity';
 
-// 佈局組件
-import AppSidebar from './components/layout/AppSidebar';
-
-// 業務視圖組件
+// 認證層與導覽組件
 import { AuthPage } from './components/features/auth/AuthPage';
 import { HomePage } from './components/features/home/HomePage';
+import { VaultHubPage } from './components/features/vault-hub/VaultHubPage';
+import { VaultBreadcrumb } from './components/layout/VaultBreadcrumb';
+
+// Level 3 業務面板組件
 import ActivityListView from './components/features/activity/ActivityListView';
 import ActivityWorkspace from './components/features/activity/ActivityWorkspace';
 import { DocumentManagementPanel } from './components/features/document-management/DocumentManagementPanel';
@@ -26,7 +30,7 @@ import ChatPanel from './components/features/chat/ChatPanel';
 import MeetingExtractPanel from './components/features/meeting-extract/MeetingExtractPanel';
 import DashOutPanel from './components/features/dash-out/DashOutPanel';
 
-// 彈窗組件
+// 活動相關彈窗組件
 import ActivityFormModal from './components/features/activity/ActivityFormModal';
 import ConfirmModal from './components/common/ConfirmModal';
 import QuickAddModal from './components/features/activity/QuickAddModal';
@@ -35,8 +39,8 @@ import HandoverModal from './components/features/activity/HandoverModal';
 export default function App() {
   const { user, isLoading: authLoading } = useAuth();
 
-  // 畫面路由切換 (預設為 activities 活動列表；若切換回首頁則為 home)
-  const [currentView, setCurrentView] = useState('activities');
+  // 畫面路由切換 (初始一律首頁 home 開局，絕不預設進入上次工作台)
+  const [currentView, setCurrentView] = useState<string>('home');
   const [activeVaultName, setActiveVaultName] = useState<string>('default');
 
   // 活動清單與選取狀態
@@ -44,9 +48,6 @@ export default function App() {
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
-
-  // 側邊欄開合狀態
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // 活動編輯/新增彈窗狀態
   const [activityFormOpen, setActivityFormOpen] = useState(false);
@@ -123,13 +124,12 @@ export default function App() {
     }
   }, [currentView, user, loadActivities]);
 
-  // 封裝切換畫面小函式：點擊切換頁面時自動收起側邊欄
+  // 切換畫面
   const handleSetView = (view: string, activityId?: number) => {
     if (activityId !== undefined) {
       setSelectedActivityId(activityId);
     }
     setCurrentView(view);
-    setIsSidebarOpen(false);
   };
 
   // 切換或重設 Vault 後更新狀態
@@ -230,7 +230,26 @@ export default function App() {
   // 判定是否為活動專屬工作台（階段導航）
   const isWorkspaceActive =
     currentActivity != null &&
-    !['home', 'activities', 'documents', 'chat', 'extract', 'vault'].includes(currentView);
+    !['home', 'vault-hub', 'activities', 'documents', 'chat', 'extract', 'vault'].includes(currentView);
+
+  // 功能標題轉換 helper
+  const getViewTitle = (view: string): string => {
+    switch (view) {
+      case 'activities':
+      case 'overview':
+        return '活動工作台';
+      case 'documents':
+        return '文件紀錄庫';
+      case 'chat':
+        return '智能對話';
+      case 'extract':
+        return '會議提煉';
+      case 'vault':
+        return '紀錄庫備份';
+      default:
+        return '專案工作區';
+    }
+  };
 
   // 1. 若系統正在確認登入狀態，顯示簡約載入畫面
   if (authLoading) {
@@ -251,44 +270,64 @@ export default function App() {
     );
   }
 
-  // 2. 若使用者尚未登入，顯示純淨專屬的登入/註冊介面 (正中間的大大 DASH 與登入卡片)
+  // 2. Level 0 認證守衛：若使用者尚未登入，顯示純淨專屬的 AuthPage
   if (!user) {
     return <AuthPage />;
   }
 
-  // 3. 使用者已登入且選擇造訪主頁視圖
+  // 3. Level 1 根層級：首頁儀表板 (HomePage)
   if (currentView === 'home') {
     return (
       <HomePage
         activeVaultName={activeVaultName}
-        onEnterWorkspace={() => handleSetView('activities')}
-        onVaultChange={(newVault) => {
-          setActiveVaultName(newVault);
+        onEnterVaultHub={(targetVault) => {
+          setActiveVaultName(targetVault);
           handleVaultChanged();
+          setCurrentView('vault-hub');
+        }}
+        onVaultListChanged={handleVaultChanged}
+      />
+    );
+  }
+
+  // 4. Level 2 Vault 入口層：特定紀錄庫專屬操作中樞 (VaultHubPage)
+  if (currentView === 'vault-hub') {
+    return (
+      <VaultHubPage
+        vaultName={activeVaultName}
+        onNavigateToHome={() => setCurrentView('home')}
+        onNavigateToView={(view) => handleSetView(view)}
+        onVaultRenamed={(newName) => {
+          setActiveVaultName(newName);
+          handleVaultChanged();
+        }}
+        onVaultDeleted={() => {
+          handleVaultChanged();
+          setCurrentView('home');
         }}
       />
     );
   }
 
-  // 4. 使用者已登入並進入工作台 Shell
+  // 5. Level 3 具體業務面板層 (100% 寬高全螢幕無 Sidebar/Footer 工作區)
   return (
     <>
-      <div className={`app-shell ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
-        {/* 全域導航側邊欄 */}
-        <AppSidebar
-          currentView={currentView}
-          isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen((prev) => !prev)}
-          onNavigate={(view) => handleSetView(view)}
-          onVaultChanged={handleVaultChanged}
+      <div className="app-shell" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* 面板頂部極簡麵包屑導航 */}
+        <VaultBreadcrumb
+          vaultName={activeVaultName}
+          currentPageTitle={getViewTitle(currentView)}
+          onNavigateToHome={() => setCurrentView('home')}
+          onNavigateToVaultHub={() => setCurrentView('vault-hub')}
         />
 
         {/* 主工作內容區 */}
         <main
           className={`main ${['chat', 'extract'].includes(currentView) ? 'chat-mode' : ''}`}
           id="main-content"
+          style={{ flex: 1 }}
         >
-          {/* 4.1 活動列表工作台首頁 */}
+          {/* 5.1 活動列表工作台 */}
           {currentView === 'activities' && (
             <ActivityListView
               activities={activities}
@@ -301,7 +340,7 @@ export default function App() {
             />
           )}
 
-          {/* 4.2 活動詳細四階段工作區 */}
+          {/* 5.2 活動詳細四階段工作區 */}
           {isWorkspaceActive && (
             <ActivityWorkspace
               currentActivity={currentActivity}
@@ -319,16 +358,16 @@ export default function App() {
             />
           )}
 
-          {/* 4.3 獨立文件紀錄庫管理視圖 */}
+          {/* 5.3 獨立文件紀錄庫管理視圖 */}
           {currentView === 'documents' && <DocumentManagementPanel />}
 
-          {/* 4.4 LLM 聊天大面板視圖 */}
+          {/* 5.4 LLM 聊天大面板視圖 */}
           {currentView === 'chat' && <ChatPanel />}
 
-          {/* 4.5 AI 會議紀錄整理視圖 (常駐掛載避免切換面板時預覽資料遺失) */}
+          {/* 5.5 AI 會議紀錄整理視圖 (常駐掛載避免切換面板時預覽資料遺失) */}
           <MeetingExtractPanel hidden={currentView !== 'extract'} />
 
-          {/* 4.6 DASH OUT 本地交接導出視圖 */}
+          {/* 5.6 DASH OUT 本地交接導出視圖 */}
           {currentView === 'vault' && <DashOutPanel />}
         </main>
       </div>
