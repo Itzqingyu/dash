@@ -28,12 +28,14 @@ import './HomePage.css';
 
 interface HomePageProps {
   activeVaultName: string;
-  onEnterVaultHub: (vaultName: string) => void;
+  activeVaultId?: string;
+  onEnterVaultHub: (vaultId: string, vaultName?: string) => void;
   onVaultListChanged: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
   activeVaultName,
+  activeVaultId,
   onEnterVaultHub,
   onVaultListChanged,
 }) => {
@@ -88,10 +90,10 @@ export const HomePage: React.FC<HomePageProps> = ({
   }, [loadVaults, activeVaultName]);
 
   // 點擊卡片直接進入該 Vault 的 Hub
-  const handleSelectVault = async (targetVaultName: string) => {
+  const handleSelectVault = async (targetVaultId: string, displayName?: string) => {
     try {
-      await vaultApi.switchVault(targetVaultName);
-      onEnterVaultHub(targetVaultName);
+      await vaultApi.switchVault(targetVaultId);
+      onEnterVaultHub(targetVaultId, displayName);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : '切換紀錄庫失敗');
     }
@@ -111,9 +113,10 @@ export const HomePage: React.FC<HomePageProps> = ({
       setNewVaultDesc('');
       await loadVaults();
       onVaultListChanged();
-      if (res.vault && typeof res.vault === 'object' && 'name' in res.vault) {
-        onEnterVaultHub(String(res.vault.name));
-      }
+      const vaultObj = res.vault && typeof res.vault === 'object' ? (res.vault as Record<string, unknown>) : null;
+      const targetVid = res.vault_id || (vaultObj?.vault_id as string) || newVaultName.trim();
+      const targetName = (vaultObj?.display_name as string) || (vaultObj?.name as string) || newVaultName.trim();
+      onEnterVaultHub(targetVid, targetName);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '建立紀錄庫失敗';
       setCreateError(msg);
@@ -135,9 +138,10 @@ export const HomePage: React.FC<HomePageProps> = ({
       setInviteCode('');
       await loadVaults();
       onVaultListChanged();
-      if (res.vault_name) {
-        await vaultApi.switchVault(res.vault_name);
-        onEnterVaultHub(res.vault_name);
+      const targetVid = res.vault_id || res.vault_name;
+      if (targetVid) {
+        await vaultApi.switchVault(targetVid);
+        onEnterVaultHub(targetVid, res.vault_name);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '加入失敗，請確認邀請碼正確性與效期';
@@ -190,8 +194,9 @@ export const HomePage: React.FC<HomePageProps> = ({
       setSelectedZipFile(null);
       await loadVaults();
       onVaultListChanged();
-      if (res.vault_name) {
-        onEnterVaultHub(res.vault_name);
+      const targetVid = res.vault_id || res.vault_name;
+      if (targetVid) {
+        onEnterVaultHub(targetVid, res.vault_name);
       }
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : '匯入資料包失敗');
@@ -333,14 +338,17 @@ export const HomePage: React.FC<HomePageProps> = ({
             /* 紀錄庫卡片網格 (點擊直接進入 Vault Hub) */
             <div className="vaults-grid">
               {vaults.map((v) => {
-                const isActive = v.name === activeVaultName;
+                const isActive =
+                  (v.vault_id && activeVaultId ? v.vault_id === activeVaultId : false) ||
+                  v.name === activeVaultName ||
+                  v.display_name === activeVaultName;
                 const role = v.user_role || 'user';
 
                 return (
                   <div
-                    key={v.name}
+                    key={v.vault_id || v.name}
                     className={`vault-entry-card ${isActive ? 'is-active' : ''}`}
-                    onClick={() => handleSelectVault(v.name)}
+                    onClick={() => handleSelectVault(v.vault_id || v.name, v.display_name || v.name)}
                     role="button"
                     tabIndex={0}
                   >

@@ -36,6 +36,7 @@ import './VaultHubPage.css';
 
 interface VaultHubPageProps {
   vaultName: string;
+  vaultId?: string;
   onNavigateToHome: () => void;
   onNavigateToView: (view: string) => void;
   onVaultRenamed?: (newName: string) => void;
@@ -44,6 +45,7 @@ interface VaultHubPageProps {
 
 export const VaultHubPage: React.FC<VaultHubPageProps> = ({
   vaultName,
+  vaultId,
   onNavigateToHome,
   onNavigateToView,
   onVaultRenamed,
@@ -77,7 +79,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     setLoadingInfo(true);
     try {
       const list = await vaultApi.listVaults();
-      const current = list.find((v) => v.name === vaultName);
+      const current = list.find((v) => (vaultId && v.vault_id === vaultId) || v.name === vaultName || v.display_name === vaultName);
       if (current) {
         setVaultInfo(current);
         setRenameValue(current.display_name || current.name);
@@ -87,12 +89,13 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     } finally {
       setLoadingInfo(false);
     }
-  }, [vaultName]);
+  }, [vaultName, vaultId]);
 
   useEffect(() => {
     loadVaultData();
   }, [loadVaultData]);
 
+  const effectiveVaultId = vaultId || vaultInfo?.vault_id || vaultName;
   const userRole = vaultInfo?.user_role || 'user';
   const isOwner = userRole === 'owner';
   const isOwnerOrAdmin = isOwner || userRole === 'admin';
@@ -104,7 +107,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     setMembersModalOpen(true);
     setLoadingMembers(true);
     try {
-      const list = await vaultApi.getVaultMembers(vaultName);
+      const list = await vaultApi.getVaultMembers(effectiveVaultId);
       setMembers(list);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : '載入成員名單失敗');
@@ -119,7 +122,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     setCopySuccess(false);
     setErrorMessage(null);
     try {
-      const res = await vaultApi.createInviteCode(vaultName, inviteRole, 7);
+      const res = await vaultApi.createInviteCode(effectiveVaultId, inviteRole, 7);
       setCreatedInvite(res);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : '建立邀請碼失敗');
@@ -145,8 +148,8 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     }
 
     try {
-      await vaultApi.updateMemberRole(vaultName, member.user_id, nextRole);
-      const list = await vaultApi.getVaultMembers(vaultName);
+      await vaultApi.updateMemberRole(effectiveVaultId, member.user_id, nextRole);
+      const list = await vaultApi.getVaultMembers(effectiveVaultId);
       setMembers(list);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : '變更權限失敗');
@@ -160,7 +163,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     setRenaming(true);
     setErrorMessage(null);
     try {
-      await vaultApi.renameVault(vaultName, renameValue.trim());
+      await vaultApi.renameVault(effectiveVaultId, renameValue.trim());
       setRenameModalOpen(false);
       onVaultRenamed?.(renameValue.trim());
     } catch (err: unknown) {
@@ -174,7 +177,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
   const handleConfirmDelete = async () => {
     setDeleting(true);
     try {
-      await vaultApi.deleteVault(vaultName);
+      await vaultApi.deleteVault(effectiveVaultId);
       setDeleteModalOpen(false);
       onVaultDeleted?.();
     } catch (err: unknown) {

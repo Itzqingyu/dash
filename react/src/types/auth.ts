@@ -26,6 +26,7 @@ export interface VaultMember {
 
 export interface InviteCodeResponse {
   invite_code: string;
+  vault_id?: string;
   vault_name: string;
   default_role: string;
   expires_at: string;
@@ -36,6 +37,7 @@ export interface InviteCodeResponse {
 export interface JoinVaultResponse {
   status: string;
   message: string;
+  vault_id?: string;
   vault_name: string;
   role: string;
 }

@@ -25,6 +25,7 @@ from dash_backend.vault_manager import (
     MARKDOWN_ROOT,
     DASH_ROOT,
     ensure_default_vault,
+    get_active_vault_id,
     get_active_vault_name,
     get_vault_stats,
     list_vaults,
@@ -1155,17 +1156,30 @@ def api_list_vaults(credentials: Optional[HTTPAuthorizationCredentials] = Depend
 def api_get_active_vault():
     """取得當前使用中之 Vault 名稱與資料庫統計數據"""
     active_name = get_active_vault_name()
+    active_vid = get_active_vault_id()
     return {
         "active_vault": active_name,
-        "stats": get_vault_stats(active_name)
+        "vault_id": active_vid,
+        "display_name": active_name,
+        "stats": get_vault_stats(active_vid)
     }
 
 
 @app.post("/vaults/switch", tags=["Vault Management"])
-def api_switch_vault(payload: VaultSwitchRequest):
+def api_switch_vault(
+    payload: VaultSwitchRequest,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
     """動態熱切換使用中的 Vault"""
+    user_id = None
+    if credentials and credentials.credentials:
+        try:
+            payload_data = decode_access_token(credentials.credentials)
+            user_id = int(payload_data.get("sub", 0))
+        except Exception:
+            pass
     try:
-        return switch_vault(payload.vault_name)
+        return switch_vault(payload.vault_name, caller_user_id=user_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
@@ -1207,10 +1221,20 @@ def api_create_vault(
 
 
 @app.post("/vaults/rename", tags=["Vault Management"])
-def api_rename_vault(payload: VaultRenameRequest):
+def api_rename_vault(
+    payload: VaultRenameRequest,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+):
     """重新命名指定的 Vault"""
+    user_id = None
+    if credentials and credentials.credentials:
+        try:
+            payload_data = decode_access_token(credentials.credentials)
+            user_id = int(payload_data.get("sub", 0))
+        except Exception:
+            pass
     try:
-        return rename_vault(payload.old_name, payload.new_name)
+        return rename_vault(payload.old_name, payload.new_name, caller_user_id=user_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
@@ -1299,7 +1323,7 @@ def api_list_vault_members(
     """查詢紀錄庫成員名單 (紀錄庫成員皆可查看)"""
     try:
         require_vault_role(vault_name, "user", current_user)
-        return list_vault_members(vault_name)
+        return list_vault_members(vault_name, caller_user_id=current_user["id"])
     except HTTPException:
         raise
     except Exception as exc:

@@ -147,17 +147,34 @@ def get_current_user(
 
 def get_user_vault_role(user_id: int, vault_name: str) -> Optional[str]:
     """查詢使用者在特定 Vault 中的角色 ('owner', 'admin', 'user' 或 None)。"""
-    vid = database.resolve_vault_id(vault_name)
+    raw = str(vault_name).strip()
     pool = database.get_pool()
     with pool.connection() as conn:
+        # 1. 若為標準 vault_id 格式 (v_...)
+        if raw.startswith("v_") or raw.startswith("v-"):
+            vid = database.resolve_vault_id(raw)
+            row = conn.execute(
+                "SELECT role FROM public.vault_members WHERE user_id = %s AND vault_id = %s LIMIT 1;",
+                (user_id, vid),
+            ).fetchone()
+            if row:
+                return row["role"]
+
+        # 2. 若傳入的是顯示名稱 (如 'test')，透過 JOIN 查詢該使用者名下或參與的同名紀錄庫
         row = conn.execute(
             """
-            SELECT role FROM public.vault_members
-            WHERE user_id = %s AND vault_id = %s
+            SELECT vm.role FROM public.vault_members vm
+            JOIN public.vaults v ON vm.vault_id = v.vault_id
+            WHERE vm.user_id = %s AND (vm.vault_id = %s OR v.name = %s OR v.display_name = %s)
+            ORDER BY (vm.role = 'owner') DESC, vm.joined_at DESC
+            LIMIT 1;
             """,
-            (user_id, vid),
+            (user_id, raw, raw, raw),
         ).fetchone()
-        return row["role"] if row else None
+        if row:
+            return row["role"]
+
+    return None
 
 
 def require_vault_role(

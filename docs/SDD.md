@@ -107,7 +107,8 @@ dash/
 │   │   ├── test_database.py      # PostgreSQL Schema 與核心資料表 CRUD 測試
 │   │   ├── test_rag_engine.py    # pgvector 向量切塊與檢索測試
 │   │   ├── test_activity_services.py # 活動業務服務測試
-│   │   └── test_vault_manager.py # 紀錄庫生命週期管理測試
+│   │   ├── test_vault_manager.py # 紀錄庫生命週期管理測試
+│   │   └── test_vault_concurrency_and_disambiguation.py # 並行存取與同名紀錄庫隔離測試
 │   └── pyproject.toml            # 依賴套件配置 (pyjwt, bcrypt, psycopg 等)
 ```
 

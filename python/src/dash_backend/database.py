@@ -13,6 +13,7 @@ import os
 import re
 import time
 import atexit
+import threading
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Dict, Iterator, List, Optional
@@ -21,9 +22,11 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-# 全域連線池與使用中 Vault 快取
+# 全域連線池、Schema 初始化快取與執行緒鎖
 _pool: Optional[ConnectionPool] = None
 _active_vault_cache: Optional[str] = None
+_initialized_schemas: set = set()
+_init_lock = threading.Lock()
 
 DEFAULT_VAULT_ID = "v_default"
 
@@ -55,7 +58,6 @@ def _configure_connection(conn: psycopg.Connection) -> None:
     try:
         register_vector(conn)
     except Exception:
-        # 當資料庫尚未安裝 vector 擴充套件時避免連線池直接中斷
         pass
 
 
@@ -96,8 +98,15 @@ def reset_db_state() -> None:
     _active_vault_cache = None
 
 
-def resolve_vault_id(identifier: Optional[str] = None) -> str:
-    """將任意 Vault 識別碼 (vault_id、舊版名稱或 None) 安全解析為標準不可變之 vault_id (v_...)。"""
+def resolve_vault_id(
+    identifier: Optional[str] = None,
+    user_id: Optional[int] = None,
+) -> str:
+    """將任意 Vault 識別碼 (vault_id、顯示名稱或 None) 安全解析為標準不可變之 vault_id (v_...)。
+
+    若傳入的是顯示名稱 (如 'test') 且提供了 user_id，優先搜尋該使用者已加入的同名紀錄庫，
+    徹底消解多用戶建立同名紀錄庫時的識別歧義。
+    """
     if not identifier:
         return get_active_vault_id()
 
@@ -105,7 +114,7 @@ def resolve_vault_id(identifier: Optional[str] = None) -> str:
     if not raw:
         return get_active_vault_id()
 
-    # 若已經是標準 vault_id 格式 (v_...) 或是 v-xxx 舊格式
+    # 1. 若已經是標準 vault_id 格式 (v_...) 或是 v-xxx 舊格式，直接轉換回傳
     if raw.startswith("v_"):
         return raw
     if raw.startswith("v-"):
@@ -113,27 +122,53 @@ def resolve_vault_id(identifier: Optional[str] = None) -> str:
     if raw == "default":
         return DEFAULT_VAULT_ID
 
-    # 嘗試由 public.vaults 資料庫比對 vault_id 或 name
-    try:
-        pool = get_pool()
-        with pool.connection() as conn:
+    pool = get_pool()
+    with pool.connection() as conn:
+        # 2. 若有提供登入者 user_id，優先查找該使用者名下或已加入的同名紀錄庫
+        if user_id is not None:
+            try:
+                row = conn.execute(
+                    """
+                    SELECT v.vault_id FROM public.vault_members vm
+                    JOIN public.vaults v ON vm.vault_id = v.vault_id
+                    WHERE vm.user_id = %s AND (v.vault_id = %s OR v.display_name = %s OR v.name = %s)
+                    ORDER BY (vm.role = 'owner') DESC, vm.joined_at DESC
+                    LIMIT 1;
+                    """,
+                    (user_id, raw, raw, raw),
+                ).fetchone()
+                if row and row.get("vault_id"):
+                    return row["vault_id"]
+            except Exception:
+                pass
+
+        # 3. 查無特定使用者或未提供 user_id 時，由 public.vaults 依名稱查找最新紀錄庫
+        try:
             row = conn.execute(
-                "SELECT vault_id FROM public.vaults WHERE vault_id = %s OR name = %s LIMIT 1;",
-                (raw, raw),
+                """
+                SELECT vault_id FROM public.vaults
+                WHERE vault_id = %s OR display_name = %s OR name = %s
+                ORDER BY created_at DESC
+                LIMIT 1;
+                """,
+                (raw, raw, raw),
             ).fetchone()
             if row and row.get("vault_id"):
                 return row["vault_id"]
-    except Exception:
-        pass
+        except Exception:
+            pass
 
-    # 兜底：將字串清理為合法代碼
+    # 4. 兜底清理
     clean = re.sub(r"[^a-zA-Z0-9_]", "_", raw).lower()
     return f"v_{clean or 'default'}"
 
 
-def sanitize_schema_name(vault_identifier: Optional[str] = None) -> str:
+def sanitize_schema_name(
+    vault_identifier: Optional[str] = None,
+    user_id: Optional[int] = None,
+) -> str:
     """將 Vault 識別碼標準化為 PostgreSQL Schema 名稱 (vault_<vault_id>)。"""
-    vid = resolve_vault_id(vault_identifier)
+    vid = resolve_vault_id(vault_identifier, user_id=user_id)
     clean = re.sub(r"[^a-zA-Z0-9_]", "_", vid).lower()
     return f"vault_{clean or 'v_default'}"
 
@@ -189,10 +224,10 @@ def get_active_vault_id() -> str:
         return DEFAULT_VAULT_ID
 
 
-def set_active_vault_id(vault_identifier: str) -> None:
+def set_active_vault_id(vault_identifier: str, user_id: Optional[int] = None) -> None:
     """設定當前使用中的 Vault (以 vault_id 為核心) 並同步至資料庫。"""
     global _active_vault_cache
-    vid = resolve_vault_id(vault_identifier)
+    vid = resolve_vault_id(vault_identifier, user_id=user_id)
     _active_vault_cache = vid
     pool = get_pool()
     with pool.connection() as conn:
@@ -252,12 +287,13 @@ def set_active_vault_name(vault_name: str) -> None:
 def get_connection(
     vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> Iterator[psycopg.Connection]:
     """提供會自動歸還連線池的 PostgreSQL 連線 ContextManager，
     並自動將 search_path 切換至該 Vault 所屬之 schema 命名空間 (vault_<vault_id>)。
     """
     target_vault = vault_name or get_active_vault_id()
-    schema_name = sanitize_schema_name(target_vault)
+    schema_name = sanitize_schema_name(target_vault, user_id=user_id)
     pool = get_pool()
 
     with pool.connection() as conn:
@@ -271,292 +307,296 @@ def get_connection(
 def init_db(
     vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> None:
-    """初始化指定 Vault 的 PostgreSQL Schema (vault_<vault_id>) 與 10 核心資料表。"""
-    vid = resolve_vault_id(vault_name)
+    """初始化指定 Vault 的 PostgreSQL Schema (vault_<vault_id>) 與 10 核心資料表。
+
+    內建執行緒排他鎖與 Schema 快取，嚴格防止高併發並行呼叫時的 DDL 死結 (DeadlockDetected)。
+    """
+    global _initialized_schemas
+    vid = resolve_vault_id(vault_name, user_id=user_id)
     schema_name = sanitize_schema_name(vid)
-    pool = get_pool()
 
-    with pool.connection() as conn:
-        # 1. 啟用 pgvector 擴充套件
-        conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+    # 快速路徑：若該 Schema 已初始化過，直接返回，不打擾資料庫
+    if schema_name in _initialized_schemas:
+        return
 
-        # 2. 建立 Vault 獨立 Schema
-        conn.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";')
-        conn.execute(f'SET search_path TO "{schema_name}", public;')
+    with _init_lock:
+        if schema_name in _initialized_schemas:
+            return
 
-        # 3. 建立公用設定與 Vault 清冊表 (位於 public)
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS public.vaults (
-                vault_id VARCHAR(64) PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                display_name TEXT NOT NULL,
-                owner_id INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
-                description TEXT DEFAULT '',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_vaults_owner ON public.vaults(owner_id);
-            CREATE INDEX IF NOT EXISTS idx_vaults_name ON public.vaults(name);
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS public.system_settings (
-                key VARCHAR(50) PRIMARY KEY,
-                value TEXT NOT NULL
-            );
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS public.users (
-                id SERIAL PRIMARY KEY,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                hashed_password VARCHAR(255) NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS public.vault_members (
-                id SERIAL PRIMARY KEY,
-                vault_id VARCHAR(64) NOT NULL REFERENCES public.vaults(vault_id) ON DELETE CASCADE,
-                user_id INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-                role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('owner', 'admin', 'user')),
-                joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(vault_id, user_id)
-            );
-            CREATE INDEX IF NOT EXISTS idx_vault_members_user ON public.vault_members(user_id);
-            CREATE INDEX IF NOT EXISTS idx_vault_members_vault_id ON public.vault_members(vault_id);
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS public.vault_invitations (
-                id SERIAL PRIMARY KEY,
-                invite_code VARCHAR(32) UNIQUE NOT NULL,
-                vault_id VARCHAR(64) NOT NULL REFERENCES public.vaults(vault_id) ON DELETE CASCADE,
-                created_by INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-                default_role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (default_role IN ('admin', 'user')),
-                expires_at TIMESTAMPTZ,
-                max_uses INTEGER DEFAULT NULL,
-                used_count INTEGER DEFAULT 0,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE INDEX IF NOT EXISTS idx_invitations_code ON public.vault_invitations(invite_code);
-            CREATE INDEX IF NOT EXISTS idx_invitations_vault_id ON public.vault_invitations(vault_id);
-            """
-        )
+        pool = get_pool()
+        with pool.connection() as conn:
+            # 1. 啟用 pgvector 擴充套件
+            conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
-        # 4. 建立 Vault 內的 10 個核心實體資料表
-        # 4.1 文件紀錄表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS documents (
-                id SERIAL PRIMARY KEY,
-                file_path TEXT UNIQUE NOT NULL,
-                filename TEXT NOT NULL,
-                upload_date TIMESTAMPTZ NOT NULL,
-                chunk_count INTEGER NOT NULL
-            );
-            """
-        )
+            # 2. 建立 Vault 獨立 Schema
+            conn.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";')
+            conn.execute(f'SET search_path TO "{schema_name}", public;')
 
-        # 4.2 文件切塊與向量表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS document_chunks (
-                id SERIAL PRIMARY KEY,
-                document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
-                chunk_index INTEGER NOT NULL,
-                content TEXT NOT NULL,
-                metadata JSONB DEFAULT '{}'::jsonb,
-                embedding vector(768)
-            );
-            """
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id);"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON document_chunks USING hnsw (embedding vector_cosine_ops);"
-        )
+            # 3. 建立公用設定與 Vault 清冊表 (位於 public)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.vaults (
+                    vault_id VARCHAR(64) PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    display_name TEXT NOT NULL,
+                    owner_id INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
+                    description TEXT DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_vaults_owner ON public.vaults(owner_id);
+                CREATE INDEX IF NOT EXISTS idx_vaults_name ON public.vaults(name);
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.system_settings (
+                    key VARCHAR(50) PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.users (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    hashed_password VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.vault_members (
+                    id SERIAL PRIMARY KEY,
+                    vault_id VARCHAR(64) NOT NULL REFERENCES public.vaults(vault_id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+                    role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('owner', 'admin', 'user')),
+                    joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(vault_id, user_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_vault_members_user ON public.vault_members(user_id);
+                CREATE INDEX IF NOT EXISTS idx_vault_members_vault_id ON public.vault_members(vault_id);
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.vault_invitations (
+                    id SERIAL PRIMARY KEY,
+                    invite_code VARCHAR(32) UNIQUE NOT NULL,
+                    vault_id VARCHAR(64) NOT NULL REFERENCES public.vaults(vault_id) ON DELETE CASCADE,
+                    created_by INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+                    default_role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (default_role IN ('admin', 'user')),
+                    expires_at TIMESTAMPTZ,
+                    max_uses INTEGER DEFAULT NULL,
+                    used_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_invitations_code ON public.vault_invitations(invite_code);
+                CREATE INDEX IF NOT EXISTS idx_invitations_vault_id ON public.vault_invitations(vault_id);
+                """
+            )
 
-        # 4.3 活動主表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS activities (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                year INTEGER NOT NULL CHECK (year > 0),
-                status TEXT NOT NULL,
-                start_date TEXT,
-                end_date TEXT,
-                venue TEXT,
-                activity_type TEXT,
-                coordinator TEXT,
-                expected_attendees INTEGER CHECK (expected_attendees IS NULL OR expected_attendees >= 0),
-                budget INTEGER CHECK (budget IS NULL OR budget >= 0),
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                CHECK (start_date IS NULL OR end_date IS NULL OR end_date >= start_date)
-            );
-            """
-        )
+            # 4. 建立 Vault 內的 10 個核心實體資料表
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS documents (
+                    id SERIAL PRIMARY KEY,
+                    file_path TEXT UNIQUE NOT NULL,
+                    filename TEXT NOT NULL,
+                    upload_date TIMESTAMPTZ NOT NULL,
+                    chunk_count INTEGER NOT NULL
+                );
+                """
+            )
 
-        # 4.4 會議紀錄表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS meetings (
-                id SERIAL PRIMARY KEY,
-                activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
-                source_document_id INTEGER REFERENCES documents(id) ON DELETE SET NULL,
-                name TEXT NOT NULL,
-                date TEXT DEFAULT '',
-                start_time TEXT DEFAULT '',
-                end_time TEXT DEFAULT '',
-                location TEXT DEFAULT '',
-                participants TEXT DEFAULT '',
-                content TEXT DEFAULT '',
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            );
-            """
-        )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS document_chunks (
+                    id SERIAL PRIMARY KEY,
+                    document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+                    chunk_index INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    metadata JSONB DEFAULT '{}'::jsonb,
+                    embedding vector(768)
+                );
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON document_chunks(document_id);"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON document_chunks USING hnsw (embedding vector_cosine_ops);"
+            )
 
-        # 4.5 待辦事項表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS tasks (
-                id SERIAL PRIMARY KEY,
-                activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
-                meeting_id INTEGER REFERENCES meetings(id) ON DELETE SET NULL,
-                content TEXT NOT NULL,
-                assignee TEXT DEFAULT '',
-                due_date TEXT DEFAULT '',
-                priority TEXT DEFAULT '中',
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            );
-            """
-        )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS activities (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    year INTEGER NOT NULL CHECK (year > 0),
+                    status TEXT NOT NULL,
+                    start_date TEXT,
+                    end_date TEXT,
+                    venue TEXT,
+                    activity_type TEXT,
+                    coordinator TEXT,
+                    expected_attendees INTEGER CHECK (expected_attendees IS NULL OR expected_attendees >= 0),
+                    budget INTEGER CHECK (budget IS NULL OR budget >= 0),
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    CHECK (start_date IS NULL OR end_date IS NULL OR end_date >= start_date)
+                );
+                """
+            )
 
-        # 4.6 決策紀錄表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS decisions (
-                id SERIAL PRIMARY KEY,
-                activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
-                meeting_id INTEGER REFERENCES meetings(id) ON DELETE SET NULL,
-                problem TEXT NOT NULL,
-                options TEXT NOT NULL,
-                final_decision TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                source TEXT NOT NULL,
-                confirmation_status TEXT NOT NULL DEFAULT 'pending' CHECK (confirmation_status IN ('pending', 'confirmed')),
-                outcome_note TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-            """
-        )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS meetings (
+                    id SERIAL PRIMARY KEY,
+                    activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
+                    source_document_id INTEGER REFERENCES documents(id) ON DELETE SET NULL,
+                    name TEXT NOT NULL,
+                    date TEXT DEFAULT '',
+                    start_time TEXT DEFAULT '',
+                    end_time TEXT DEFAULT '',
+                    location TEXT DEFAULT '',
+                    participants TEXT DEFAULT '',
+                    content TEXT DEFAULT '',
+                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
 
-        # 4.7 流程日程表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS schedules (
-                id SERIAL PRIMARY KEY,
-                activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
-                meeting_id INTEGER REFERENCES meetings(id) ON DELETE SET NULL,
-                name TEXT NOT NULL,
-                start_time TEXT NOT NULL,
-                end_time TEXT,
-                location TEXT NOT NULL,
-                owner TEXT NOT NULL,
-                notes TEXT NOT NULL,
-                outcome_note TEXT,
-                category TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-            """
-        )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id SERIAL PRIMARY KEY,
+                    activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
+                    meeting_id INTEGER REFERENCES meetings(id) ON DELETE SET NULL,
+                    content TEXT NOT NULL,
+                    assignee TEXT DEFAULT '',
+                    due_date TEXT DEFAULT '',
+                    priority TEXT DEFAULT '中',
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
 
-        # 4.8 突發事件表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS incidents (
-                id SERIAL PRIMARY KEY,
-                activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
-                schedule_id INTEGER REFERENCES schedules(id) ON DELETE SET NULL,
-                content TEXT NOT NULL,
-                occurred_at TEXT NOT NULL,
-                cause TEXT,
-                suggestion TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-            """
-        )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS decisions (
+                    id SERIAL PRIMARY KEY,
+                    activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
+                    meeting_id INTEGER REFERENCES meetings(id) ON DELETE SET NULL,
+                    problem TEXT NOT NULL,
+                    options TEXT NOT NULL,
+                    final_decision TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    confirmation_status TEXT NOT NULL DEFAULT 'pending' CHECK (confirmation_status IN ('pending', 'confirmed')),
+                    outcome_note TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                """
+            )
 
-        # 4.9 對話會話表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sessions (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-            """
-        )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS schedules (
+                    id SERIAL PRIMARY KEY,
+                    activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
+                    meeting_id INTEGER REFERENCES meetings(id) ON DELETE SET NULL,
+                    name TEXT NOT NULL,
+                    start_time TEXT NOT NULL,
+                    end_time TEXT,
+                    location TEXT NOT NULL,
+                    owner TEXT NOT NULL,
+                    notes TEXT NOT NULL,
+                    outcome_note TEXT,
+                    category TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                """
+            )
 
-        # 4.10 對話訊息表
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS chat_messages (
-                id SERIAL PRIMARY KEY,
-                session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-                role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
-                content TEXT NOT NULL,
-                mode TEXT NOT NULL DEFAULT 'chat' CHECK(mode IN ('chat', 'rag')),
-                retrieved_chunks JSONB,
-                created_at TEXT NOT NULL
-            );
-            """
-        )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS incidents (
+                    id SERIAL PRIMARY KEY,
+                    activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE RESTRICT,
+                    schedule_id INTEGER REFERENCES schedules(id) ON DELETE SET NULL,
+                    content TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL,
+                    cause TEXT,
+                    suggestion TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                """
+            )
 
-        # 5. 建立外鍵與效能索引
-        indices = [
-            ("idx_meetings_activity_id", "meetings(activity_id)"),
-            ("idx_tasks_activity_id", "tasks(activity_id)"),
-            ("idx_tasks_meeting_id", "tasks(meeting_id)"),
-            ("idx_decisions_activity_id", "decisions(activity_id)"),
-            ("idx_decisions_meeting_id", "decisions(meeting_id)"),
-            ("idx_schedules_activity_id", "schedules(activity_id)"),
-            ("idx_schedules_meeting_id", "schedules(meeting_id)"),
-            ("idx_incidents_activity_id", "incidents(activity_id)"),
-            ("idx_incidents_schedule_id", "incidents(schedule_id)"),
-            ("idx_chat_messages_session_id", "chat_messages(session_id)"),
-        ]
-        for index_name, index_def in indices:
-            conn.execute(f"CREATE INDEX IF NOT EXISTS {index_name} ON {index_def};")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                """
+            )
 
-        # 6. 同步至 public.vaults 清冊表 (若不存在)
-        now = datetime.now().isoformat()
-        display = "default" if vid == DEFAULT_VAULT_ID else vid
-        conn.execute(
-            """
-            INSERT INTO public.vaults (vault_id, name, display_name, description, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (vault_id) DO NOTHING;
-            """,
-            (vid, display, display, f"紀錄庫: {display}", now, now),
-        )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS chat_messages (
+                    id SERIAL PRIMARY KEY,
+                    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+                    role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+                    content TEXT NOT NULL,
+                    mode TEXT NOT NULL DEFAULT 'chat' CHECK(mode IN ('chat', 'rag')),
+                    retrieved_chunks JSONB,
+                    created_at TEXT NOT NULL
+                );
+                """
+            )
+
+            indices = [
+                ("idx_meetings_activity_id", "meetings(activity_id)"),
+                ("idx_tasks_activity_id", "tasks(activity_id)"),
+                ("idx_tasks_meeting_id", "tasks(meeting_id)"),
+                ("idx_decisions_activity_id", "decisions(activity_id)"),
+                ("idx_decisions_meeting_id", "decisions(meeting_id)"),
+                ("idx_schedules_activity_id", "schedules(activity_id)"),
+                ("idx_schedules_meeting_id", "schedules(meeting_id)"),
+                ("idx_incidents_activity_id", "incidents(activity_id)"),
+                ("idx_incidents_schedule_id", "incidents(schedule_id)"),
+                ("idx_chat_messages_session_id", "chat_messages(session_id)"),
+            ]
+            for index_name, index_def in indices:
+                conn.execute(f"CREATE INDEX IF NOT EXISTS {index_name} ON {index_def};")
+
+            # 5. 同步至 public.vaults 清冊表 (若不存在)
+            now = datetime.now().isoformat()
+            display = "default" if vid == DEFAULT_VAULT_ID else vid
+            conn.execute(
+                """
+                INSERT INTO public.vaults (vault_id, name, display_name, description, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (vault_id) DO NOTHING;
+                """,
+                (vid, display, display, f"紀錄庫: {display}", now, now),
+            )
+
+            _initialized_schemas.add(schema_name)
 
 
 # ==========================================
@@ -576,7 +616,6 @@ def get_doc_by_path(
     db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """根據檔案路徑查詢文件上傳與切塊紀錄。支援相對路徑、絕對路徑與檔名比對。"""
-    init_db(vault_name=vault_name)
     rel_path = to_rel_doc_path(file_path, vault_identifier=vault_name)
     filename = os.path.basename(file_path)
 
@@ -598,7 +637,6 @@ def get_doc_by_id(
     db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """根據文件流水號 ID 查詢文件紀錄。"""
-    init_db(vault_name=vault_name)
     with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
             "SELECT * FROM documents WHERE id = %s",
@@ -612,7 +650,6 @@ def get_all_docs(
     db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """取得當前 Vault 中所有已匯入 RAG 系統的文件紀錄清單。"""
-    init_db(vault_name=vault_name)
     with get_connection(vault_name=vault_name) as conn:
         rows = conn.execute(
             "SELECT * FROM documents ORDER BY upload_date DESC"
@@ -628,7 +665,6 @@ def add_or_update_doc_record(
     db_path: Optional[str] = None,
 ) -> int:
     """新增或更新文件的 Metadata 紀錄並回傳文件 ID。"""
-    init_db(vault_name=vault_name)
     filename = os.path.basename(file_path)
     rel_path = to_rel_doc_path(file_path, vault_identifier=vault_name)
     now = datetime.now()
@@ -654,7 +690,6 @@ def delete_doc_record_by_path(
     db_path: Optional[str] = None,
 ) -> bool:
     """根據檔案路徑移除文件紀錄（外鍵 CASCADE 會自動刪除對應的向量切塊）。"""
-    init_db(vault_name=vault_name)
     rel_path = to_rel_doc_path(file_path, vault_identifier=vault_name)
     filename = os.path.basename(file_path)
 
@@ -675,7 +710,6 @@ def delete_doc_record_by_id(
     db_path: Optional[str] = None,
 ) -> bool:
     """根據文件流水號 ID 移除文件紀錄。"""
-    init_db(vault_name=vault_name)
     with get_connection(vault_name=vault_name) as conn:
         res = conn.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
         return res.rowcount > 0
@@ -692,7 +726,6 @@ def create_session(
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """建立新的對話會話 (Session)。"""
-    init_db(vault_name=vault_name)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     session_title = title.strip() if title and title.strip() else "新對話"
 
@@ -715,7 +748,6 @@ def get_session(
     db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """根據 Session ID 查詢會話資訊。"""
-    init_db(vault_name=vault_name)
     with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
             "SELECT * FROM sessions WHERE id = %s",
@@ -730,7 +762,6 @@ def list_sessions(
     db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """取得所有對話會話清單，依最新更新時間倒序排列。"""
-    init_db(vault_name=vault_name)
     with get_connection(vault_name=vault_name) as conn:
         rows = conn.execute(
             "SELECT * FROM sessions ORDER BY updated_at DESC, id DESC"
@@ -746,7 +777,6 @@ def update_session_title(
     db_path: Optional[str] = None,
 ) -> bool:
     """更新指定 Session 的標題與更新時間。"""
-    init_db(vault_name=vault_name)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with get_connection(vault_name=vault_name) as conn:
         res = conn.execute(
@@ -766,7 +796,6 @@ def delete_session(
     db_path: Optional[str] = None,
 ) -> bool:
     """刪除指定 Session，因 foreign key ON DELETE CASCADE，對應訊息將一併被刪除。"""
-    init_db(vault_name=vault_name)
     with get_connection(vault_name=vault_name) as conn:
         res = conn.execute("DELETE FROM sessions WHERE id = %s", (session_id,))
         return res.rowcount > 0
@@ -783,7 +812,6 @@ def add_chat_message(
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """新增一筆對話訊息至特定 Session，並自動觸發更新 Session 的 updated_at。"""
-    init_db(vault_name=vault_name)
     if role not in ("user", "assistant"):
         raise ValueError("role 必須為 'user' 或 'assistant'")
     if mode not in ("chat", "rag"):
@@ -828,7 +856,6 @@ def get_chat_messages(
     db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """取得指定 Session 的對話紀錄 (依時間正序排列)。若指定 limit 則取最近的 N 筆訊息。"""
-    init_db(vault_name=vault_name)
     with get_connection(vault_name=vault_name) as conn:
         if limit is not None and limit > 0:
             rows = conn.execute(

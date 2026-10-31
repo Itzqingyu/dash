@@ -41,6 +41,7 @@ export default function App() {
   // 畫面路由切換 (初始一律首頁 home 開局，絕不預設進入上次工作台)
   const [currentView, setCurrentView] = useState<string>('home');
   const [activeVaultName, setActiveVaultName] = useState<string>('default');
+  const [activeVaultId, setActiveVaultId] = useState<string>('v_default');
 
   // 活動清單與選取狀態
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -77,7 +78,10 @@ export default function App() {
     try {
       const res = await vaultApi.getActiveVault();
       if (res.active_vault) {
-        setActiveVaultName(res.active_vault);
+        setActiveVaultName(res.display_name || res.active_vault);
+      }
+      if (res.vault_id) {
+        setActiveVaultId(res.vault_id);
       }
     } catch {
       // 保持靜默
@@ -262,8 +266,10 @@ export default function App() {
     return (
       <HomePage
         activeVaultName={activeVaultName}
-        onEnterVaultHub={(targetVault) => {
-          setActiveVaultName(targetVault);
+        activeVaultId={activeVaultId}
+        onEnterVaultHub={(targetVaultId, targetVaultName) => {
+          setActiveVaultId(targetVaultId);
+          setActiveVaultName(targetVaultName || targetVaultId);
           handleVaultChanged();
           setCurrentView('vault-hub');
         }}
@@ -277,6 +283,7 @@ export default function App() {
     return (
       <VaultHubPage
         vaultName={activeVaultName}
+        vaultId={activeVaultId}
         onNavigateToHome={() => setCurrentView('home')}
         onNavigateToView={(view) => handleSetView(view)}
         onVaultRenamed={(newName) => {

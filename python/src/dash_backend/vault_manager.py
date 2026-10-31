@@ -299,9 +299,9 @@ def init_vault(
     }
 
 
-def switch_vault(vault_identifier: str) -> Dict[str, Any]:
+def switch_vault(vault_identifier: str, caller_user_id: Optional[int] = None) -> Dict[str, Any]:
     """動態熱切換使用中的 Vault（支援 vault_id 或名稱解析）。"""
-    vid = database.resolve_vault_id(vault_identifier)
+    vid = database.resolve_vault_id(vault_identifier, user_id=caller_user_id)
     pool = database.get_pool()
     with pool.connection() as conn:
         row = conn.execute(
@@ -337,13 +337,13 @@ def switch_vault(vault_identifier: str) -> Dict[str, Any]:
     }
 
 
-def rename_vault(vault_identifier: str, new_name: str) -> Dict[str, Any]:
+def rename_vault(vault_identifier: str, new_name: str, caller_user_id: Optional[int] = None) -> Dict[str, Any]:
     """重新命名指定的 Vault (僅原子性更新 display_name，無需更動 Schema 與磁碟資料夾)。"""
     clean_new = sanitize_vault_name(new_name)
     if not clean_new:
         raise ValueError("新紀錄庫名稱不能為空。")
 
-    vid = database.resolve_vault_id(vault_identifier)
+    vid = database.resolve_vault_id(vault_identifier, user_id=caller_user_id)
     pool = database.get_pool()
     with pool.connection() as conn:
         old_rec = conn.execute(
@@ -384,7 +384,7 @@ def rename_vault(vault_identifier: str, new_name: str) -> Dict[str, Any]:
 
 def delete_vault(vault_identifier: str, caller_user_id: Optional[int] = None) -> Dict[str, Any]:
     """刪除指定的非當前使用中 Vault (CASCADE 刪除 Schema 與所有實體檔案)。"""
-    vid = database.resolve_vault_id(vault_identifier)
+    vid = database.resolve_vault_id(vault_identifier, user_id=caller_user_id)
     active_vid = get_active_vault_id()
 
     if vid == active_vid:
@@ -437,7 +437,7 @@ def create_invite_code(
     max_uses: Optional[int] = None,
 ) -> Dict[str, Any]:
     """由 Vault 的 owner 或 admin 建立安全邀請碼。"""
-    vid = database.resolve_vault_id(vault_name)
+    vid = database.resolve_vault_id(vault_name, user_id=created_by_user_id)
     if default_role not in ("admin", "user"):
         raise ValueError("邀請角色僅能設定為 admin 或 user。")
 
@@ -547,9 +547,9 @@ def join_vault_by_invite(invite_code: str, user_id: int) -> Dict[str, Any]:
     }
 
 
-def list_vault_members(vault_name: str) -> List[Dict[str, Any]]:
+def list_vault_members(vault_name: str, caller_user_id: Optional[int] = None) -> List[Dict[str, Any]]:
     """列出特定 Vault 的所有成員與角色。"""
-    vid = database.resolve_vault_id(vault_name)
+    vid = database.resolve_vault_id(vault_name, user_id=caller_user_id)
     pool = database.get_pool()
     with pool.connection() as conn:
         rows = conn.execute(
@@ -589,7 +589,7 @@ def update_member_role(
     caller_user_id: int,
 ) -> Dict[str, Any]:
     """由 owner 變更成員角色 (只允許調整為 admin 或 user，不可有第二個 owner)。"""
-    vid = database.resolve_vault_id(vault_name)
+    vid = database.resolve_vault_id(vault_name, user_id=caller_user_id)
     if new_role not in ("admin", "user"):
         raise ValueError("只能將成員身分調整為 admin 或 user，不可變更為 owner。")
 
