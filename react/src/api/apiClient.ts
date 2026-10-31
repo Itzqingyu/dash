@@ -87,6 +87,18 @@ export async function apiRequest<T>(
         window.dispatchEvent(new Event('dash:unauthorized'));
       }
 
+      // 若為 403 或 404 且與紀錄庫存取或已被刪除相關，發布強制退出通知
+      if (
+        (response.status === 403 || response.status === 404) &&
+        (errorMessage.includes('紀錄庫') || errorMessage.includes('無權存取') || errorMessage.includes('找不到'))
+      ) {
+        window.dispatchEvent(
+          new CustomEvent('dash:vault-kicked', {
+            detail: { message: errorMessage },
+          })
+        );
+      }
+
       throw new BackendApiError(errorMessage, response.status, detail);
     }
 

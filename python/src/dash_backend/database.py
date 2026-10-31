@@ -98,6 +98,17 @@ def reset_db_state() -> None:
     _active_vault_cache = None
 
 
+def unregister_vault_schema(vid: str) -> None:
+    """從初始化快取中註銷指定 Vault 的 Schema（刪除紀錄庫時調用）。"""
+    global _active_vault_cache
+    with _init_lock:
+        schema = sanitize_schema_name(vid)
+        _initialized_schemas.discard(vid)
+        _initialized_schemas.discard(schema)
+        if _active_vault_cache == vid:
+            _active_vault_cache = None
+
+
 def resolve_vault_id(
     identifier: Optional[str] = None,
     user_id: Optional[int] = None,
@@ -206,6 +217,23 @@ def get_active_vault_id() -> str:
                             val = v_row["vault_id"]
                         else:
                             val = f"v_{val}"
+
+                # 關鍵防護：檢查該 val 是否仍然存在於 public.vaults 中，避免已刪除的紀錄庫被繼續存取
+                if val != DEFAULT_VAULT_ID:
+                    v_exists = conn.execute(
+                        "SELECT vault_id FROM public.vaults WHERE vault_id = %s LIMIT 1;", (val,)
+                    ).fetchone()
+                    if not v_exists:
+                        val = DEFAULT_VAULT_ID
+                        conn.execute(
+                            """
+                            UPDATE public.system_settings
+                            SET value = %s
+                            WHERE key IN ('active_vault_id', 'active_vault');
+                            """,
+                            (DEFAULT_VAULT_ID,),
+                        )
+
                 _active_vault_cache = val
                 return _active_vault_cache
 

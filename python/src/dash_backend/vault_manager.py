@@ -383,12 +383,12 @@ def rename_vault(vault_identifier: str, new_name: str, caller_user_id: Optional[
 
 
 def delete_vault(vault_identifier: str, caller_user_id: Optional[int] = None) -> Dict[str, Any]:
-    """刪除指定的非當前使用中 Vault (CASCADE 刪除 Schema 與所有實體檔案)。"""
+    """刪除指定的 Vault (CASCADE 刪除 Schema 與所有實體檔案)。若為使用中亦允許直接刪除並自動切回預設紀錄庫。"""
     vid = database.resolve_vault_id(vault_identifier, user_id=caller_user_id)
     active_vid = get_active_vault_id()
 
-    if vid == active_vid:
-        raise ValueError("無法刪除當前使用中的紀錄庫！請先切換至其他紀錄庫後再進行刪除。")
+    if vid == database.DEFAULT_VAULT_ID or vid == "default":
+        raise ValueError("預設系統紀錄庫不可被刪除。")
 
     schema_name = database.sanitize_schema_name(vid)
     pool = database.get_pool()
@@ -417,6 +417,16 @@ def delete_vault(vault_identifier: str, caller_user_id: Optional[int] = None) ->
     # 3. 刪除對應的實體 Markdown 目錄
     md_dir = get_markdown_dir(vid)
     shutil.rmtree(md_dir, ignore_errors=True)
+
+    # 4. 註銷快取並重設使用中標記
+    database.unregister_vault_schema(vid)
+
+    # 5. 若刪除的紀錄庫為當前使用中紀錄庫，強制切回預設紀錄庫
+    if vid == active_vid or vid == get_active_vault_id():
+        database.set_active_vault_id(database.DEFAULT_VAULT_ID)
+        database.reset_db_state()
+        ensure_default_vault()
+        database.init_db(database.DEFAULT_VAULT_ID)
 
     return {
         "status": "success",

@@ -120,6 +120,15 @@ export default function App() {
     }
   }, [user, loadActiveVault, loadActivities]);
 
+  // 切換或重設 Vault 後更新狀態
+  const handleVaultChanged = useCallback(() => {
+    setSelectedActivityId(null);
+    loadActiveVault();
+    loadActivities();
+    setScheduleVersion((v) => v + 1);
+    setMeetingVersion((v) => v + 1);
+  }, [loadActiveVault, loadActivities]);
+
   // 當切換回活動工作台或總覽時，重新載入活動清單確保狀態最新
   useEffect(() => {
     if (user && (currentView === 'activities' || currentView === 'overview')) {
@@ -127,21 +136,60 @@ export default function App() {
     }
   }, [currentView, user, loadActivities]);
 
+  // 監聽紀錄庫被刪除事件，強制正在使用該紀錄庫的使用者退回首頁
+  useEffect(() => {
+    const handleVaultKicked = (e: Event) => {
+      if (currentView !== 'home') {
+        const customEvt = e as CustomEvent<{ message?: string }>;
+        const msg = customEvt.detail?.message || '您正在瀏覽的紀錄庫已被刪除，系統將返回首頁。';
+        alert(msg);
+        setActiveVaultName('default');
+        setActiveVaultId('v_default');
+        handleVaultChanged();
+        setCurrentView('home');
+      }
+    };
+    window.addEventListener('dash:vault-kicked', handleVaultKicked);
+    return () => window.removeEventListener('dash:vault-kicked', handleVaultKicked);
+  }, [currentView, handleVaultChanged]);
+
+  // 定期檢測當前紀錄庫存續狀態（每 4 秒或視窗重新獲得焦點時），若被其他使用者刪除則強制退出
+  useEffect(() => {
+    if (!user || currentView === 'home' || activeVaultId === 'v_default') {
+      return;
+    }
+
+    const checkVaultSurvival = async () => {
+      try {
+        const list = await vaultApi.listVaults();
+        const exists = list.some((v) => v.vault_id === activeVaultId);
+        if (!exists) {
+          alert('您正在使用的紀錄庫已被刪除，系統已強制退出並返回首頁。');
+          setActiveVaultName('default');
+          setActiveVaultId('v_default');
+          handleVaultChanged();
+          setCurrentView('home');
+        }
+      } catch {
+        // 保持靜默
+      }
+    };
+
+    const intervalId = setInterval(checkVaultSurvival, 4000);
+    window.addEventListener('focus', checkVaultSurvival);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', checkVaultSurvival);
+    };
+  }, [user, currentView, activeVaultId, handleVaultChanged]);
+
   // 切換畫面
   const handleSetView = (view: string, activityId?: number) => {
     if (activityId !== undefined) {
       setSelectedActivityId(activityId);
     }
     setCurrentView(view);
-  };
-
-  // 切換或重設 Vault 後更新狀態
-  const handleVaultChanged = () => {
-    setSelectedActivityId(null);
-    loadActiveVault();
-    loadActivities();
-    setScheduleVersion((v) => v + 1);
-    setMeetingVersion((v) => v + 1);
   };
 
   // 點擊選擇活動並進入總覽
@@ -291,6 +339,8 @@ export default function App() {
           handleVaultChanged();
         }}
         onVaultDeleted={() => {
+          setActiveVaultName('default');
+          setActiveVaultId('v_default');
           handleVaultChanged();
           setCurrentView('home');
         }}

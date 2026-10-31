@@ -83,13 +83,16 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
       if (current) {
         setVaultInfo(current);
         setRenameValue(current.display_name || current.name);
+      } else {
+        alert('此紀錄庫已被刪除或您已無權限存取，系統將返回首頁。');
+        onNavigateToHome();
       }
     } catch {
-      // 保持靜默
+      onNavigateToHome();
     } finally {
       setLoadingInfo(false);
     }
-  }, [vaultName, vaultId]);
+  }, [vaultName, vaultId, onNavigateToHome]);
 
   useEffect(() => {
     loadVaultData();
