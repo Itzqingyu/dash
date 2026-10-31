@@ -52,8 +52,8 @@
   width: 56px;
   height: 56px;
   border-radius: var(--radius);
-  background-color: var(--navy);
-  color: var(--white);
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -227,7 +227,7 @@
 }
 
 .dash-out-storage-dot.chroma {
-  background: var(--navy);
+  background: var(--cyan);
 }
 
 .dash-out-storage-dot.markdown {

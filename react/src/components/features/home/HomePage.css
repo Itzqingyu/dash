@@ -235,7 +235,7 @@
 
 .vault-card-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -405,4 +405,57 @@
   gap: 10px;
   border-top: 1px solid var(--line);
   padding-top: 16px;
+}
+
+/* 彈窗按鈕標準化 */
+.btn-primary {
+  padding: 8px 18px;
+  background-color: var(--cyan);
+  color: var(--white);
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--cyan-hover);
+  border-color: var(--cyan-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 8px 18px;
+  background-color: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--hover);
+  border-color: var(--muted);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -345,18 +345,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                     tabIndex={0}
                   >
                     <div className="vault-card-header">
-                      <div className="vault-card-title-group">
-                        <Database size={20} className="vault-card-icon" />
-                        <h3 className="vault-card-title">{v.display_name || v.name}</h3>
-                      </div>
+                      <h3 className="vault-card-title">{v.display_name || v.name}</h3>
                       <span className={`role-badge role-${role}`}>
                         {role.toUpperCase()}
                       </span>
                     </div>
-
-                    <p className="vault-card-desc">
-                      {v.description || '專案決策、歷程會議與規章紀錄庫'}
-                    </p>
 
                     <div className="vault-card-footer">
                       <div className="vault-card-stats">

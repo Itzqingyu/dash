@@ -278,7 +278,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
           tabIndex={0}
         >
           <div className="hub-card-top">
-            <div className="hub-card-icon cyan">
+            <div className="hub-card-icon">
               <LayoutGrid size={22} />
             </div>
             <div className="hub-card-info">
@@ -305,7 +305,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
           tabIndex={0}
         >
           <div className="hub-card-top">
-            <div className="hub-card-icon cyan">
+            <div className="hub-card-icon">
               <FileText size={22} />
             </div>
             <div className="hub-card-info">
@@ -332,7 +332,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
           tabIndex={0}
         >
           <div className="hub-card-top">
-            <div className="hub-card-icon navy">
+            <div className="hub-card-icon">
               <MessageSquare size={22} />
             </div>
             <div className="hub-card-info">
@@ -359,7 +359,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
           tabIndex={0}
         >
           <div className="hub-card-top">
-            <div className="hub-card-icon cyan">
+            <div className="hub-card-icon">
               <FileScan size={22} />
             </div>
             <div className="hub-card-info">
@@ -386,7 +386,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
           tabIndex={0}
         >
           <div className="hub-card-top">
-            <div className="hub-card-icon navy">
+            <div className="hub-card-icon">
               <Archive size={22} />
             </div>
             <div className="hub-card-info">

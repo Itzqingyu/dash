@@ -107,7 +107,7 @@
   height: 56px;
   border-radius: 14px;
   background-color: var(--navy);
-  color: var(--panel);
+  color: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -220,16 +220,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-.hub-card-icon.cyan {
   background-color: var(--cyan-soft);
   color: var(--cyan);
-}
-
-.hub-card-icon.navy {
-  background-color: var(--navy-soft);
-  color: var(--panel);
 }
 
 .hub-card-info {
@@ -325,3 +317,74 @@
   padding-top: 14px;
 }
 
+
+/* 彈窗按鈕標準化 */
+.btn-primary {
+  padding: 8px 18px;
+  background-color: var(--cyan);
+  color: var(--white);
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--cyan-hover);
+  border-color: var(--cyan-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 8px 18px;
+  background-color: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--hover);
+  border-color: var(--muted);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-close:hover {
+  background-color: var(--hover);
+  color: var(--ink);
+}

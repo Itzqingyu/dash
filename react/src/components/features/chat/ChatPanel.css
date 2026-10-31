@@ -51,8 +51,8 @@
   width: 56px;
   height: 56px;
   border-radius: var(--radius);
-  background-color: var(--navy);
-  color: var(--white);
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -498,8 +498,8 @@
 }
 
 .user-avatar {
-  background: var(--navy);
-  color: var(--panel);
+  background: var(--cyan);
+  color: var(--white);
 }
 
 .assistant-avatar {
@@ -563,9 +563,9 @@
 }
 
 .user-body {
-  background: var(--navy);
+  background: var(--cyan);
   color: var(--white);
-  border-color: var(--navy);
+  border-color: var(--cyan);
 }
 
 .assistant-body {
@@ -581,23 +581,82 @@
 
 .chat-markdown-content {
   color: inherit;
+  font-size: 0.92rem;
+  line-height: 1.6;
 }
 
 .chat-markdown-content p {
-  margin: 0 0 8px 0;
+  margin: 0 0 10px 0;
 }
 
 .chat-markdown-content p:last-child {
   margin-bottom: 0;
 }
 
+.chat-markdown-content ol,
+.chat-markdown-content ul {
+  margin: 10px 0 12px 0;
+  padding-left: 24px;
+}
+
+.chat-markdown-content ol:last-child,
+.chat-markdown-content ul:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown-content li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+  padding-left: 4px;
+}
+
+.chat-markdown-content li::marker {
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.chat-markdown-content li:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown-content strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.user-body .chat-markdown-content strong {
+  color: var(--white);
+}
+
+.user-body .chat-markdown-content li::marker {
+  color: var(--white);
+}
+
+.chat-markdown-content code {
+  background-color: var(--canvas);
+  color: var(--ink);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.88em;
+  border: 1px solid var(--line);
+}
+
+.user-body .chat-markdown-content code {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
 .chat-markdown-content pre {
-  background: var(--navy);
-  color: var(--canvas);
-  padding: 12px;
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 12px 14px;
   border-radius: var(--radius);
   overflow-x: auto;
-  font-size: .82rem;
+  font-size: 0.84rem;
+  border: 1px solid var(--line);
+  margin: 10px 0;
 }
 
 /* 引用來源折疊卡片 */

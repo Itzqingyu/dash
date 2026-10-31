@@ -50,8 +50,8 @@
   width: 56px;
   height: 56px;
   border-radius: var(--radius);
-  background-color: var(--navy);
-  color: var(--white);
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,14 +106,14 @@
 }
 
 .workspace-header-btn.primary {
-  background-color: var(--navy);
+  background-color: var(--cyan);
   color: var(--white);
-  border-color: var(--navy);
+  border-color: var(--cyan);
 }
 
 .workspace-header-btn.primary:hover {
-  background-color: var(--navy-light);
-  border-color: var(--navy-light);
+  background-color: var(--cyan-hover);
+  border-color: var(--cyan-hover);
 }
 
 .workspace-header-btn.secondary {
