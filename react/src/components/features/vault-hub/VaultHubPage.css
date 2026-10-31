@@ -312,9 +312,56 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
   border-top: 1px solid var(--line);
-  padding-top: 14px;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.hub-modal-footer .btn-primary,
+.hub-modal-footer button[type="submit"] {
+  padding: 8px 18px;
+  background-color: var(--cyan);
+  color: var(--white);
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.hub-modal-footer .btn-primary:hover:not(:disabled),
+.hub-modal-footer button[type="submit"]:hover:not(:disabled) {
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
+}
+
+.hub-modal-footer .btn-secondary,
+.hub-modal-footer button[type="button"]:not(.btn-close) {
+  padding: 8px 18px;
+  background-color: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.hub-modal-footer .btn-secondary:hover:not(:disabled),
+.hub-modal-footer button[type="button"]:not(.btn-close):hover:not(:disabled) {
+  background-color: var(--white);
+  border-color: var(--muted);
+  color: var(--ink);
 }
 
 

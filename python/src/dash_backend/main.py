@@ -454,7 +454,8 @@ def get_document_content(doc_id: int):
         # 若當前預設 schema 找不到，遍歷所有 vault 查找該 doc_id
         try:
             for v in list_vaults():
-                cand_doc = get_doc_by_id(doc_id, vault_name=v.name)
+                v_target = v.get('vault_id') if isinstance(v, dict) else (getattr(v, 'vault_id', None) or getattr(v, 'name', None))
+                cand_doc = get_doc_by_id(doc_id, vault_name=v_target)
                 if cand_doc:
                     doc = cand_doc
                     break
@@ -1190,11 +1191,13 @@ def api_create_vault(
 
     try:
         init_result = init_vault(payload.vault_name, payload.description or "", owner_user_id=user_id)
-        switch_result = switch_vault(init_result["name"])
+        switch_result = switch_vault(init_result["vault_id"])
+        display = init_result.get("display_name") or init_result.get("name")
         return {
             "status": "success",
-            "message": f"已成功建立並切換至全新 Vault「{init_result['name']}」",
+            "message": f"已成功建立並切換至全新紀錄庫「{display}」",
             "vault": init_result,
+            "vault_id": init_result["vault_id"],
             "stats": switch_result.get("stats", {})
         }
     except ValueError as exc:

@@ -2,7 +2,7 @@
 
 提供：
 1. PostgreSQL 連線池與 pgvector 向量擴充支援。
-2. 基於 PostgreSQL Schema 的多 Vault 物理隔離。
+2. 基於 PostgreSQL Schema (vault_v_<uuid12>) 的多 Vault 物理隔離。
 3. 核心資料表自動初始化與外鍵、HNSW 索引建立。
 4. 文件 Metadata (documents) CRUD。
 5. 對話工作階段 (sessions) 與訊息 (chat_messages) CRUD。
@@ -24,6 +24,8 @@ from psycopg_pool import ConnectionPool
 # 全域連線池與使用中 Vault 快取
 _pool: Optional[ConnectionPool] = None
 _active_vault_cache: Optional[str] = None
+
+DEFAULT_VAULT_ID = "v_default"
 
 
 def get_database_url() -> str:
@@ -94,15 +96,50 @@ def reset_db_state() -> None:
     _active_vault_cache = None
 
 
-def sanitize_schema_name(vault_name: Optional[str] = None) -> str:
-    """將 Vault 名稱安全標準化為 PostgreSQL Schema 名稱 (vault_<name>)。"""
-    raw = (vault_name or "default").strip()
+def resolve_vault_id(identifier: Optional[str] = None) -> str:
+    """將任意 Vault 識別碼 (vault_id、舊版名稱或 None) 安全解析為標準不可變之 vault_id (v_...)。"""
+    if not identifier:
+        return get_active_vault_id()
+
+    raw = str(identifier).strip()
+    if not raw:
+        return get_active_vault_id()
+
+    # 若已經是標準 vault_id 格式 (v_...) 或是 v-xxx 舊格式
+    if raw.startswith("v_"):
+        return raw
+    if raw.startswith("v-"):
+        return f"v_{raw[2:]}"
+    if raw == "default":
+        return DEFAULT_VAULT_ID
+
+    # 嘗試由 public.vaults 資料庫比對 vault_id 或 name
+    try:
+        pool = get_pool()
+        with pool.connection() as conn:
+            row = conn.execute(
+                "SELECT vault_id FROM public.vaults WHERE vault_id = %s OR name = %s LIMIT 1;",
+                (raw, raw),
+            ).fetchone()
+            if row and row.get("vault_id"):
+                return row["vault_id"]
+    except Exception:
+        pass
+
+    # 兜底：將字串清理為合法代碼
     clean = re.sub(r"[^a-zA-Z0-9_]", "_", raw).lower()
-    return f"vault_{clean or 'default'}"
+    return f"v_{clean or 'default'}"
 
 
-def get_active_vault_name() -> str:
-    """取得當前使用中的 Vault 名稱。"""
+def sanitize_schema_name(vault_identifier: Optional[str] = None) -> str:
+    """將 Vault 識別碼標準化為 PostgreSQL Schema 名稱 (vault_<vault_id>)。"""
+    vid = resolve_vault_id(vault_identifier)
+    clean = re.sub(r"[^a-zA-Z0-9_]", "_", vid).lower()
+    return f"vault_{clean or 'v_default'}"
+
+
+def get_active_vault_id() -> str:
+    """取得當前使用中的 Vault 唯一識別碼 (vault_id)。"""
     global _active_vault_cache
     if _active_vault_cache:
         return _active_vault_cache
@@ -110,7 +147,6 @@ def get_active_vault_name() -> str:
     try:
         pool = get_pool()
         with pool.connection() as conn:
-            # 確保 public.system_settings 存在
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS public.system_settings (
@@ -120,30 +156,44 @@ def get_active_vault_name() -> str:
                 """
             )
             row = conn.execute(
-                "SELECT value FROM public.system_settings WHERE key = 'active_vault'"
+                "SELECT value FROM public.system_settings WHERE key = 'active_vault_id' OR key = 'active_vault' ORDER BY key DESC LIMIT 1;"
             ).fetchone()
             if row and row.get("value"):
-                _active_vault_cache = row["value"]
+                val = row["value"].strip()
+                if not val.startswith("v_"):
+                    if val == "default":
+                        val = DEFAULT_VAULT_ID
+                    else:
+                        v_row = conn.execute(
+                            "SELECT vault_id FROM public.vaults WHERE name = %s LIMIT 1;", (val,)
+                        ).fetchone()
+                        if v_row and v_row.get("vault_id"):
+                            val = v_row["vault_id"]
+                        else:
+                            val = f"v_{val}"
+                _active_vault_cache = val
                 return _active_vault_cache
-            # 預設寫入 default
+
+            # 預設寫入 v_default
             conn.execute(
                 """
                 INSERT INTO public.system_settings (key, value)
-                VALUES ('active_vault', 'default')
-                ON CONFLICT (key) DO NOTHING
-                """
+                VALUES ('active_vault_id', %s), ('active_vault', %s)
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+                """,
+                (DEFAULT_VAULT_ID, DEFAULT_VAULT_ID),
             )
-            _active_vault_cache = "default"
+            _active_vault_cache = DEFAULT_VAULT_ID
             return _active_vault_cache
     except Exception:
-        return "default"
+        return DEFAULT_VAULT_ID
 
 
-def set_active_vault_name(vault_name: str) -> None:
-    """設定當前使用中的 Vault 名稱並同步至資料庫。"""
+def set_active_vault_id(vault_identifier: str) -> None:
+    """設定當前使用中的 Vault (以 vault_id 為核心) 並同步至資料庫。"""
     global _active_vault_cache
-    clean_name = vault_name.strip() or "default"
-    _active_vault_cache = clean_name
+    vid = resolve_vault_id(vault_identifier)
+    _active_vault_cache = vid
     pool = get_pool()
     with pool.connection() as conn:
         conn.execute(
@@ -157,11 +207,41 @@ def set_active_vault_name(vault_name: str) -> None:
         conn.execute(
             """
             INSERT INTO public.system_settings (key, value)
-            VALUES ('active_vault', %s)
-            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            VALUES ('active_vault_id', %s)
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
             """,
-            (clean_name,),
+            (vid,),
         )
+        conn.execute(
+            """
+            INSERT INTO public.system_settings (key, value)
+            VALUES ('active_vault', %s)
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+            """,
+            (vid,),
+        )
+
+
+def get_active_vault_name() -> str:
+    """取得當前使用中 Vault 的顯示名稱（向後相容）。"""
+    vid = get_active_vault_id()
+    try:
+        pool = get_pool()
+        with pool.connection() as conn:
+            row = conn.execute(
+                "SELECT display_name, name FROM public.vaults WHERE vault_id = %s LIMIT 1;",
+                (vid,),
+            ).fetchone()
+            if row:
+                return row.get("display_name") or row.get("name") or vid
+    except Exception:
+        pass
+    return vid
+
+
+def set_active_vault_name(vault_name: str) -> None:
+    """設定當前使用中的 Vault 名稱（相容調用）。"""
+    set_active_vault_id(vault_name)
 
 
 # ==========================================
@@ -174,9 +254,9 @@ def get_connection(
     db_path: Optional[str] = None,
 ) -> Iterator[psycopg.Connection]:
     """提供會自動歸還連線池的 PostgreSQL 連線 ContextManager，
-    並自動將 search_path 切換至該 Vault 所屬之 schema 命名空間。
+    並自動將 search_path 切換至該 Vault 所屬之 schema 命名空間 (vault_<vault_id>)。
     """
-    target_vault = vault_name or get_active_vault_name()
+    target_vault = vault_name or get_active_vault_id()
     schema_name = sanitize_schema_name(target_vault)
     pool = get_pool()
 
@@ -192,9 +272,9 @@ def init_db(
     vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
 ) -> None:
-    """初始化指定 Vault 的 PostgreSQL Schema 與 10 核心資料表（含向量擴充與 HNSW 索引）。"""
-    target_vault = vault_name or get_active_vault_name()
-    schema_name = sanitize_schema_name(target_vault)
+    """初始化指定 Vault 的 PostgreSQL Schema (vault_<vault_id>) 與 10 核心資料表。"""
+    vid = resolve_vault_id(vault_name)
+    schema_name = sanitize_schema_name(vid)
     pool = get_pool()
 
     with pool.connection() as conn:
@@ -209,13 +289,16 @@ def init_db(
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS public.vaults (
-                name VARCHAR(100) PRIMARY KEY,
+                vault_id VARCHAR(64) PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
                 display_name TEXT NOT NULL,
-                vault_id VARCHAR(64) NOT NULL,
+                owner_id INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
                 description TEXT DEFAULT '',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
+            CREATE INDEX IF NOT EXISTS idx_vaults_owner ON public.vaults(owner_id);
+            CREATE INDEX IF NOT EXISTS idx_vaults_name ON public.vaults(name);
             """
         )
         conn.execute(
@@ -242,14 +325,14 @@ def init_db(
             """
             CREATE TABLE IF NOT EXISTS public.vault_members (
                 id SERIAL PRIMARY KEY,
-                vault_name VARCHAR(100) NOT NULL REFERENCES public.vaults(name) ON DELETE CASCADE,
+                vault_id VARCHAR(64) NOT NULL REFERENCES public.vaults(vault_id) ON DELETE CASCADE,
                 user_id INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
                 role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('owner', 'admin', 'user')),
                 joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(vault_name, user_id)
+                UNIQUE(vault_id, user_id)
             );
             CREATE INDEX IF NOT EXISTS idx_vault_members_user ON public.vault_members(user_id);
-            CREATE INDEX IF NOT EXISTS idx_vault_members_vault ON public.vault_members(vault_name);
+            CREATE INDEX IF NOT EXISTS idx_vault_members_vault_id ON public.vault_members(vault_id);
             """
         )
         conn.execute(
@@ -257,7 +340,7 @@ def init_db(
             CREATE TABLE IF NOT EXISTS public.vault_invitations (
                 id SERIAL PRIMARY KEY,
                 invite_code VARCHAR(32) UNIQUE NOT NULL,
-                vault_name VARCHAR(100) NOT NULL REFERENCES public.vaults(name) ON DELETE CASCADE,
+                vault_id VARCHAR(64) NOT NULL REFERENCES public.vaults(vault_id) ON DELETE CASCADE,
                 created_by INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
                 default_role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (default_role IN ('admin', 'user')),
                 expires_at TIMESTAMPTZ,
@@ -266,6 +349,7 @@ def init_db(
                 created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_invitations_code ON public.vault_invitations(invite_code);
+            CREATE INDEX IF NOT EXISTS idx_invitations_vault_id ON public.vault_invitations(vault_id);
             """
         )
 
@@ -283,7 +367,7 @@ def init_db(
             """
         )
 
-        # 4.2 文件切塊與向量表 (全面取代 ChromaDB)
+        # 4.2 文件切塊與向量表
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS document_chunks (
@@ -449,7 +533,6 @@ def init_db(
         # 5. 建立外鍵與效能索引
         indices = [
             ("idx_meetings_activity_id", "meetings(activity_id)"),
-            ("idx_meetings_source_doc_id", "meetings(source_document_id)"),
             ("idx_tasks_activity_id", "tasks(activity_id)"),
             ("idx_tasks_meeting_id", "tasks(meeting_id)"),
             ("idx_decisions_activity_id", "decisions(activity_id)"),
@@ -459,20 +542,20 @@ def init_db(
             ("idx_incidents_activity_id", "incidents(activity_id)"),
             ("idx_incidents_schedule_id", "incidents(schedule_id)"),
             ("idx_chat_messages_session_id", "chat_messages(session_id)"),
-            ("idx_sessions_updated_at", "sessions(updated_at)"),
         ]
         for index_name, index_def in indices:
             conn.execute(f"CREATE INDEX IF NOT EXISTS {index_name} ON {index_def};")
 
-        # 6. 同步至清冊表
+        # 6. 同步至 public.vaults 清冊表 (若不存在)
         now = datetime.now().isoformat()
+        display = "default" if vid == DEFAULT_VAULT_ID else vid
         conn.execute(
             """
-            INSERT INTO public.vaults (name, display_name, vault_id, description, created_at, updated_at)
+            INSERT INTO public.vaults (vault_id, name, display_name, description, created_at, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (name) DO NOTHING;
+            ON CONFLICT (vault_id) DO NOTHING;
             """,
-            (target_vault, target_vault, f"v-{target_vault}", f"Vault: {target_vault}", now, now),
+            (vid, display, display, f"紀錄庫: {display}", now, now),
         )
 
 
@@ -480,10 +563,11 @@ def init_db(
 # 2. Documents (文件) CRUD
 # ==========================================
 
-def to_rel_doc_path(path: str) -> str:
-    """將檔案實體路徑或名稱標準化為相對於 data/ 的相對路徑 (格式固定為 markdown/{filename})。"""
+def to_rel_doc_path(path: str, vault_identifier: Optional[str] = None) -> str:
+    """將檔案實體路徑或名稱標準化為相對路徑 (格式固定為 markdown/{vault_id}/{filename})。"""
     filename = os.path.basename(path)
-    return f"markdown/{filename}"
+    vid = resolve_vault_id(vault_identifier)
+    return f"markdown/{vid}/{filename}"
 
 
 def get_doc_by_path(
@@ -493,7 +577,7 @@ def get_doc_by_path(
 ) -> Optional[Dict[str, Any]]:
     """根據檔案路徑查詢文件上傳與切塊紀錄。支援相對路徑、絕對路徑與檔名比對。"""
     init_db(vault_name=vault_name)
-    rel_path = to_rel_doc_path(file_path)
+    rel_path = to_rel_doc_path(file_path, vault_identifier=vault_name)
     filename = os.path.basename(file_path)
 
     with get_connection(vault_name=vault_name) as conn:
@@ -501,7 +585,7 @@ def get_doc_by_path(
             """
             SELECT * FROM documents
             WHERE file_path = %s OR file_path = %s OR filename = %s
-            LIMIT 1
+            LIMIT 1;
             """,
             (rel_path, file_path, filename),
         ).fetchone()
@@ -546,7 +630,7 @@ def add_or_update_doc_record(
     """新增或更新文件的 Metadata 紀錄並回傳文件 ID。"""
     init_db(vault_name=vault_name)
     filename = os.path.basename(file_path)
-    rel_path = to_rel_doc_path(file_path)
+    rel_path = to_rel_doc_path(file_path, vault_identifier=vault_name)
     now = datetime.now()
 
     with get_connection(vault_name=vault_name) as conn:
@@ -571,14 +655,14 @@ def delete_doc_record_by_path(
 ) -> bool:
     """根據檔案路徑移除文件紀錄（外鍵 CASCADE 會自動刪除對應的向量切塊）。"""
     init_db(vault_name=vault_name)
-    rel_path = to_rel_doc_path(file_path)
+    rel_path = to_rel_doc_path(file_path, vault_identifier=vault_name)
     filename = os.path.basename(file_path)
 
     with get_connection(vault_name=vault_name) as conn:
         res = conn.execute(
             """
             DELETE FROM documents
-            WHERE file_path = %s OR file_path = %s OR filename = %s
+            WHERE file_path = %s OR file_path = %s OR filename = %s;
             """,
             (rel_path, file_path, filename),
         )

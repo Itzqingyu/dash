@@ -605,9 +605,13 @@
 }
 
 .chat-markdown-content li {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   line-height: 1.6;
-  padding-left: 4px;
+}
+
+.chat-markdown-content li > p {
+  margin: 0;
+  display: inline;
 }
 
 .chat-markdown-content li::marker {

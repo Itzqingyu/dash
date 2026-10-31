@@ -38,8 +38,10 @@ DASH 是一套專為團隊打造的現代化活動歷程、決策交接與智能
    - 密碼採用 bcrypt 進行 12 rounds 加鹽雜湊儲存於 `public.users`。
    - 簽發 7 天有效期的 JWT Access Token (Bearer)。
 2. **多租戶紀錄庫隔離 (Multi-Tenant Isolation)**:
-   - 每個紀錄庫在實體層面使用獨立的 PostgreSQL Schema 命名空間 (`vault_<name>`)，資料徹底物理隔離。
-   - 一個使用者可建立多個紀錄庫，一個紀錄庫也可包含多個使用者（多對多關係，記錄於 `public.vault_members`）。
+   - 每個紀錄庫在實體層面使用獨立、不可變的 `vault_id` (格式 `v_<uuid12>`) 作為全域唯一隔離依據。
+   - PostgreSQL Schema 命名空間：`vault_v_<uuid12>`；磁碟 Markdown 託管路徑：`markdown/v_<uuid12>/`，達成實體儲存與向量資料之徹底物理隔離。
+   - 前端顯示名稱 (`display_name`) 與底層物理路徑解耦，不同使用者可各自建立同名紀錄庫而互不碰撞。更名為純元資料更新，無需更動 Schema 或搬遷磁碟檔案。
+   - 一個使用者可建立多個紀錄庫，一個紀錄庫也可包含多個使用者（多對多關係，以 `vault_id` 記錄於 `public.vault_members` 與 `public.vault_invitations`）。
 3. **三級權限階層 (RBAC)**:
    - `owner`: 紀錄庫唯一創建者。具備所有權限，且唯一具備刪除該紀錄庫、晉升/降級成員身分的權力。系統嚴禁產生第二個 owner 或變更 owner。
    - `admin`: 具備日常業務權限與邀請碼建立權限。不可刪除紀錄庫或變更其他成員角色。

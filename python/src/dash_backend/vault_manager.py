@@ -1,10 +1,10 @@
 """資料庫與交接多 Vault 管理模組 (Vault Manager)。
 
 負責處理 PostgreSQL 規範下所有 Vault 的生命週期管理：
-1. 確保開箱預設 default Vault 存在。
-2. Vault 清冊 (public.vaults) 讀寫與驗證。
-3. 動態切換、新建、重新命名、刪除 Vault (基於 PostgreSQL Schema)。
-4. DASH OUT: 將當前 Vault 打包封裝為標準 ZIP (含 dash_data.json 與 markdown 文件)。
+1. 確保開箱預設 default Vault (v_default) 存在。
+2. Vault 清冊 (public.vaults) 讀寫與驗證（以不可變唯一 vault_id 為主鍵）。
+3. 動態切換、新建、重新命名、刪除 Vault (基於 PostgreSQL Schema vault_v_<uuid12> 與磁碟目錄 markdown/v_<uuid12>/)。
+4. DASH OUT: 將指定 Vault 打包封裝為標準 ZIP (含 dash_data.json 與 markdown 文件)。
 5. DASH IN: 驗證外部 ZIP 並匯入建立為全新獨立 Vault（支援新版 JSON 與舊版 SQLite 相容解壓）。
 """
 
@@ -37,21 +37,25 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 # ==========================================
 
 def sanitize_vault_name(name: str) -> str:
-    """過濾非法字元，確保 Vault 命名安全合規。"""
-    cleaned = re.sub(r'[\\/*?:"<>|\s]', "_", name.strip())
-    return cleaned or "vault"
+    """過濾非法字元，確保 Vault 顯示名稱安全合規。"""
+    cleaned = re.sub(r'[\\/*?:"<>|\r\n]', "", name.strip())
+    return cleaned or "紀錄庫"
+
+
+def get_active_vault_id() -> str:
+    """取得當前使用中之 Vault 唯一識別碼 (vault_id)。"""
+    return database.get_active_vault_id()
 
 
 def get_active_vault_name() -> str:
-    """取得當前使用中之 Vault 名稱。"""
+    """取得當前使用中之 Vault 顯示名稱。"""
     return database.get_active_vault_name()
 
 
-def get_markdown_dir(vault_name: Optional[str] = None) -> str:
-    """取得指定或當前 Vault 之託管 Markdown 文件目錄。"""
-    target = vault_name or get_active_vault_name()
-    clean_target = sanitize_vault_name(target)
-    vault_md_dir = os.path.join(MARKDOWN_ROOT, clean_target)
+def get_markdown_dir(vault_identifier: Optional[str] = None) -> str:
+    """取得指定或當前 Vault 之託管 Markdown 文件目錄 (路徑為 markdown/<vault_id>/)。"""
+    vid = database.resolve_vault_id(vault_identifier)
+    vault_md_dir = os.path.join(MARKDOWN_ROOT, vid)
     os.makedirs(vault_md_dir, exist_ok=True)
     return vault_md_dir
 
@@ -76,18 +80,33 @@ def get_dir_size(dir_path: str) -> int:
 # ==========================================
 
 def ensure_default_vault() -> None:
-    """開箱即用檢查：確保 default Vault Schema 與清冊存在。"""
-    database.init_db("default")
-    get_markdown_dir("default")
+    """開箱即用檢查：確保 default Vault (v_default) Schema 與清冊存在。"""
+    database.init_db("v_default")
+    get_markdown_dir("v_default")
 
 
-def get_vault_stats(vault_name: Optional[str] = None) -> Dict[str, Any]:
+def get_vault_stats(vault_identifier: Optional[str] = None) -> Dict[str, Any]:
     """取得指定或當前 Vault 的資料庫統計概況。"""
-    target_name = sanitize_vault_name(vault_name or get_active_vault_name())
-    schema_name = database.sanitize_schema_name(target_name)
+    vid = database.resolve_vault_id(vault_identifier)
+    schema_name = database.sanitize_schema_name(vid)
+
+    # 取得顯示名稱
+    display_name = vid
+    try:
+        pool = database.get_pool()
+        with pool.connection() as conn:
+            row = conn.execute(
+                "SELECT display_name, name FROM public.vaults WHERE vault_id = %s LIMIT 1;",
+                (vid,),
+            ).fetchone()
+            if row:
+                display_name = row.get("display_name") or row.get("name") or vid
+    except Exception:
+        pass
 
     stats: Dict[str, Any] = {
-        "vault_name": target_name,
+        "vault_id": vid,
+        "vault_name": display_name,
         "activities_count": 0,
         "meetings_count": 0,
         "tasks_count": 0,
@@ -104,7 +123,7 @@ def get_vault_stats(vault_name: Optional[str] = None) -> Dict[str, Any]:
     }
 
     try:
-        with database.get_connection(vault_name=target_name) as conn:
+        with database.get_connection(vault_name=vid) as conn:
             row = conn.execute(
                 f"""
                 SELECT
@@ -124,7 +143,7 @@ def get_vault_stats(vault_name: Optional[str] = None) -> Dict[str, Any]:
     except Exception:
         pass
 
-    md_dir = get_markdown_dir(target_name)
+    md_dir = get_markdown_dir(vid)
     stats["markdown_size_bytes"] = get_dir_size(md_dir)
     stats["data_size_bytes"] = stats["markdown_size_bytes"]
     return stats
@@ -133,23 +152,23 @@ def get_vault_stats(vault_name: Optional[str] = None) -> Dict[str, Any]:
 def list_vaults() -> List[Dict[str, Any]]:
     """列出 PostgreSQL public.vaults 中所有合法的 Vault。"""
     ensure_default_vault()
-    active_name = get_active_vault_name()
+    active_vid = get_active_vault_id()
     vault_list: List[Dict[str, Any]] = []
 
     try:
         pool = database.get_pool()
         with pool.connection() as conn:
             rows = conn.execute(
-                "SELECT * FROM public.vaults ORDER BY name ASC"
+                "SELECT * FROM public.vaults ORDER BY created_at ASC"
             ).fetchall()
             for r in rows:
-                v_name = r["name"]
-                is_active = (v_name == active_name)
-                stats = get_vault_stats(v_name)
+                vid = r["vault_id"]
+                is_active = (vid == active_vid)
+                stats = get_vault_stats(vid)
                 vault_list.append({
-                    "name": v_name,
-                    "display_name": r.get("display_name", v_name),
-                    "vault_id": r.get("vault_id", f"v-{v_name}"),
+                    "name": r.get("name", vid),
+                    "display_name": r.get("display_name", r.get("name", vid)),
+                    "vault_id": vid,
                     "created_at": r.get("created_at"),
                     "updated_at": r.get("updated_at"),
                     "description": r.get("description", ""),
@@ -159,15 +178,15 @@ def list_vaults() -> List[Dict[str, Any]]:
     except Exception:
         pass
 
-    # 將目前使用中的 Vault 排序置頂，其餘按字母順序排列
-    vault_list.sort(key=lambda x: (not x["is_active"], x["name"].lower()))
+    # 將目前使用中的 Vault 排序置頂，其餘按建立時間排序
+    vault_list.sort(key=lambda x: (not x["is_active"], x["created_at"]))
     return vault_list
 
 
 def list_user_vaults(user_id: int) -> List[Dict[str, Any]]:
     """列出指定使用者有權限存取的所有 Vault 清冊 (含成員角色與統計數據)。"""
     ensure_default_vault()
-    active_name = get_active_vault_name()
+    active_vid = get_active_vault_id()
     vault_list: List[Dict[str, Any]] = []
 
     try:
@@ -177,20 +196,20 @@ def list_user_vaults(user_id: int) -> List[Dict[str, Any]]:
                 """
                 SELECT v.*, vm.role AS user_role, vm.joined_at
                 FROM public.vault_members vm
-                JOIN public.vaults v ON vm.vault_name = v.name
+                JOIN public.vaults v ON vm.vault_id = v.vault_id
                 WHERE vm.user_id = %s
                 ORDER BY vm.joined_at ASC;
                 """,
                 (user_id,),
             ).fetchall()
             for r in rows:
-                v_name = r["name"]
-                is_active = (v_name == active_name)
-                stats = get_vault_stats(v_name)
+                vid = r["vault_id"]
+                is_active = (vid == active_vid)
+                stats = get_vault_stats(vid)
                 vault_list.append({
-                    "name": v_name,
-                    "display_name": r.get("display_name", v_name),
-                    "vault_id": r.get("vault_id", f"v-{v_name}"),
+                    "name": r.get("name", vid),
+                    "display_name": r.get("display_name", r.get("name", vid)),
+                    "vault_id": vid,
                     "created_at": r.get("created_at"),
                     "updated_at": r.get("updated_at"),
                     "description": r.get("description", ""),
@@ -211,49 +230,61 @@ def init_vault(
     description: str = "",
     owner_user_id: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """初始化並建立一個全新的空白 Vault (PostgreSQL Schema 與清冊紀錄)，並可指定 owner。"""
+    """初始化並建立一個全新獨立的空白 Vault (PostgreSQL Schema 與清冊紀錄)，並可指定 owner。
+
+    以不可變的唯一識別碼 (v_<uuid12>) 達成底層 schema 與儲存目錄的實體隔離，
+    允許不同使用者取相同的紀錄庫顯示名稱。
+    """
     clean_name = sanitize_vault_name(vault_name)
     if not clean_name:
-        raise ValueError("Vault 名稱不能為空。")
+        raise ValueError("紀錄庫名稱不能為空。")
 
     pool = database.get_pool()
-    with pool.connection() as conn:
-        existing = conn.execute(
-            "SELECT name FROM public.vaults WHERE name = %s", (clean_name,)
-        ).fetchone()
-        if existing:
-            raise ValueError(f"Vault 名稱「{clean_name}」已存在，無法重複建立。")
+    now = datetime.now().isoformat()
+    vault_id = f"v_{uuid.uuid4().hex[:12]}"
 
-        now = datetime.now().isoformat()
-        vault_id = f"v-{uuid.uuid4().hex[:12]}"
+    with pool.connection() as conn:
+        # 若有指定 owner，防呆檢查該 owner 是否已有同名紀錄庫
+        if owner_user_id is not None:
+            existing = conn.execute(
+                """
+                SELECT v.name FROM public.vault_members vm
+                JOIN public.vaults v ON vm.vault_id = v.vault_id
+                WHERE vm.user_id = %s AND vm.role = 'owner' AND v.display_name = %s;
+                """,
+                (owner_user_id, clean_name),
+            ).fetchone()
+            if existing:
+                raise ValueError(f"您已擁有同名紀錄庫「{clean_name}」，請使用其他名稱。")
+
         conn.execute(
             """
-            INSERT INTO public.vaults (name, display_name, vault_id, description, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s);
+            INSERT INTO public.vaults (vault_id, name, display_name, owner_id, description, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
             """,
-            (clean_name, clean_name, vault_id, description or f"紀錄庫: {clean_name}", now, now),
+            (vault_id, clean_name, clean_name, owner_user_id, description or f"紀錄庫: {clean_name}", now, now),
         )
 
-        # 若指定了 owner_user_id，將其寫入 public.vault_members 作為唯一 owner
         if owner_user_id is not None:
             conn.execute(
                 """
-                INSERT INTO public.vault_members (vault_name, user_id, role)
+                INSERT INTO public.vault_members (vault_id, user_id, role)
                 VALUES (%s, %s, 'owner')
-                ON CONFLICT (vault_name, user_id) DO NOTHING;
+                ON CONFLICT (vault_id, user_id) DO NOTHING;
                 """,
-                (clean_name, owner_user_id),
+                (vault_id, owner_user_id),
             )
 
     # 建立 Schema 與 10 核心表
-    database.init_db(clean_name)
-    get_markdown_dir(clean_name)
+    database.init_db(vault_id)
+    get_markdown_dir(vault_id)
 
     manifest_data = {
         "app": "DASH",
         "version": "2.0.0",
         "vault_id": vault_id,
         "name": clean_name,
+        "display_name": clean_name,
         "created_at": now,
         "updated_at": now,
         "description": description or f"紀錄庫: {clean_name}",
@@ -261,31 +292,35 @@ def init_vault(
     }
 
     return {
+        "vault_id": vault_id,
         "name": clean_name,
+        "display_name": clean_name,
         "manifest": manifest_data,
     }
 
 
-def switch_vault(vault_name: str) -> Dict[str, Any]:
-    """動態熱切換使用中的 Vault。"""
-    clean_name = sanitize_vault_name(vault_name)
+def switch_vault(vault_identifier: str) -> Dict[str, Any]:
+    """動態熱切換使用中的 Vault（支援 vault_id 或名稱解析）。"""
+    vid = database.resolve_vault_id(vault_identifier)
     pool = database.get_pool()
     with pool.connection() as conn:
         row = conn.execute(
-            "SELECT * FROM public.vaults WHERE name = %s", (clean_name,)
+            "SELECT * FROM public.vaults WHERE vault_id = %s LIMIT 1;", (vid,)
         ).fetchone()
         if not row:
-            raise FileNotFoundError(f"找不到指定的 Vault: {clean_name}")
+            raise FileNotFoundError(f"找不到指定的紀錄庫: {vault_identifier}")
 
-    database.set_active_vault_name(clean_name)
+    database.set_active_vault_id(vid)
     database.reset_db_state()
-    database.init_db(clean_name)
+    database.init_db(vid)
 
+    display_name = row.get("display_name") or row.get("name") or vid
     manifest_data = {
         "app": "DASH",
         "version": "2.0.0",
-        "vault_id": row.get("vault_id", f"v-{clean_name}"),
-        "name": clean_name,
+        "vault_id": vid,
+        "name": row.get("name", vid),
+        "display_name": display_name,
         "description": row.get("description", ""),
         "created_at": row.get("created_at"),
         "updated_at": row.get("updated_at"),
@@ -293,108 +328,82 @@ def switch_vault(vault_name: str) -> Dict[str, Any]:
 
     return {
         "status": "success",
-        "message": f"已成功切換至 Vault「{clean_name}」",
-        "active_vault": clean_name,
+        "message": f"已成功切換至紀錄庫「{display_name}」",
+        "active_vault": display_name,
+        "vault_id": vid,
+        "display_name": display_name,
         "manifest": manifest_data,
-        "stats": get_vault_stats(clean_name),
+        "stats": get_vault_stats(vid),
     }
 
 
-def rename_vault(old_name: str, new_name: str) -> Dict[str, Any]:
-    """重新命名指定的 Vault (原子性更名 PostgreSQL Schema 與清冊)。"""
-    clean_old = sanitize_vault_name(old_name)
+def rename_vault(vault_identifier: str, new_name: str) -> Dict[str, Any]:
+    """重新命名指定的 Vault (僅原子性更新 display_name，無需更動 Schema 與磁碟資料夾)。"""
     clean_new = sanitize_vault_name(new_name)
-
     if not clean_new:
-        raise ValueError("新 Vault 名稱不能為空。")
+        raise ValueError("新紀錄庫名稱不能為空。")
 
-    if clean_old == clean_new:
-        return {"status": "success", "message": "名稱未變更", "name": clean_new}
-
-    old_schema = database.sanitize_schema_name(clean_old)
-    new_schema = database.sanitize_schema_name(clean_new)
-
+    vid = database.resolve_vault_id(vault_identifier)
     pool = database.get_pool()
     with pool.connection() as conn:
         old_rec = conn.execute(
-            "SELECT * FROM public.vaults WHERE name = %s", (clean_old,)
+            "SELECT * FROM public.vaults WHERE vault_id = %s LIMIT 1;", (vid,)
         ).fetchone()
         if not old_rec:
-            raise FileNotFoundError(f"找不到欲更名的 Vault: {clean_old}")
+            raise FileNotFoundError(f"找不到欲更名的紀錄庫: {vault_identifier}")
 
-        new_rec = conn.execute(
-            "SELECT name FROM public.vaults WHERE name = %s", (clean_new,)
-        ).fetchone()
-        if new_rec:
-            raise ValueError(f"已存在同名的 Vault「{clean_new}」，無法更名。")
-
-        # 1. 更名 PostgreSQL Schema
-        conn.execute(f'ALTER SCHEMA "{old_schema}" RENAME TO "{new_schema}";')
-
-        # 2. 更新 public.vaults
         now = datetime.now().isoformat()
         conn.execute(
             """
             UPDATE public.vaults
             SET name = %s, display_name = %s, updated_at = %s
-            WHERE name = %s;
+            WHERE vault_id = %s;
             """,
-            (clean_new, clean_new, now, clean_old),
+            (clean_new, clean_new, now, vid),
         )
-
-    # 3. 實體資料夾更名 (若存在)
-    old_md_dir = os.path.join(MARKDOWN_ROOT, clean_old)
-    new_md_dir = os.path.join(MARKDOWN_ROOT, clean_new)
-    if os.path.exists(old_md_dir):
-        if not os.path.exists(new_md_dir):
-            os.rename(old_md_dir, new_md_dir)
-
-    # 4. 若更名為當前使用中之 Vault，更新 active_vault
-    active_name = get_active_vault_name()
-    if active_name == clean_old:
-        database.set_active_vault_name(clean_new)
-        database.reset_db_state()
 
     manifest_data = {
         "app": "DASH",
         "version": "2.0.0",
-        "vault_id": old_rec.get("vault_id", f"v-{clean_new}"),
+        "vault_id": vid,
         "name": clean_new,
+        "display_name": clean_new,
         "description": old_rec.get("description", ""),
         "updated_at": now,
     }
 
     return {
         "status": "success",
-        "message": f"已成功將 Vault「{clean_old}」重新命名為「{clean_new}」",
-        "old_name": clean_old,
-        "new_name": clean_new,
+        "message": f"已成功將紀錄庫重新命名為「{clean_new}」",
+        "vault_id": vid,
+        "name": clean_new,
+        "display_name": clean_new,
         "manifest": manifest_data,
     }
 
 
-def delete_vault(vault_name: str, caller_user_id: Optional[int] = None) -> Dict[str, Any]:
+def delete_vault(vault_identifier: str, caller_user_id: Optional[int] = None) -> Dict[str, Any]:
     """刪除指定的非當前使用中 Vault (CASCADE 刪除 Schema 與所有實體檔案)。"""
-    clean_name = sanitize_vault_name(vault_name)
-    active_name = get_active_vault_name()
+    vid = database.resolve_vault_id(vault_identifier)
+    active_vid = get_active_vault_id()
 
-    if clean_name == active_name:
-        raise ValueError("無法刪除當前使用中的 Vault！請先切換至其他 Vault 後再進行刪除。")
+    if vid == active_vid:
+        raise ValueError("無法刪除當前使用中的紀錄庫！請先切換至其他紀錄庫後再進行刪除。")
 
-    schema_name = database.sanitize_schema_name(clean_name)
+    schema_name = database.sanitize_schema_name(vid)
     pool = database.get_pool()
     with pool.connection() as conn:
         row = conn.execute(
-            "SELECT name FROM public.vaults WHERE name = %s", (clean_name,)
+            "SELECT * FROM public.vaults WHERE vault_id = %s LIMIT 1;", (vid,)
         ).fetchone()
         if not row:
-            raise FileNotFoundError(f"找不到欲刪除的 Vault: {clean_name}")
+            raise FileNotFoundError(f"找不到欲刪除的紀錄庫: {vault_identifier}")
 
         # 若有指定操作者，嚴格校驗是否為唯一 owner
         if caller_user_id is not None:
             m_row = conn.execute(
-                "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
-                (clean_name, caller_user_id),
+                "SELECT role FROM public.vault_members WHERE vault_id = %s AND user_id = %s",
+                (vid, caller_user_id),
             ).fetchone()
             if not m_row or m_row["role"] != "owner":
                 raise PermissionError("權限不足：只有 owner 才能刪除此紀錄庫。")
@@ -403,16 +412,16 @@ def delete_vault(vault_name: str, caller_user_id: Optional[int] = None) -> Dict[
         conn.execute(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE;')
 
         # 2. 刪除 public.vaults 清冊 (外鍵級聯刪除 vault_members 與 vault_invitations)
-        conn.execute("DELETE FROM public.vaults WHERE name = %s;", (clean_name,))
+        conn.execute("DELETE FROM public.vaults WHERE vault_id = %s;", (vid,))
 
     # 3. 刪除對應的實體 Markdown 目錄
-    md_dir = os.path.join(MARKDOWN_ROOT, clean_name)
+    md_dir = get_markdown_dir(vid)
     shutil.rmtree(md_dir, ignore_errors=True)
 
     return {
         "status": "success",
-        "message": f"已成功刪除 Vault「{clean_name}」",
-        "deleted_vault": clean_name,
+        "message": f"已成功刪除紀錄庫「{row.get('display_name') or vid}」",
+        "deleted_vault": vid,
     }
 
 
@@ -428,7 +437,7 @@ def create_invite_code(
     max_uses: Optional[int] = None,
 ) -> Dict[str, Any]:
     """由 Vault 的 owner 或 admin 建立安全邀請碼。"""
-    clean_name = sanitize_vault_name(vault_name)
+    vid = database.resolve_vault_id(vault_name)
     if default_role not in ("admin", "user"):
         raise ValueError("邀請角色僅能設定為 admin 或 user。")
 
@@ -436,8 +445,8 @@ def create_invite_code(
     with pool.connection() as conn:
         # 驗證建立者身分
         m_row = conn.execute(
-            "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
-            (clean_name, created_by_user_id),
+            "SELECT role FROM public.vault_members WHERE vault_id = %s AND user_id = %s",
+            (vid, created_by_user_id),
         ).fetchone()
         if not m_row or m_row["role"] not in ("owner", "admin"):
             raise PermissionError("只有 owner 或 admin 才能建立邀請碼。")
@@ -449,15 +458,21 @@ def create_invite_code(
         conn.execute(
             """
             INSERT INTO public.vault_invitations
-            (invite_code, vault_name, created_by, default_role, expires_at, max_uses, used_count)
+            (invite_code, vault_id, created_by, default_role, expires_at, max_uses, used_count)
             VALUES (%s, %s, %s, %s, %s, %s, 0);
             """,
-            (code, clean_name, created_by_user_id, default_role, expires_at, max_uses),
+            (code, vid, created_by_user_id, default_role, expires_at, max_uses),
         )
+
+        v_row = conn.execute(
+            "SELECT display_name, name FROM public.vaults WHERE vault_id = %s LIMIT 1;", (vid,)
+        ).fetchone()
+        display_name = v_row.get("display_name") if v_row else vid
 
     return {
         "invite_code": code,
-        "vault_name": clean_name,
+        "vault_id": vid,
+        "vault_name": display_name,
         "default_role": default_role,
         "expires_at": expires_at.isoformat(),
         "max_uses": max_uses,
@@ -487,24 +502,24 @@ def join_vault_by_invite(invite_code: str, user_id: int) -> Dict[str, Any]:
         if inv.get("max_uses") is not None and inv["used_count"] >= inv["max_uses"]:
             raise ValueError("此邀請碼已達使用次數上限。")
 
-        target_vault = inv["vault_name"]
+        target_vid = inv["vault_id"]
 
         # 檢查是否已在該 Vault
         existing = conn.execute(
-            "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
-            (target_vault, user_id),
+            "SELECT role FROM public.vault_members WHERE vault_id = %s AND user_id = %s",
+            (target_vid, user_id),
         ).fetchone()
         if existing:
-            raise ValueError(f"您已經是紀錄庫「{target_vault}」的成員 ({existing['role']})。")
+            raise ValueError(f"您已經是該紀錄庫的成員 ({existing['role']})。")
 
         # 加入成員清單
         assigned_role = inv.get("default_role") or "user"
         conn.execute(
             """
-            INSERT INTO public.vault_members (vault_name, user_id, role)
+            INSERT INTO public.vault_members (vault_id, user_id, role)
             VALUES (%s, %s, %s);
             """,
-            (target_vault, user_id, assigned_role),
+            (target_vid, user_id, assigned_role),
         )
 
         # 累加使用計數
@@ -517,25 +532,32 @@ def join_vault_by_invite(invite_code: str, user_id: int) -> Dict[str, Any]:
             (inv["id"],),
         )
 
+        v_row = conn.execute(
+            "SELECT display_name, name FROM public.vaults WHERE vault_id = %s LIMIT 1;",
+            (target_vid,),
+        ).fetchone()
+        display_name = (v_row.get("display_name") or v_row.get("name")) if v_row else target_vid
+
     return {
         "status": "success",
-        "message": f"成功加入紀錄庫「{target_vault}」！",
-        "vault_name": target_vault,
+        "message": f"成功加入紀錄庫「{display_name}」！",
+        "vault_id": target_vid,
+        "vault_name": display_name,
         "role": assigned_role,
     }
 
 
 def list_vault_members(vault_name: str) -> List[Dict[str, Any]]:
     """列出特定 Vault 的所有成員與角色。"""
-    clean_name = sanitize_vault_name(vault_name)
+    vid = database.resolve_vault_id(vault_name)
     pool = database.get_pool()
     with pool.connection() as conn:
         rows = conn.execute(
             """
-            SELECT vm.id, vm.vault_name, vm.user_id, vm.role, vm.joined_at, u.email
+            SELECT vm.id, vm.vault_id, vm.user_id, vm.role, vm.joined_at, u.email
             FROM public.vault_members vm
             JOIN public.users u ON vm.user_id = u.id
-            WHERE vm.vault_name = %s
+            WHERE vm.vault_id = %s
             ORDER BY
                 CASE vm.role
                     WHEN 'owner' THEN 1
@@ -545,7 +567,7 @@ def list_vault_members(vault_name: str) -> List[Dict[str, Any]]:
                 END,
                 vm.joined_at ASC;
             """,
-            (clean_name,),
+            (vid,),
         ).fetchall()
 
         return [
@@ -567,7 +589,7 @@ def update_member_role(
     caller_user_id: int,
 ) -> Dict[str, Any]:
     """由 owner 變更成員角色 (只允許調整為 admin 或 user，不可有第二個 owner)。"""
-    clean_name = sanitize_vault_name(vault_name)
+    vid = database.resolve_vault_id(vault_name)
     if new_role not in ("admin", "user"):
         raise ValueError("只能將成員身分調整為 admin 或 user，不可變更為 owner。")
 
@@ -578,16 +600,16 @@ def update_member_role(
     with pool.connection() as conn:
         # 檢查操作者是否為 owner
         caller_row = conn.execute(
-            "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
-            (clean_name, caller_user_id),
+            "SELECT role FROM public.vault_members WHERE vault_id = %s AND user_id = %s",
+            (vid, caller_user_id),
         ).fetchone()
         if not caller_row or caller_row["role"] != "owner":
             raise PermissionError("只有 owner 才能調整成員角色。")
 
         # 檢查目標成員
         target_row = conn.execute(
-            "SELECT role FROM public.vault_members WHERE vault_name = %s AND user_id = %s",
-            (clean_name, target_user_id),
+            "SELECT role FROM public.vault_members WHERE vault_id = %s AND user_id = %s",
+            (vid, target_user_id),
         ).fetchone()
         if not target_row:
             raise FileNotFoundError("目標使用者不是該紀錄庫成員。")
@@ -599,15 +621,16 @@ def update_member_role(
             """
             UPDATE public.vault_members
             SET role = %s
-            WHERE vault_name = %s AND user_id = %s;
+            WHERE vault_id = %s AND user_id = %s;
             """,
-            (new_role, clean_name, target_user_id),
+            (new_role, vid, target_user_id),
         )
 
     return {
         "status": "success",
         "message": f"已成功將成員角色更新為 {new_role}",
-        "vault_name": clean_name,
+        "vault_id": vid,
+        "vault_name": vault_name,
         "user_id": target_user_id,
         "role": new_role,
     }
@@ -622,16 +645,16 @@ def export_vault_to_zip(
     output_zip_path: Optional[str] = None,
 ) -> str:
     """DASH OUT: 將指定或當前使用中的 Vault 資料與 Markdown 打包為符合規範的 ZIP 檔案。"""
-    target_name = sanitize_vault_name(vault_name or get_active_vault_name())
-    schema_name = database.sanitize_schema_name(target_name)
+    vid = database.resolve_vault_id(vault_name)
+    schema_name = database.sanitize_schema_name(vid)
 
     pool = database.get_pool()
     with pool.connection() as conn:
         v_rec = conn.execute(
-            "SELECT * FROM public.vaults WHERE name = %s", (target_name,)
+            "SELECT * FROM public.vaults WHERE vault_id = %s LIMIT 1;", (vid,)
         ).fetchone()
         if not v_rec:
-            raise FileNotFoundError(f"找不到欲導出的 Vault: {target_name}")
+            raise FileNotFoundError(f"找不到欲導出的紀錄庫: {vault_name}")
 
         # 匯出各表實體資料
         tables = [
@@ -650,12 +673,14 @@ def export_vault_to_zip(
             rows = conn.execute(f'SELECT * FROM "{schema_name}".{t}').fetchall()
             dump_data[t] = [dict(r) for r in rows]
 
-    stats = get_vault_stats(target_name)
+    stats = get_vault_stats(vid)
+    display_name = v_rec.get("display_name") or v_rec.get("name") or vid
     manifest_data = {
         "app": "DASH",
         "version": "2.0.0",
-        "vault_id": v_rec.get("vault_id", f"v-{target_name}"),
-        "name": target_name,
+        "vault_id": vid,
+        "name": v_rec.get("name", vid),
+        "display_name": display_name,
         "description": v_rec.get("description", ""),
         "created_at": v_rec.get("created_at"),
         "exported_at": datetime.now().isoformat(),
@@ -666,66 +691,59 @@ def export_vault_to_zip(
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         export_dir = os.path.join(TEMP_DIR, "exports")
         os.makedirs(export_dir, exist_ok=True)
-        output_zip_path = os.path.join(export_dir, f"dash_{target_name}_{timestamp}.zip")
-
-    md_dir = get_markdown_dir(target_name)
+        clean_file_tag = re.sub(r'[^a-zA-Z0-9_]', '_', display_name)
+        output_zip_path = os.path.join(export_dir, f"dash_{clean_file_tag}_{timestamp}.zip")
 
     with zipfile.ZipFile(output_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        # 1. 寫入 manifest
-        zf.writestr(
-            "dash_manifest.json",
-            json.dumps(manifest_data, ensure_ascii=False, indent=2, default=str),
-        )
+        # 1. 寫入 manifest.json
+        zf.writestr("manifest.json", json.dumps(manifest_data, ensure_ascii=False, indent=2))
 
-        # 2. 寫入結構化資料 JSON
-        zf.writestr(
-            "dash_data.json",
-            json.dumps(dump_data, ensure_ascii=False, indent=2, default=str),
-        )
+        # 2. 寫入 dash_data.json
+        zf.writestr("dash_data.json", json.dumps(dump_data, ensure_ascii=False, indent=2, default=str))
 
-        # 3. 寫入 Markdown 文件
+        # 3. 封裝 markdown 目錄所有文件
+        md_dir = get_markdown_dir(vid)
         if os.path.exists(md_dir):
             for root, _, files in os.walk(md_dir):
                 for f in files:
                     full_p = os.path.join(root, f)
                     rel_p = os.path.relpath(full_p, md_dir)
-                    zf.write(full_p, arcname=f"markdown/{rel_p}".replace("\\", "/"))
+                    arc_name = os.path.join("markdown", rel_p)
+                    zf.write(full_p, arcname=arc_name)
 
     return output_zip_path
 
 
 # ==========================================
-# 4. DASH IN (匯入 ZIP 建立全新 Vault)
+# 4. DASH IN (匯入還原 ZIP)
 # ==========================================
 
 def verify_vault_zip(zip_path: str) -> Dict[str, Any]:
-    """檢驗傳入之 ZIP 是否為合法的 DASH 專屬資料包（支援新版與舊版 SQLite 資料包）。"""
+    """驗證外部 ZIP 封裝包是否符合 DASH 規範。"""
     if not os.path.exists(zip_path):
-        raise FileNotFoundError(f"找不到檔案: {zip_path}")
+        raise FileNotFoundError(f"找不到指定的 ZIP 檔案: {zip_path}")
 
     if not zipfile.is_zipfile(zip_path):
-        raise ValueError("上傳的檔案非有效的 ZIP 壓縮檔。")
+        raise ValueError("檔案格式無效，不是合法的標準 ZIP 封裝包。")
 
     with zipfile.ZipFile(zip_path, "r") as zf:
         namelist = zf.namelist()
-
-        if "dash_manifest.json" not in namelist:
-            raise ValueError("非本系統 (DASH) 導出之資料包：找不到 dash_manifest.json 簽名檔。")
+        if "manifest.json" not in namelist:
+            raise ValueError("備份包結構損毀：缺少 manifest.json 描述檔。")
 
         try:
-            manifest_bytes = zf.read("dash_manifest.json")
-            manifest = json.loads(manifest_bytes.decode("utf-8"))
-        except Exception as e:
-            raise ValueError(f"dash_manifest.json 簽名解析失敗: {str(e)}")
+            with zf.open("manifest.json") as mf:
+                manifest = json.load(mf)
+        except Exception as exc:
+            raise ValueError(f"manifest.json 解析失敗: {str(exc)}")
 
         if manifest.get("app") != "DASH":
-            raise ValueError("簽名內容無效：非 DASH 專屬資料包。")
+            raise ValueError("該備份包並非 DASH 系統所導出。")
 
-        # 需含有 dash_data.json (新版) 或 dash_database.sqlite (舊版)
         has_data_json = "dash_data.json" in namelist
         has_sqlite = "dash_database.sqlite" in namelist
         if not (has_data_json or has_sqlite):
-            raise ValueError("資料包結構不完整：缺少 dash_data.json 或 dash_database.sqlite。")
+            raise ValueError("備份包結構損毀：缺少 dash_data.json 或 dash_database.sqlite。")
 
         return manifest
 
@@ -733,24 +751,18 @@ def verify_vault_zip(zip_path: str) -> Dict[str, Any]:
 def import_vault_from_zip(
     zip_path: str,
     target_name: Optional[str] = None,
+    owner_user_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """DASH IN: 嚴格校驗資料包並匯入建立為全新獨立的 Vault，完成後自動切換（絕不覆蓋）。"""
     manifest = verify_vault_zip(zip_path)
 
-    raw_name = target_name or manifest.get("name") or "imported_vault"
+    raw_name = target_name or manifest.get("display_name") or manifest.get("name") or "匯入紀錄庫"
     clean_name = sanitize_vault_name(raw_name)
 
-    # 重名防呆：若已存在同名 Vault，自動後綴 _1, _2 等序號
-    final_name = clean_name
-    counter = 1
-    existing_vaults = {v["name"] for v in list_vaults()}
-    while final_name in existing_vaults:
-        final_name = f"{clean_name}_{counter}"
-        counter += 1
-
-    # 1. 初始化新 Vault
-    init_vault(final_name, description=manifest.get("description", ""))
-    target_md_dir = get_markdown_dir(final_name)
+    # 1. 初始化新 Vault (由 init_vault 生成全域唯一 vault_id，並指派 owner)
+    init_res = init_vault(clean_name, description=manifest.get("description", ""), owner_user_id=owner_user_id)
+    new_vid = init_res["vault_id"]
+    target_md_dir = get_markdown_dir(new_vid)
 
     # 2. 解開 ZIP 檔案至暫存區
     temp_dir = tempfile.mkdtemp()
@@ -766,7 +778,7 @@ def import_vault_from_zip(
             with open(data_json_path, "r", encoding="utf-8") as f:
                 dump_data = json.load(f)
 
-            with database.get_connection(vault_name=final_name) as conn:
+            with database.get_connection(vault_name=new_vid) as conn:
                 # 依依賴順序匯入
                 for act in dump_data.get("activities", []):
                     cols = [k for k in act.keys() if k != "id"]
@@ -779,13 +791,14 @@ def import_vault_from_zip(
                     )
 
                 for doc in dump_data.get("documents", []):
+                    rel_p = database.to_rel_doc_path(doc["filename"], vault_identifier=new_vid)
                     conn.execute(
                         """
                         INSERT INTO documents (id, file_path, filename, upload_date, chunk_count)
                         VALUES (%s, %s, %s, %s, %s)
                         ON CONFLICT DO NOTHING;
                         """,
-                        (doc["id"], doc["file_path"], doc["filename"], doc["upload_date"], doc["chunk_count"]),
+                        (doc["id"], rel_p, doc["filename"], doc["upload_date"], doc["chunk_count"]),
                     )
 
                 for m in dump_data.get("meetings", []):
@@ -839,12 +852,11 @@ def import_vault_from_zip(
                     )
 
         elif os.path.exists(sqlite_path):
-            # 向後相容：從舊版 SQLite 提取並轉存至 PostgreSQL
             s_conn = sqlite3.connect(sqlite_path)
             s_conn.row_factory = sqlite3.Row
             s_cur = s_conn.cursor()
 
-            with database.get_connection(vault_name=final_name) as conn:
+            with database.get_connection(vault_name=new_vid) as conn:
                 for table in ["activities", "documents", "meetings", "tasks", "decisions", "schedules", "incidents"]:
                     try:
                         s_cur.execute(f"SELECT * FROM {table}")
@@ -862,7 +874,7 @@ def import_vault_from_zip(
                         pass
             s_conn.close()
 
-        # 4. 複製 markdown 檔案
+        # 4. 複製 markdown 檔案至新 vault 獨立目錄
         md_src = os.path.join(temp_dir, "markdown")
         if os.path.exists(md_src):
             for f in os.listdir(md_src):
@@ -874,12 +886,13 @@ def import_vault_from_zip(
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     # 5. 自動切換至此全新 Vault
-    switch_result = switch_vault(final_name)
+    switch_result = switch_vault(new_vid)
 
     return {
         "status": "success",
-        "message": f"已成功將資料包匯入為全新 Vault「{final_name}」並已自動切換載入！",
-        "vault_name": final_name,
+        "message": f"已成功將資料包匯入為全新紀錄庫「{clean_name}」並已自動切換載入！",
+        "vault_id": new_vid,
+        "vault_name": clean_name,
         "manifest": manifest,
         "stats": switch_result.get("stats", {}),
     }

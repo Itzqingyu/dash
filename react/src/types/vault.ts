@@ -3,6 +3,7 @@
  */
 
 export interface VaultStats {
+  vault_id?: string;
   vault_name?: string;
   activities_count: number;
   meetings_count: number;
@@ -24,6 +25,7 @@ export interface VaultManifest {
   version: string;
   vault_id: string;
   name: string;
+  display_name?: string;
   created_at: string;
   updated_at: string;
   description: string;
@@ -51,6 +53,8 @@ export interface InspectZipResponse {
 
 export interface ActiveVaultResponse {
   active_vault: string;
+  vault_id?: string;
+  display_name?: string;
   stats: VaultStats;
 }
 
@@ -58,6 +62,8 @@ export interface SwitchVaultResponse {
   status: string;
   message: string;
   active_vault: string;
+  vault_id?: string;
+  display_name?: string;
   stats: VaultStats;
 }
 
@@ -65,14 +71,17 @@ export interface CreateVaultResponse {
   status: string;
   message: string;
   vault: unknown;
+  vault_id?: string;
   stats: VaultStats;
 }
 
 export interface RenameVaultResponse {
   status: string;
   message: string;
-  old_name: string;
-  new_name: string;
+  old_name?: string;
+  new_name?: string;
+  vault_id?: string;
+  display_name?: string;
 }
 
 export interface DeleteVaultResponse {
@@ -84,6 +93,7 @@ export interface DeleteVaultResponse {
 export interface ImportVaultResponse {
   status: string;
   message: string;
+  vault_id?: string;
   vault_name: string;
   manifest: VaultManifest;
   stats: VaultStats;

@@ -147,14 +147,15 @@ def get_current_user(
 
 def get_user_vault_role(user_id: int, vault_name: str) -> Optional[str]:
     """查詢使用者在特定 Vault 中的角色 ('owner', 'admin', 'user' 或 None)。"""
+    vid = database.resolve_vault_id(vault_name)
     pool = database.get_pool()
     with pool.connection() as conn:
         row = conn.execute(
             """
             SELECT role FROM public.vault_members
-            WHERE user_id = %s AND vault_name = %s
+            WHERE user_id = %s AND vault_id = %s
             """,
-            (user_id, vault_name),
+            (user_id, vid),
         ).fetchone()
         return row["role"] if row else None
 
