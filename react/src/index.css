@@ -154,8 +154,9 @@ a {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--cyan-hover);
-  border-color: var(--cyan-hover);
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
 }
 
 .btn-primary:disabled {
@@ -180,8 +181,9 @@ a {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--hover);
+  background-color: var(--white);
   border-color: var(--muted);
+  color: var(--ink);
 }
 
 .btn-secondary:disabled {
@@ -542,13 +544,7 @@ a {
 }
 
 /* 當切換至 AI 對話面板時，主容器鎖定視窗高度採 Flex 縱向排列，徹底消除外層被鎖定在 Prototype 警告的假滾動 */
-.main.chat-mode {
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
+
 
 .ai-button {
   padding: 9px 14px;

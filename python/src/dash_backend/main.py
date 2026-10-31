@@ -22,6 +22,8 @@ from dash_backend.auth.security import (
     bearer_scheme,
 )
 from dash_backend.vault_manager import (
+    MARKDOWN_ROOT,
+    DASH_ROOT,
     ensure_default_vault,
     get_active_vault_name,
     get_vault_stats,
@@ -449,17 +451,54 @@ def get_document_content(doc_id: int):
     """讀取指定文件的 Markdown 全文內容供前端閱讀器呈現"""
     doc = get_doc_by_id(doc_id)
     if not doc:
+        # 若當前預設 schema 找不到，遍歷所有 vault 查找該 doc_id
+        try:
+            for v in list_vaults():
+                cand_doc = get_doc_by_id(doc_id, vault_name=v.name)
+                if cand_doc:
+                    doc = cand_doc
+                    break
+        except Exception:
+            pass
+
+    if not doc:
         raise HTTPException(status_code=404, detail="找不到指定的文件紀錄")
-    file_path = doc.get("file_path")
-    if not file_path or not os.path.exists(file_path):
+
+    filename = doc.get("filename")
+    raw_path = doc.get("file_path", "")
+
+    # 解析實體檔案路徑候選清單
+    candidate_paths = []
+    if raw_path:
+        candidate_paths.append(raw_path)
+        candidate_paths.append(os.path.join(DASH_ROOT, raw_path))
+        candidate_paths.append(os.path.join(MARKDOWN_ROOT, raw_path))
+
+    if filename:
+        candidate_paths.append(os.path.join(get_markdown_target_dir(), filename))
+        candidate_paths.append(os.path.join(MARKDOWN_ROOT, filename))
+        # 搜尋 MARKDOWN_ROOT 下各個 Vault 的子目錄 (如 test/新文字文件.md)
+        if os.path.exists(MARKDOWN_ROOT):
+            for root_dir, _, files in os.walk(MARKDOWN_ROOT):
+                if filename in files:
+                    candidate_paths.append(os.path.join(root_dir, filename))
+
+    real_path = None
+    for p in candidate_paths:
+        if p and os.path.exists(p) and os.path.isfile(p):
+            real_path = p
+            break
+
+    if not real_path:
         raise HTTPException(status_code=404, detail="實體文件檔案不存在")
+
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(real_path, "r", encoding="utf-8") as f:
             content = f.read()
         return {
             "id": doc_id,
             "filename": doc.get("filename"),
-            "file_path": file_path,
+            "file_path": real_path,
             "content": content,
             "upload_date": doc.get("upload_date"),
         }

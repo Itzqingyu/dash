@@ -106,8 +106,9 @@
 }
 
 .activity-header-btn.primary:hover {
-  background-color: var(--cyan-hover);
-  border-color: var(--cyan-hover);
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
 }
 
 .activity-header-btn.secondary {
@@ -117,8 +118,9 @@
 }
 
 .activity-header-btn.secondary:hover {
-  background-color: var(--hover);
+  background-color: var(--white);
   border-color: var(--muted);
+  color: var(--ink);
 }
 
 .spin {

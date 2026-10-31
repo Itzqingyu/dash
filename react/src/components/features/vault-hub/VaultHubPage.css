@@ -283,11 +283,11 @@
   border: 1px solid var(--line);
   box-shadow: 0 10px 32px rgba(16, 25, 40, 0.2);
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 24px;
+  gap: 22px;
+  padding: 28px;
 }
 
 .hub-modal-header {
@@ -305,7 +305,7 @@
 .hub-modal-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
 }
 
 .hub-modal-footer {
@@ -336,8 +336,9 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--cyan-hover);
-  border-color: var(--cyan-hover);
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
 }
 
 .btn-primary:disabled {
@@ -362,8 +363,9 @@
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--hover);
+  background-color: var(--white);
   border-color: var(--muted);
+  color: var(--ink);
 }
 
 .btn-secondary:disabled {
@@ -387,4 +389,124 @@
 .btn-close:hover {
   background-color: var(--hover);
   color: var(--ink);
+}
+
+/* 表單元素標準化 */
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--cyan);
+  background-color: var(--panel);
+}
+
+/* 成員名單列表與排版 */
+.vault-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.vault-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  gap: 12px;
+}
+
+.vault-member-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-member-email {
+  color: var(--ink);
+}
+
+.vault-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.vault-member-role-btn {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background-color: var(--white);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vault-member-role-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background-color: var(--cyan-soft);
+}
+
+/* 邀請碼產生區塊 */
+.vault-invite-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  background-color: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-top: 4px;
+}
+
+.vault-invite-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--white);
+  border: 1px dashed var(--cyan);
+  border-radius: var(--radius);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.vault-invite-code-text {
+  font-family: monospace;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--cyan);
+  letter-spacing: 0.05em;
 }

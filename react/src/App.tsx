@@ -296,7 +296,7 @@ export default function App() {
     <>
       <div className="app-shell" style={{ display: 'flex', flexDirection: 'column' }}>
         <main
-          className={`main ${['chat', 'extract'].includes(currentView) ? 'chat-mode' : ''}`}
+          className="main"
           id="main-content"
           style={{ flex: 1 }}
         >

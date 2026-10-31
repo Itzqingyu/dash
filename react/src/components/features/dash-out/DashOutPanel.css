@@ -108,8 +108,9 @@
 }
 
 .dash-out-header-btn.secondary:hover {
-  background-color: var(--hover);
+  background-color: var(--white);
   border-color: var(--muted);
+  color: var(--ink);
 }
 
 /* 訊息橫幅 */
