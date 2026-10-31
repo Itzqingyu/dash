@@ -1,178 +1,136 @@
 # DASH (Decision, Activity, Schedule, History)
 
-> **活動管理與紀錄庫決策輔助系統**  
-> 整合活動籌備看板、LLM 文件檢索問答（RAG），以及會議紀錄結構化提煉與資料庫儲存功能。
+> **團隊活動歷程管理與紀錄庫智能決策輔助系統**  
+> 專為活動全週期打造：整合籌備看板、AI 會議紀錄結構化提煉、歷史紀錄檢索問答（RAG），以及交接摘要報告生成。
 
 [English](README.md) | [繁體中文](README.zh-TW.md)
 
 ---
 
-## 核心功能介紹 (User Guide)
+## 1. 專案價值與功能介紹 (User Guide - 60%)
 
-DASH 包含三大功能模組，協助團隊管理活動歷程、會議內容與相關文件紀錄。
+### 1.1 專案背景與痛點解決
 
-### 核心功能架構
+社團、學生組織、專案團隊在籌備活動與執行專案時，常面臨以下核心痛點：
+- **會議紀錄零碎混亂**：記錄分散在不同文件或聊天軟體中，時間一久找不到當時討論的脈絡。
+- **關鍵決策缺乏依據**：換了一屆幹部或新人加入後，不知道過往方案為何如此決定，重複踩坑。
+- **工作交接嚴重斷層**：籌辦經驗無法有系統地傳承，每次舉辦活動都如同重新摸索。
+- **跨專案資料混雜**：不同活動的待辦事項與檔案混在一起，缺乏嚴謹的專案與成員邊界。
 
-- **1. 活動管理控制面板**：活動總覽、籌備進度、歷次會議、待辦事項、決策紀錄、流程日程與突發事件。
-- **2. AI 對話與紀錄檢索 (RAG)**：雙模式對話（普通聊天 / 紀錄庫檢索）、切片來源溯源、歷史上下文隔離、多格式文件集中託管。
-- **3. AI 結構化會議紀錄整理 (Preview & Commit)**：全文結構化提煉、介面即時微調編輯、確認後寫入資料庫並與活動看板聯動。
-
----
-
-### 1. 活動、會議、決策、事件與待辦事項控制面板
-
-提供活動籌辦週期的資料管理介面，整合各階段的資訊與紀錄：
-
-- **活動總覽與進度追蹤 (Overview)**：
-  - 顯示活動準備完成度與階段狀態（建立活動 -> 準備中 -> 活動執行 -> 成果檢討）。
-  - 統整基本資訊（日期、地點、總召負責人、預算與預計人數）與下一步行動。
-- **籌備會議管理 (Meetings)**：
-  - 記錄歷次籌備會議的時間、地點、出席人員與討論內容。
-  - 支援與上傳之來源文件（`source_document_id`）關聯，供檢視原始會議檔案。
-- **關鍵決策紀錄 (Decisions)**：
-  - 記錄「討論議題（Problem）」、「討論解方（Options）」、「最終決策（Final Decision）」與「考量理由（Reason）」。
-  - 支援標記確認狀態（待確認 / 已確認）與資料來源出處。
-- **行動待辦清單 (Tasks)**：
-  - 支援按狀態分類（全部 / 未完成 / 已完成），並標記優先級（高 / 中 / 低）。
-  - 待辦事項可設定負責人、預計完成期限，並關聯所屬活動與會議。
-- **日程規劃與突發事件 (Schedule & Incidents)**：
-  - 流程時間表規劃（負責人、類別、備註），以及活動執行期間的突發狀況與處置建議紀錄。
+DASH 的核心使命是：**「從籌備、執行到檢討，把每一屆的經驗留下來」**。透過結構化工作台、多紀錄庫隔離與 AI 智能輔助，將散亂的討論內容沉澱為團隊持久的組織資產。
 
 ---
 
-### 2. LLM + RAG 歷史紀錄與紀錄庫檢索
+### 1.2 核心實作功能
 
-提供基於已上傳文件的檢索與問答介面：
+#### (1) 活動全週期四階段工作台 (Activity Workspace)
+提供完整的活動籌辦生命週期管理，涵蓋「籌備中 -> 執行中 -> 成果檢討 -> 已結案」四階段：
+- **活動基本資料**：管理活動主題、籌辦年份、總召負責人、時間地點、預算編列與預計人數。
+- **歷次籌備會議 (Meetings)**：記錄會議時間、地點、出席人員與討論核心，支援關聯原始會議文件檔案。
+- **關鍵決策紀錄 (Decisions)**：完整記錄「討論議題 (Problem)」、「候選解方 (Options)」、「最終決策 (Decision)」與「考量理由 (Reason)」，並標記確認狀態。
+- **行動待辦清單 (Tasks)**：分級管理優先度（高 / 中 / 低），指派負責人、設定期限，並追蹤完成狀態（待辦 / 進行中 / 已完成）。
+- **流程日程規劃 (Schedules)**：詳細列出活動當天時程表、時段負責人與任務說明。
+- **突發事件處置 (Incidents)**：記錄執行期間發生的突發狀況、應變處理方式與後續復盤建議。
 
-- **文件轉換與集中託管**：
-  - 支援上傳 `.md`、`.txt`、`.pdf`、`.docx` 格式文件。
-  - 系統自動解析並轉碼為 Markdown 文本集中保存，上傳完成後與原始本機檔案獨立。
-- **向量化檢索**：
-  - 文件由系統進行語意切塊（Chunking），並透過 Embedding 模型產生特徵向量，儲存於 Chroma 向量資料庫。
-- **雙對話模式**：
-  - **紀錄庫問答模式 (`RAG`)**：針對使用者的提問檢索相關文件切片，並將切片文字注入 Context 供 LLM 彙整回答，同時提供「參考來源」折疊卡片供查驗。
-  - **普通對話模式 (`Chat`)**：不經由文件庫檢索，由 LLM 基於上下文脈絡直接回答。
-- **上下文隔離機制 (Clean Context Isolation)**：
-  - 對話資料庫僅儲存使用者提問與模型回覆，檢索切片獨立留存於元資料中。
-  - 多輪對話時不重複疊加過往檢索片段，避免上下文長度過長。
-- **二次確認保護**：
-  - 刪除對話會話或移除紀錄庫檔案時，彈出確認視窗，避免誤刪資料。
+#### (2) AI 會議紀錄智能提煉 (Meeting Extract Agent)
+告別手動整理會議摘要的繁瑣過程：
+- **多格式文件讀取**：支援上傳 Markdown、PDF、Word (.docx)、純文字 (.txt) 等各式會議記錄。
+- **結構化自動解析**：透過專屬提示詞工程，AI 自動自全文中精準萃取「會議摘要」、「關鍵決策」與「具體待辦事項」。
+- **預覽與二次微調 (Preview & Commit)**：提煉成果以表格呈現，團隊可直接在畫面上即時微調內容，確認無誤後一鍵直接寫入活動資料庫。
 
----
+#### (3) 歷史紀錄檢索與智能對話 (Smart Chat & Document RAG)
+讓歷史紀錄成為隨時可諮詢的智慧助手：
+- **紀錄庫問答模式 (RAG Mode)**：針對已上傳的活動文檔與會議紀錄提問，系統自動檢索相關切片片段，並提供可折疊之「參考來源」卡片以供溯源查驗。
+- **普通對話模式 (Chat Mode)**：不經由文件檢索，供團隊自由諮詢活動策劃靈感、文案構思與常規問題。
+- **多會話獨立管理**：支援建立多個對話 Session、重新命名與個別歷史儲存。
+- **乾淨上下文設計**：對話歷史僅保留純淨訊息，檢索切片獨立留存於元資料中，確保多輪對話流暢不超長。
 
-### 3. AI 會議紀錄結構化整理與看板聯動 (Preview & Commit)
+#### (4) AI 自動交接報告生成 (Handover Agent)
+- 一鍵彙整單一活動的所有歷次會議要點、決策脈絡、日程安排與突發事件處置紀錄。
+- AI 自動撰寫結構清晰的完整交接總結報告，支援即時預覽與 Markdown 複製，大幅降低交接溝通成本。
 
-提供會議紀錄文字的結構化萃取與資料庫儲存流程：
-
-- **文件結構化提煉**：
-  - 自已上傳的文件清單中選取會議紀錄文本。
-  - 透過 System Prompt 引導 LLM 解析全文，提煉出「會議摘要」、「關鍵決策」與「行動待辦事項」。
-- **預覽與確認機制 (Preview-Commit)**：
-  1. **預覽階段 (Preview)**：提煉結果以表格形式呈現在介面上供檢視。
-  2. **欄位編輯**：使用者可直接在介面上修改會議名稱、時間、地點，或編輯決策與待辦項目。
-  3. **寫入資料庫 (Commit)**：確認後點擊「確認寫入資料庫」，資料寫入 SQLite 並反映於活動管理控制面板中。
-
----
-
-## 技術架構與開發指南 (Developer Guide)
-
-### 系統分層架構
-
-- **前端桌面層 (Desktop Client)**
-  - **核心技術**：React 19 + TypeScript + Vite + Electron Forge。
-  - **模組規範**：組件獨立 CSS 樣式、嚴格繼承 Design Tokens（`:root`），全域禁止 Emoji。
-  - **服務通訊**：`apiClient` 統一封裝 HTTP REST 請求並集中處理錯誤與斷線攔截。
-- **後端服務層 (Python / FastAPI)**
-  - **通訊介面**：本地 HTTP RESTful API（預設監聽 `http://127.0.0.1:8000`）。
-  - **主程式入口**：`python/src/dash_backend/main.py`。
-  - **核心模組劃分**：
-    - `activity_services/`：負責 Activity、Meeting、Task、Decision、Schedule、Incident 之 SQLite 業務 CRUD。
-    - `ai_services/`：負責 RAG 核心引擎（切塊、向量化、重排序、檢索）以及大語言模型對話與結構化提煉（`rag_engine`, `llm_service`）。
-    - `document_processing/`：負責多格式原始文件（PDF, DOCX, TXT）轉換為 Markdown 文本託管（`converter`）。
-    - `database.py`：底層 SQLite 連線池、Schema 管理與 Chroma 向量庫實例。
-- **本地儲存層 (Local Data Storage: `python/data/`)**
-  - **SQLite 資料庫 (`dash_database.sqlite`)**：儲存文件元資料、對話會話（Sessions）、訊息紀錄（Chat Messages）以及活動業務表。
-  - **ChromaDB 向量資料庫 (`chroma_db/`)**：持久化儲存切片文字與特徵向量，供 RAG 語意搜尋。
-  - **託管 Markdown 庫 (`markdown/`)**：集中存放轉碼後的標準 Markdown 原始文本。
-
-### 技術選型
-
-| 領域 | 技術棧 / 套件 | 說明 |
-| :--- | :--- | :--- |
-| **前端應用** | React , TypeScript, Electron, Vite | 跨平台桌面應用程式架構 |
-| **圖標與視覺** | Lucide React | 統一圖示系統（全域禁止 Emoji） |
-| **Markdown 渲染** | react-markdown | 支援對話訊息排版與清單階層渲染 |
-| **後端框架** | Python 3.10+, FastAPI, Uvicorn | 非同步 RESTful API 服務 |
-| **套件管理** | uv | Python 套件與依賴管理工具 |
-| **RAG 與檢索** | LangChain, FastEmbed, ChromaDB | 提供切塊、向量化與語意檢索功能，支援 CPU 運算 |
-| **LLM 呼叫** | LiteLLM | 提供大語言模型統一呼叫介面 |
-| **文件轉換** | PyPDF, python-docx, markdown | 解析常見格式並轉換為 Markdown 文本 |
-| **資料庫** | SQLite3, ChromaDB Persistent | 本地關聯式資料庫與向量資料庫儲存 |
+#### (5) 多專案紀錄庫與團隊協作 (Vaults & Collaboration)
+- **多紀錄庫獨立隔離**：各個活動、專案或部門皆可建立獨立專屬的「紀錄庫」，所有資料與文件徹底隔離。
+- **三級權限體系 (RBAC)**：
+  - `Owner`：唯一擁有者，擁有紀錄庫最高管理權限，包含成員角色調整、更名與刪除。
+  - `Admin`：專案管理員，具備日常業務操作與邀請碼建立權限。
+  - `User`：一般成員，可參與工作台編輯、對話與文件上傳。
+- **時效邀請碼加入**：支援動態生成具備 7 天有效期限的邀請碼，團隊成員憑碼即可一鍵加入。
+- **備份與遷移 (DASH OUT / DASH IN)**：支援將整座紀錄庫導出為標準 ZIP 壓縮包（含完整結構化 JSON 與 Markdown 文件），亦可將備份包匯入為全新紀錄庫。
 
 ---
 
-### 本地環境安裝與部署
+## 2. 技術架構與設計大綱 (Technical Architecture - 30%)
 
-#### 1. 前置需求
-- **Node.js**: v18+ 與 npm
-- **Python**: 3.10+ (建議安裝 [uv](https://github.com/astral-sh/uv))
-- **LLM API Key (.env)**: 所使用模型服務之 API 金鑰
+### 2.1 系統架構一覽
 
-#### 2. 環境變數設定
-在 `python/` 目錄或專案根目錄下建立 `.env` 檔案：
-```env
-# 依使用之模型服務設定對應的 API 金鑰與模型名稱 (依 LiteLLM 格式)
-API_KEY=your_api_key_here
-MODEL_NAME=your_model_name_here
+```text
+[ 客戶端 (React 19 + TypeScript + Vite) ]
+                    │
+                    ▼ (HTTP REST / JSON / Bearer JWT)
+[ 後端服務層 (FastAPI + Python 3.12 / Uvicorn) ]
+  ├── 認證與權限模組 (auth/security.py) ──> bcrypt 加密 + JWT Token + RBAC 依賴注入
+  ├── 紀錄庫管理模組 (vault_manager.py) ──> 紀錄庫生命週期、邀請碼、DASH IN / OUT
+  ├── 活動業務服務層 (activity_services/) ──> 活動、會議、待辦、決策、日程、突發事件
+  ├── AI 與 RAG 引擎 (ai_services/) ──────> LiteLLM 多模型調度 + pgvector 語意檢索
+  └── 檔案處理模組 (document_processing/) ─> 轉碼為標準 Markdown 實體檔案託管
+                    │
+                    ▼ (psycopg 連線池 / SET search_path)
+[ 資料儲存層 (PostgreSQL 16 + pgvector) ]
+  ├── public Schema: 全域使用者 (users)、紀錄庫清冊 (vaults)、成員關聯 (vault_members)、邀請碼
+  └── vault_v_<uuid12> Schemas: 各紀錄庫完全隔離之獨立業務資料表與切片向量表
 ```
 
-#### 3. 後端安裝與啟動
+### 2.2 核心技術細節
 
-優先使用 `uv` 進行依賴同步與執行：
-
-```powershell
-# 進入後端目錄
-cd python
-
-# 安裝依賴環境
-uv sync
-
-# 啟動 FastAPI 後端伺服器 (預設運行於 http://127.0.0.1:8000)
-uv run python src/dash_backend/main.py
-```
-> 後端服務啟動後，可於瀏覽器造訪 `http://127.0.0.1:8000/docs` 查看 Swagger 介面測試所有 API。
-
-#### 4. 前端安裝與啟動
-
-另開一個終端機視窗，進入 `react/` 目錄：
-
-```powershell
-# 進入前端目錄
-cd react
-
-# 安裝 Node 套件
-npm install
-
-# 執行測試確認程式碼正確性
-npm run test
-
-# 啟動 Electron 開發環境
-npm run start
-```
+- **Schema 級物理多租戶隔離**：
+  每個紀錄庫在 PostgreSQL 內部皆對應一個獨立的 `vault_v_<uuid12>` Schema 與檔案目錄 `markdown/<vault_id>/`。連線透過 `SET search_path TO "vault_v_<vault_id>", public;` 動態切換，杜絕跨紀錄庫存取風險。
+- **PostgreSQL 16 + pgvector 一體化**：
+  捨棄傳統外部向量資料庫，直接利用 PostgreSQL 的 `vector` 擴充套件儲存文本特徵向量（Embedding），以 Cosine Distance 進行高效率語意相似度查詢。
+- **並行死鎖防護與所有權歧義解決**：
+  底層資料庫初始化引入執行緒安全鎖與記憶體集合快取，解決並行 DDL 死鎖問題；名稱解析優先依據呼叫者 `user_id` 匹配擁有之紀錄庫，允許不同使用者各自建立同名紀錄庫而不衝突。
+- **動態 Fallback 與多用戶強制退出機制 (Eviction)**：
+  支援使用中紀錄庫直接刪除；當 Owner 刪除紀錄庫時，後端自動切回底層安全待命 Schema (`v_default`)，前端透過定時心跳與 API 攔截器，強制將正在瀏覽該紀錄庫的其餘成員安全踢回首頁。
+- **前端零上帝組件規範**：
+  組件採用嚴格領域分層（`common/`, `layout/`, `features/`），樣式自 `index.css` 的 `:root` 色票變數統一繼承，落實全域禁止 Emoji 與「一個 Component 一個 CSS」維護原則。
 
 ---
 
-### 測試規範與目錄約定
+## 3. 如何部署與快速上手 (Deployment & Quickstart - 10%)
 
-- **Python 後端測試**：
-  - 測試腳本一律集中於 `python/tests/`。
-  - `python/tests/test_main.py`：提供全互動式 CLI 工具，支援端對端測試文件轉換、活動建立、會議提煉與寫入、多輪對話驗證。
-- **React 前端測試**：
-  - 單元與服務整合測試位於 `react/tests/`，使用 Vitest 執行：`npm run test`。
-- **代碼與命名風格**：
-  - 檔案與資料夾：一律英文小寫，連接符號使用 `-`（代碼腳本除外，遵從各語言慣例）。
-  - CSS 規範：配色統一繼承自 `index.css` 的 `:root` 變數；落實「一個 Component 一個 CSS」。
-  - 圖示規範：全域禁止使用 Emoji，圖標一律使用 `lucide-react`。
+### 3.1 前置環境需求
+- 已安裝 [Docker](https://www.docker.com/) 與 [Docker Compose](https://docs.docker.com/compose/)（或 Docker Desktop）。
+
+### 3.2 一鍵容器化部署
+
+```bash
+# 1. 複製環境變數範本並填入您的大語言模型 API 金鑰
+cp python/.env.example python/.env
+
+# 2. 編輯 python/.env，填入您所使用的模型金鑰 (例如 OPENAI_API_KEY 或 GEMINI_API_KEY)
+# vim python/.env 或使用文字編輯器修改
+
+# 3. 使用 Docker Compose 一鍵建置並在背景啟動所有服務
+docker compose up -d --build
+```
+
+服務啟動後，Docker Compose 將自動運行以下三個容器：
+- `dash-db`：PostgreSQL 16 資料庫（含 pgvector 擴充套件，內部連接埠 5432）。
+- `dash-backend`：FastAPI 後端 API 服務（內部連接埠 8000）。
+- `dash-frontend`：Nginx 託管之 React 前端單頁應用（外部映射連接埠 5173）。
+
+### 3.3 存取服務
+
+- **前端 Web 應用**：使用瀏覽器造訪 [http://localhost:5173](http://localhost:5173)
+  - 進入後即可於極簡認證頁面註冊第一個帳號並開始使用。
+- **後端 Swagger 介面**：造訪 [http://localhost:8000/docs](http://localhost:8000/docs)
+  - 供開發者直接查閱並測試全套 RESTful API。
+
+### 3.4 停止服務
+若需停止所有容器服務：
+```bash
+docker compose down
+```
 
 ---
 

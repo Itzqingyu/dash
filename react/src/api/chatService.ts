@@ -9,7 +9,7 @@ import {
   SessionDetailResponse,
   CreateSessionResponse,
   SendMessageResponse,
-} from './apiTypes';
+} from '../types/chat';
 
 /**
  * 取得所有對話會話清單

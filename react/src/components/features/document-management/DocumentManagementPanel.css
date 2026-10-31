@@ -1,0 +1,443 @@
+/* ==========================================
+   文件紀錄庫管理面板樣式 (DocumentManagementPanel.css)
+   繼承 index.css 統一設計變數，嚴禁 hardcode 顏色
+   ========================================== */
+
+.doc-page-root {
+  width: 100vw;
+  min-height: 100vh;
+  background-color: var(--canvas);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 80px;
+  box-sizing: border-box;
+}
+
+.doc-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  box-sizing: border-box;
+}
+
+/* 頂部大卡片 */
+.doc-header-card {
+  background-color: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  box-shadow: var(--shadow-sm);
+}
+
+.doc-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.doc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.doc-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.doc-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.doc-header-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.doc-header-desc {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.doc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.doc-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.doc-header-btn.primary {
+  background-color: var(--cyan);
+  color: var(--white);
+  border-color: var(--cyan);
+}
+
+.doc-header-btn.primary:hover {
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
+}
+
+.doc-stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  background-color: var(--canvas);
+  border: 1px solid var(--line);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* 上傳拖曳區塊 */
+.doc-upload-card {
+  background-color: var(--white);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.doc-upload-card:hover,
+.doc-upload-card.drag-over {
+  border-color: var(--cyan);
+  background-color: var(--cyan-soft);
+}
+
+.upload-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: var(--canvas);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-upload-card.drag-over .upload-icon-circle {
+  background-color: var(--white);
+}
+
+.upload-card-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.upload-card-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* 狀態訊息橫幅 */
+.doc-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.doc-alert-banner.error {
+  background-color: var(--danger-soft);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.doc-alert-banner.success {
+  background-color: var(--success-soft);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+/* 文件列表卡片 */
+.doc-list-card {
+  background-color: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  gap: 16px;
+}
+
+.doc-search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 360px;
+}
+
+.doc-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.doc-search-input:focus {
+  border-color: var(--cyan);
+  background-color: var(--white);
+}
+
+.doc-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+}
+
+/* 文件清單表格 */
+.doc-table-wrap {
+  overflow-x: auto;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.doc-table th {
+  padding: 12px 20px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background-color: var(--canvas);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.doc-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.doc-table tr:hover td {
+  background-color: var(--canvas);
+}
+
+.doc-filename-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.doc-file-icon {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.doc-chunk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.doc-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-icon-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background-color: var(--white);
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-icon-action:hover {
+  background-color: var(--canvas);
+  color: var(--ink);
+  border-color: var(--muted);
+}
+
+.btn-icon-action.danger:hover {
+  background-color: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.doc-empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 全文閱讀彈窗 (Reader Modal) */
+.reader-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 27, 46, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.reader-modal-card {
+  background-color: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 40px rgba(16, 25, 40, 0.25);
+  width: 100%;
+  max-width: 840px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.reader-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reader-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reader-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.reader-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.markdown-body {
+  font-size: 0.95rem;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.markdown-body p {
+  margin-bottom: 12px;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin-left: 20px;
+  margin-bottom: 12px;
+}
+
+.markdown-body code {
+  background-color: var(--canvas);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.88em;
+}
+
+.markdown-body pre {
+  background-color: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  color: var(--white);
+  padding: 16px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+

@@ -1,0 +1,10 @@
+.git
+.github
+.vscode
+node_modules
+dist
+.venv
+__pycache__
+*.pyc
+data_backups
+

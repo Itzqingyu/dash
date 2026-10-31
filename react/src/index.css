@@ -8,26 +8,30 @@
   --ink-soft: #43506a;
   --muted: #758097;
   --line: #dfe4eb;
-  --panel: #ffffff;
+  --white: #ffffff;
+  --panel: var(--white);
   --canvas: #f3f5f8;
   --navy: #111b2e;
   --navy-soft: #1b2943;
   --cyan: #4776e6;
   --cyan-soft: #e8efff;
-  --violet: #7657d5;
-  --violet-soft: #efe8ff;
-  --orange: #dd7b27;
-  --orange-soft: #ffe8d2;
-  --pink: #c74f7d;
-  --pink-soft: #ffe4ee;
+  /* 陰影與遮罩 (Shadow & Backdrop Tokens) */
+  --shadow-sm: 0 2px 8px rgba(16, 25, 40, 0.04);
+  --shadow-md: 0 4px 16px rgba(16, 25, 40, 0.06);
+  --shadow-lg: 0 8px 24px rgba(16, 25, 40, 0.08);
+  --shadow-modal: 0 12px 32px rgba(16, 25, 40, 0.12);
+  --backdrop: rgba(7, 14, 26, 0.4);
   /* 業務狀態語意色 (Alert & Status Tokens) */
   --danger: #d93829;
   --danger-soft: #ffece8;
+  --danger-border: #fecaca;
   --warning: #d97706;
   --warning-soft: #fff3db;
+  --warning-border: #fed7aa;
   --success: #16a34a;
   --success-soft: #f0fdf4;
-  --radius: 12px;
+  --success-border: #bbf7d0;
+  --radius: 5px;
   font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
   color: var(--ink);
   background: var(--canvas);
@@ -42,7 +46,9 @@
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   min-height: 100vh;
   margin: 0;
@@ -56,11 +62,15 @@ body {
   overflow-x: hidden;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font: inherit;
 }
 
-button, a {
+button,
+a {
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -80,7 +90,7 @@ a {
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip: rect(0,0,0,0);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
 }
@@ -90,7 +100,7 @@ a {
    ========================================== */
 .eyebrow {
   margin: 0;
-  color: var(--ink, #101928);
+  color: var(--ink);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -118,13 +128,67 @@ a {
 .button.primary {
   border: 1px solid var(--line);
   background: var(--cyan);
-  color: #ffffff;
+  color: var(--white);
 }
 
 .button.secondary {
   border: 1px solid var(--line);
-  background: #ffffff;
+  background: var(--white);
   color: var(--ink);
+}
+
+.btn-primary {
+  padding: 8px 18px;
+  background-color: var(--cyan);
+  color: var(--white);
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 8px 18px;
+  background-color: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--white);
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 狀態標籤 (Status Chips) */
@@ -171,10 +235,16 @@ a {
   flex-shrink: 0;
 }
 
-.activity-glyph.cyan { background: var(--cyan-soft); color: var(--cyan); }
-.activity-glyph.orange { background: var(--orange-soft); color: var(--orange); }
-.activity-glyph.violet { background: var(--violet-soft); color: var(--violet); }
-.activity-glyph.pink { background: var(--pink-soft); color: var(--pink); }
+.activity-glyph.cyan {
+  background: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.activity-glyph.navy {
+  background: var(--navy-soft);
+  color: var(--panel);
+}
+
 
 /* ==========================================
    應用程式外框與側欄 (App Shell & Navigation)
@@ -242,7 +312,7 @@ a {
   height: 38px;
   border-radius: 11px;
   background: var(--cyan);
-  color: #ffffff;
+  color: var(--white);
   font-weight: 900;
   font-size: 1.25rem;
 }
@@ -253,7 +323,7 @@ a {
 }
 
 .brand strong {
-  color: #ffffff;
+  color: var(--white);
   font-size: 1.05rem;
   letter-spacing: 0.02em;
 }
@@ -318,12 +388,12 @@ a {
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
+  color: var(--white);
 }
 
 .nav-item.active {
   background: var(--navy-soft);
-  color: #ffffff;
+  color: var(--white);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -353,11 +423,11 @@ a {
 
 .nav-group-toggle:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
+  color: var(--white);
 }
 
 .nav-group-toggle.active {
-  color: #ffffff;
+  color: var(--white);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -404,7 +474,7 @@ a {
 
 .nav-sub-item:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
+  color: var(--white);
 }
 
 .nav-sub-item.active {
@@ -430,7 +500,7 @@ a {
 .sidebar-note strong {
   display: block;
   margin: 4px 0 5px;
-  color: #ffffff;
+  color: var(--white);
 }
 
 .sidebar-note span:last-child {
@@ -439,7 +509,8 @@ a {
 }
 
 
-.avatar, .person {
+.avatar,
+.person {
   display: inline-grid;
   place-items: center;
   border-radius: 50%;
@@ -450,7 +521,7 @@ a {
   width: 34px;
   height: 34px;
   background: var(--cyan);
-  color: #ffffff;
+  color: var(--white);
 }
 
 .person {
@@ -473,19 +544,13 @@ a {
 }
 
 /* 當切換至 AI 對話面板時，主容器鎖定視窗高度採 Flex 縱向排列，徹底消除外層被鎖定在 Prototype 警告的假滾動 */
-.main.chat-mode {
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
+
 
 .ai-button {
   padding: 9px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--white);
   color: var(--ink);
   font-size: 0.85rem;
   font-weight: 800;
@@ -545,8 +610,8 @@ a {
   padding: 20px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.04);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
 }
 
 .summary-strip article span {
@@ -568,7 +633,7 @@ a {
 
 .summary-strip article.accent-card {
   background: var(--cyan);
-  color: #ffffff;
+  color: var(--white);
   border-color: var(--cyan);
 }
 
@@ -578,15 +643,15 @@ a {
 }
 
 .summary-strip article.accent-card strong {
-  color: #ffffff !important;
+  color: var(--white) !important;
 }
 
 /* 活動列表表格 (Surface & Table) */
 .surface {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.04);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -610,7 +675,7 @@ a {
   height: 28px;
   border-radius: 6px;
   border: 1px solid var(--line);
-  background: #ffffff;
+  background: var(--white);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -767,9 +832,9 @@ a {
   top: 96px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--white);
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(16, 25, 40, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .module-nav-head {
@@ -861,8 +926,9 @@ a {
   transform: translate(-50%, -50%);
   margin: 0;
 }
+
 .modal::backdrop {
-  background: rgba(7, 14, 26, 0.5);
+  background: var(--backdrop);
   backdrop-filter: blur(3px);
 }
 
@@ -894,13 +960,13 @@ a {
 .modal-banner.success {
   background: var(--success-soft);
   color: var(--success);
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--success);
 }
 
 .modal-banner.error {
   background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid #fecaca;
+  border: 1px solid var(--danger);
 }
 
 .modal-copy {
@@ -921,8 +987,8 @@ a {
 }
 
 .close-button:hover {
-  background-color: #cbd5e1;
-  color: #0f172a;
+  background-color: var(--line);
+  color: var(--ink);
 }
 
 .field {
@@ -931,7 +997,7 @@ a {
   margin-top: 16px;
 }
 
-.field > span {
+.field>span {
   color: var(--ink-soft);
   font-size: 0.75rem;
   font-weight: 800;
@@ -944,7 +1010,7 @@ a {
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--white);
   color: var(--ink);
   outline: 0;
   font-size: 0.85rem;
@@ -977,7 +1043,7 @@ a {
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--white);
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -992,15 +1058,15 @@ a {
   opacity: 0.55;
   cursor: not-allowed;
   border-color: var(--line);
-  background: #ffffff;
+  background: var(--white);
 }
 
-.record-options button:disabled > span {
+.record-options button:disabled>span {
   background: var(--canvas);
   color: var(--muted);
 }
 
-.record-options button > span {
+.record-options button>span {
   display: grid;
   place-items: center;
   width: 32px;
@@ -1030,7 +1096,7 @@ a {
   padding: 11px 18px;
   border-radius: 9px;
   background: var(--ink);
-  color: #ffffff;
+  color: var(--white);
   font-size: 0.8rem;
   font-weight: 700;
   box-shadow: 0 10px 30px rgba(5, 12, 24, 0.22);
@@ -1051,7 +1117,7 @@ a {
   inset: 0 0 0 auto;
   z-index: 31;
   width: min(440px, 94vw);
-  background: #ffffff;
+  background: var(--white);
   box-shadow: -10px 0 40px rgba(5, 12, 24, 0.15);
   transform: translateX(102%);
   transition: transform 0.25s ease;
@@ -1081,13 +1147,13 @@ a {
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: rgba(7, 14, 26, 0.38);
+  background: var(--backdrop);
   backdrop-filter: blur(2px);
 }
 
 /* 強制行動版選單滑出樣式 */
-.app-shell.nav-open .sidebar { 
-  transform: translateX(0) !important; 
+.app-shell.nav-open .sidebar {
+  transform: translateX(0) !important;
 }
 
 /* ==========================================
@@ -1097,6 +1163,7 @@ a {
   .summary-strip {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .workspace-main {
     grid-template-columns: 1fr !important;
   }
@@ -1115,44 +1182,67 @@ a {
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--white);
   color: var(--ink-soft);
   font-size: .82rem;
   line-height: 1.55;
 }
 
 .api-message.error {
-  border-color: #f1b6b6;
-  background: #fff4f4;
-  color: #9f2d2d;
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
-.api-state.empty { padding: 32px; text-align: center; }
-.api-state.empty h3 { margin: 0 0 8px; color: var(--ink); }
-.api-state.empty p { margin: 0 0 16px; color: var(--muted); }
+.api-state.empty {
+  padding: 32px;
+  text-align: center;
+}
+
+.api-state.empty h3 {
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.api-state.empty p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
 
 .button.danger {
-  border-color: #e1a6a6;
-  background: #fff4f4;
-  color: #a32626;
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
-.button.danger:hover { background: #ffe5e5; }
-.danger-text { color: #a32626 !important; }
+.button.danger:hover {
+  background: var(--danger-soft);
+}
+
+.danger-text {
+  color: var(--danger) !important;
+}
 
 /* 1. 確保 TR 寬度佔滿 100% (原本就有的) */
 .activity-row.empty-row {
-  width: 100%; /* 強制行寬佔滿 100% */
-  pointer-events: none; /* 確保滑鼠移過去不會有任何反應 (原本就有的) */
+  width: 100%;
+  /* 強制行寬佔滿 100% */
+  pointer-events: none;
+  /* 確保滑鼠移過去不會有任何反應 (原本就有的) */
 }
 
 /* 2. 原生 6 欄空白 td 修復：確保高度和完整底線，但不縮扁 */
 .activity-row.empty-row td {
-  height: 64px; /* 高度撐開 (請根據真實資料的高度微調這個數字) */
-  border-bottom: 1px solid #ddd; /* 每個 td 都應用底線，這能解決邊框斷掉的問題 */
-  background-color: transparent; /* 背景透明 */
-  width: auto !important; /* 關鍵修改：不要給 td 寬度! (移除 `width: 100%`)，讓 table 佈局自動拉伸它們。使用 !important 確保優先順序，移除 `width: 100%` 的影響。 */
-  box-sizing: border-box; /* 確保邊框包含在高度內 */
+  height: 64px;
+  /* 高度撐開 (請根據真實資料的高度微調這個數字) */
+  border-bottom: 1px solid var(--line);
+  /* 每個 td 都應用底線，這能解決邊框斷掉的問題 */
+  background-color: transparent;
+  /* 背景透明 */
+  width: auto !important;
+  /* 關鍵修改：不要給 td 寬度! (移除 `width: 100%`)，讓 table 佈局自動拉伸它們。使用 !important 確保優先順序，移除 `width: 100%` 的影響。 */
+  box-sizing: border-box;
+  /* 確保邊框包含在高度內 */
 }
 
 /* 旋轉動畫通用類別 */
@@ -1164,7 +1254,8 @@ a {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
-}
+}

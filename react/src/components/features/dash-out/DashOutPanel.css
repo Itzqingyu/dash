@@ -1,0 +1,325 @@
+/**
+ * DashOutPanel.css - DASH OUT 全量資料導出專用面板樣式
+ * 遵循現代卡片高對比風格，配色繼承 index.css :root
+ */
+
+
+
+.dash-out-page-root {
+  width: 100vw;
+  min-height: 100vh;
+  background-color: var(--canvas);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 80px;
+  box-sizing: border-box;
+}
+
+.dash-out-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  box-sizing: border-box;
+}
+
+/* 頂部大卡片 */
+.dash-out-header-card {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  box-shadow: var(--shadow-sm);
+}
+
+.dash-out-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.dash-out-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.dash-out-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dash-out-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-out-header-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.dash-out-header-desc {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.dash-out-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.dash-out-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.dash-out-header-btn.secondary {
+  background-color: var(--canvas);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.dash-out-header-btn.secondary:hover {
+  background-color: var(--white);
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+/* 訊息橫幅 */
+.dash-out-banner {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dash-out-banner.success {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.dash-out-banner.error {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+/* 主卡片通用排版 */
+.dash-out-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.dash-out-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dash-out-card-head h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-out-card-desc {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+/* 統計網格 (Stats Grid) */
+.dash-out-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.dash-out-stat-box {
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dash-out-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dash-out-stat-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+/* 儲存空間明細列表 */
+.dash-out-storage-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 14px 16px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.dash-out-storage-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.dash-out-storage-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cyan);
+}
+
+.dash-out-storage-dot.chroma {
+  background: var(--cyan);
+}
+
+.dash-out-storage-dot.markdown {
+  background: var(--ink-soft);
+}
+
+/* 導出操作區塊 */
+.dash-out-action-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: var(--cyan-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  gap: 16px;
+}
+
+.dash-out-action-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dash-out-action-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dash-out-action-sub {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.dash-out-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: var(--cyan);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--white);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.dash-out-btn-primary:hover {
+  opacity: 0.92;
+  box-shadow: 0 4px 12px rgba(71, 118, 230, 0.25);
+}
+
+.dash-out-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dash-out-tip-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.dash-out-tip-icon {
+  color: var(--cyan);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.dash-out-tip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dash-out-tip-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dash-out-tip-desc {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}

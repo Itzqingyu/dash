@@ -1,0 +1,141 @@
+/**
+ * ActivityWorkspace.css
+ * 活動工作台主工作區容器樣式
+ */
+
+.workspace-page-root {
+  width: 100vw;
+  min-height: 100vh;
+  background-color: var(--canvas);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 80px;
+  box-sizing: border-box;
+}
+
+.workspace-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  box-sizing: border-box;
+}
+
+/* 頂部大卡片 */
+.workspace-header-card {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  box-shadow: var(--shadow-sm);
+}
+
+.workspace-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.workspace-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.workspace-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.workspace-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workspace-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workspace-header-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.workspace-header-desc {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.workspace-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.workspace-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.workspace-header-btn.primary {
+  background-color: var(--cyan);
+  color: var(--white);
+  border-color: var(--cyan);
+}
+
+.workspace-header-btn.primary:hover {
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
+}
+
+.workspace-header-btn.secondary {
+  background-color: var(--canvas);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.workspace-header-btn.secondary:hover {
+  background-color: var(--white);
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+.workspace-header-btn.danger {
+  background-color: var(--panel);
+  color: var(--danger);
+  border-color: var(--line);
+}
+
+.workspace-header-btn.danger:hover {
+  background-color: var(--danger-soft);
+  border-color: var(--danger);
+}

@@ -1,0 +1,144 @@
+/* ==========================================
+   ConfirmModal.css - 通用全螢幕防手殘確認對話框樣式
+   ========================================== */
+
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: var(--backdrop);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.18s ease-out forwards;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.confirm-modal-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: modalScaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.confirm-modal-icon-wrapper {
+  margin-bottom: 14px;
+}
+
+.confirm-icon-danger {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--danger-soft);
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--danger);
+}
+
+.confirm-icon-normal {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--cyan-soft);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+}
+
+.confirm-modal-content h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.confirm-modal-content p {
+  font-size: .88rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin: 0 0 22px 0;
+}
+
+.confirm-modal-actions {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.confirm-modal-actions button {
+  flex: 1;
+  padding: 10px 16px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.modal-cancel-btn {
+  background: var(--white);
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+}
+
+.modal-cancel-btn:hover {
+  background: var(--canvas);
+}
+
+.modal-confirm-btn.danger {
+  background: var(--danger) !important;
+  color: var(--white) !important;
+  border: 1.5px solid var(--danger) !important;
+}
+
+.modal-confirm-btn.danger:hover {
+  filter: brightness(0.9);
+  
+}
+
+.modal-confirm-btn.primary {
+  background: var(--cyan) !important;
+  color: var(--white) !important;
+  border: 1.5px solid var(--cyan) !important;
+}
+
+.modal-confirm-btn.primary:hover {
+  filter: brightness(0.9);
+  
+}

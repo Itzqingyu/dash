@@ -1,6 +1,5 @@
 """活動管理子模組共用的驗證與時間工具。"""
 
-import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -18,7 +17,7 @@ def utc_now(after: Optional[str] = None) -> str:
 
 
 def positive_id(value: Any, field_name: str) -> int:
-    """驗證 SQLite 關聯 ID，排除 bool（Python 中 bool 是 int 的子類別）。"""
+    """驗證關聯 ID，排除 bool（Python 中 bool 是 int 的子類別）。"""
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ValueError(f"{field_name} 必須是正整數")
     return value
@@ -76,11 +75,11 @@ def validate_time_range(start_time: str, end_time: Optional[str]) -> None:
         raise ValueError("end_time 不可早於 start_time")
 
 
-def ensure_activity_exists(conn: sqlite3.Connection, activity_id: Any) -> int:
-    """驗證 Activity 外鍵並提供比 SQLite IntegrityError 更清楚的錯誤。"""
+def ensure_activity_exists(conn: Any, activity_id: Any) -> int:
+    """驗證 Activity 外鍵並提供清楚的錯誤提示。"""
     normalized_id = positive_id(activity_id, "activity_id")
     row = conn.execute(
-        "SELECT 1 FROM activities WHERE id = ?", (normalized_id,)
+        "SELECT 1 FROM activities WHERE id = %s", (normalized_id,)
     ).fetchone()
     if row is None:
         raise ValueError(f"activity_id {normalized_id} 不存在")
@@ -88,7 +87,7 @@ def ensure_activity_exists(conn: sqlite3.Connection, activity_id: Any) -> int:
 
 
 def ensure_meeting_matches_activity(
-    conn: sqlite3.Connection,
+    conn: Any,
     meeting_id: Any,
     activity_id: int,
 ) -> Optional[int]:
@@ -98,7 +97,7 @@ def ensure_meeting_matches_activity(
         return None
 
     row = conn.execute(
-        "SELECT activity_id FROM meetings WHERE id = ?", (normalized_id,)
+        "SELECT activity_id FROM meetings WHERE id = %s", (normalized_id,)
     ).fetchone()
     if row is None:
         raise ValueError(f"meeting_id {normalized_id} 不存在")

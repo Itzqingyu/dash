@@ -1,0 +1,63 @@
+services:
+  # 1. 資料庫服務：PostgreSQL 16 + pgvector 擴充套件
+  dash-db:
+    image: pgvector/pgvector:pg16
+    container_name: dash-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dash
+      POSTGRES_USER: dash
+      POSTGRES_PASSWORD: dash_secure_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U dash -d dash" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dash-network
+
+  # 2. 後端服務：FastAPI + RAG 引擎
+  dash-backend:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: dash-backend
+    restart: unless-stopped
+    env_file:
+      - ./python/.env
+    environment:
+      DATABASE_URL: postgresql://dash:dash_secure_password@dash-db:5432/dash
+      DASH_DATA_DIR: /app/data
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - ./data/markdown:/app/data/markdown
+    depends_on:
+      dash-db:
+        condition: service_healthy
+    networks:
+      - dash-network
+
+  # 3. 前端服務：Nginx 託管 React SPA + 反向代理
+  dash-frontend:
+    build:
+      context: ./react
+      dockerfile: Dockerfile
+    container_name: dash-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - dash-backend
+    networks:
+      - dash-network
+
+volumes:
+  postgres-data:
+    name: dash-postgres-data
+
+networks:
+  dash-network:
+    name: dash-network
+    driver: bridge

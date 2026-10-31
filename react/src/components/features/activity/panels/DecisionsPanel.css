@@ -1,0 +1,196 @@
+/* ==========================================
+   DecisionsPanel.css - 決策紀錄面板樣式
+   ========================================== */
+
+.decision-layout {
+  display: grid;
+  grid-template-columns: minmax(205px, 0.72fr) minmax(0, 1.6fr);
+  gap: 15px;
+  align-items: start;
+}
+
+.decision-list {
+  display: grid;
+  gap: 8px;
+}
+
+.decision-list-item {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.decision-list-item:hover {
+  border-color: var(--line);
+}
+
+.decision-list-item.active {
+  border-color: var(--cyan);
+  box-shadow: inset 3px 0 var(--cyan);
+  background: var(--canvas);
+}
+
+.decision-list-item strong,
+.decision-list-item small {
+  display: block;
+}
+
+.decision-list-item strong {
+  margin: 10px 0 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.decision-list-item small {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.decision-detail {
+  padding: 23px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+.decision-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid var(--line);
+}
+
+.decision-detail-head h3 {
+  margin: 10px 0 0;
+  font-size: 1.18rem;
+  color: var(--ink);
+}
+
+.decision-section,
+.decision-answer {
+  padding: 17px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.decision-section > span,
+.decision-answer > span,
+.decision-meta span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.decision-section ol {
+  margin: 10px 0 0;
+  padding-left: 19px;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+
+.decision-answer strong {
+  display: block;
+  margin: 8px 0 5px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.decision-answer p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.decision-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  padding: 17px 0;
+}
+
+.decision-meta strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.76rem;
+  color: var(--ink);
+}
+
+.source-link {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--canvas);
+  text-align: left;
+  cursor: pointer;
+}
+
+.source-link > span {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 7px;
+  background: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.source-link strong,
+.source-link small {
+  display: block;
+}
+
+.source-link strong {
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.source-link small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.63rem;
+}
+
+.historical-match {
+  margin-top: 16px;
+  padding: 16px;
+  border-left: 3px solid var(--cyan);
+  border-radius: 8px;
+  background: var(--cyan-soft);
+}
+
+.historical-match > strong {
+  display: block;
+  margin: 7px 0 5px;
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.historical-match > p:not(.eyebrow) {
+  margin: 0 0 9px;
+  color: var(--ink-soft);
+  font-size: 0.71rem;
+  line-height: 1.55;
+}
+
+.disc-header-desc {
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.disc-add-btn {
+  margin-bottom: 16px;
+}

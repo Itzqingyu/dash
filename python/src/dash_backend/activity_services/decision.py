@@ -1,4 +1,4 @@
-"""Decision (決策紀錄) 的 SQLite CRUD 業務邏輯模組。
+"""Decision (決策紀錄) 的 PostgreSQL CRUD 業務邏輯模組。
 
 記錄活動與會議中做出的關鍵決策 (Problem, Options, Final Decision, Reason)，
 並進行跨 Activity／Meeting 的屬性一致性與 JSON array 格式驗證。
@@ -92,6 +92,7 @@ def create_decision(
     meeting_id: Optional[int] = None,
     outcome_note: Optional[str] = None,
     *,
+    vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """建立一筆決策紀錄，並防範跨 Activity 錯綁 Meeting。"""
@@ -108,21 +109,22 @@ def create_decision(
             "outcome_note": outcome_note,
         }
     )
-    init_db(db_path)
+    init_db(vault_name=vault_name)
     now = utc_now()
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         ensure_activity_exists(conn, values["activity_id"])
         ensure_meeting_matches_activity(
             conn, values["meeting_id"], values["activity_id"]
         )
-        cursor = conn.execute(
+        row = conn.execute(
             """
             INSERT INTO decisions (
                 activity_id, meeting_id, problem, options, final_decision,
                 reason, source, confirmation_status, outcome_note, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING *;
             """,
             (
                 values["activity_id"],
@@ -137,34 +139,36 @@ def create_decision(
                 now,
                 now,
             ),
-        )
-        decision_id = cursor.lastrowid
-        conn.commit()
-        row = conn.execute(
-            "SELECT * FROM decisions WHERE id = ?", (decision_id,)
         ).fetchone()
+
     return dict(row)
 
 
 def get_decision(
-    decision_id: int, *, db_path: Optional[str] = None
+    decision_id: int,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """根據 decision_id 取得單一決策詳情。"""
     positive_id(decision_id, "decision_id")
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
-            "SELECT * FROM decisions WHERE id = ?", (decision_id,)
+            "SELECT * FROM decisions WHERE id = %s", (decision_id,)
         ).fetchone()
     return dict(row) if row else None
 
 
 def list_decisions(
-    activity_id: Optional[int] = None, *, db_path: Optional[str] = None
+    activity_id: Optional[int] = None,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """取得決策紀錄列表；可依據 activity_id 進行過濾。"""
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         if activity_id is None:
             rows = conn.execute(
                 "SELECT * FROM decisions ORDER BY id DESC"
@@ -172,7 +176,7 @@ def list_decisions(
         else:
             normalized_id = ensure_activity_exists(conn, activity_id)
             rows = conn.execute(
-                "SELECT * FROM decisions WHERE activity_id = ? ORDER BY id DESC",
+                "SELECT * FROM decisions WHERE activity_id = %s ORDER BY id DESC",
                 (normalized_id,),
             ).fetchall()
     return [dict(row) for row in rows]
@@ -181,6 +185,7 @@ def list_decisions(
 def update_decision(
     decision_id: int,
     *,
+    vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
     **changes: Any,
 ) -> Optional[Dict[str, Any]]:
@@ -189,11 +194,11 @@ def update_decision(
     if not changes:
         raise ValueError("至少需要提供一個要更新的欄位")
     normalized = _normalize_fields(changes)
-    init_db(db_path)
+    init_db(vault_name=vault_name)
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         current_row = conn.execute(
-            "SELECT * FROM decisions WHERE id = ?", (decision_id,)
+            "SELECT * FROM decisions WHERE id = %s", (decision_id,)
         ).fetchone()
         if current_row is None:
             return None
@@ -204,34 +209,36 @@ def update_decision(
         ensure_activity_exists(conn, next_activity_id)
         ensure_meeting_matches_activity(conn, next_meeting_id, next_activity_id)
 
-        assignments = [f"{field_name} = ?" for field_name in normalized]
+        assignments = [f"{field_name} = %s" for field_name in normalized]
         values = list(normalized.values())
-        assignments.append("updated_at = ?")
+        assignments.append("updated_at = %s")
         values.append(utc_now(after=current["updated_at"]))
         values.append(decision_id)
-        conn.execute(
-            f"UPDATE decisions SET {', '.join(assignments)} WHERE id = ?", values
-        )
-        conn.commit()
+
         updated_row = conn.execute(
-            "SELECT * FROM decisions WHERE id = ?", (decision_id,)
+            f"UPDATE decisions SET {', '.join(assignments)} WHERE id = %s RETURNING *;",
+            values,
         ).fetchone()
-    return dict(updated_row)
+
+    return dict(updated_row) if updated_row else None
 
 
 def delete_decision(
-    decision_id: int, *, db_path: Optional[str] = None
+    decision_id: int,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """刪除指定決策紀錄。"""
     positive_id(decision_id, "decision_id")
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
-            "SELECT * FROM decisions WHERE id = ?", (decision_id,)
+            "SELECT * FROM decisions WHERE id = %s", (decision_id,)
         ).fetchone()
         if row is None:
             return None
         deleted = dict(row)
-        conn.execute("DELETE FROM decisions WHERE id = ?", (decision_id,))
-        conn.commit()
+        conn.execute("DELETE FROM decisions WHERE id = %s", (decision_id,))
+
     return deleted

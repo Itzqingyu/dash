@@ -1,3 +1,4 @@
+import { apiClient } from './apiClient';
 import type {
   Activity,
   ActivityInput,
@@ -19,133 +20,78 @@ import type {
   Schedule,
   ScheduleInput,
   ScheduleUpdate,
-} from '../types/activity';
+} from '../types';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
-
-interface ApiErrorBody {
-  detail?: string;
-}
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...options?.headers,
-    },
-  });
-
-  let body: unknown = null;
-  try {
-    body = await response.json();
-  } catch {
-    // FastAPI normally returns JSON. Keep a useful fallback for network proxies.
-  }
-
-  if (!response.ok) {
-    const detail = (body as ApiErrorBody | null)?.detail;
-    throw new Error(detail || `API request failed (${response.status})`);
-  }
-
-  return body as T;
-}
-
+/**
+ * 活動與各籌備/執行細項 API 模組 (activityApi.ts)
+ * 統一透過 apiClient 發送請求，提供強型別約束
+ */
 export const activityApi = {
-  listActivities: () => request<Activity[]>('/activities'),
-  getActivity: (activityId: number) => request<Activity>(`/activities/${activityId}`),
-  createActivity: (payload: ActivityInput) =>
-    request<Activity>('/activities', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  // 活動主體
+  listActivities: () => apiClient.get<Activity[]>('/activities'),
+  getActivity: (activityId: number) => apiClient.get<Activity>(`/activities/${activityId}`),
+  createActivity: (payload: ActivityInput) => apiClient.post<Activity>('/activities', payload),
   updateActivity: (activityId: number, payload: ActivityUpdate) =>
-    request<Activity>(`/activities/${activityId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
+    apiClient.put<Activity>(`/activities/${activityId}`, payload),
   deleteActivity: (activityId: number) =>
-    request<DeleteActivityResponse>(`/activities/${activityId}`, { method: 'DELETE' }),
+    apiClient.delete<DeleteActivityResponse>(`/activities/${activityId}`),
 
+  // 會議
   listMeetings: (activityId: number) =>
-    request<Meeting[]>(`/meetings?activity_id=${encodeURIComponent(activityId)}`),
-  createMeeting: (payload: MeetingInput) =>
-    request<Meeting>('/meetings', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+    apiClient.get<Meeting[]>(`/meetings?activity_id=${encodeURIComponent(activityId)}`),
+  createMeeting: (payload: MeetingInput) => apiClient.post<Meeting>('/meetings', payload),
   updateMeeting: (meetingId: number, payload: MeetingUpdate) =>
-    request<Meeting>(`/meetings/${meetingId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
+    apiClient.put<Meeting>(`/meetings/${meetingId}`, payload),
   deleteMeeting: (meetingId: number) =>
-    request<DeleteByIdResponse>(`/meetings/${meetingId}`, { method: 'DELETE' }),
+    apiClient.delete<DeleteByIdResponse>(`/meetings/${meetingId}`),
 
+  // 待辦事項
   listTasks: (activityId: number) =>
-    request<Task[]>(`/tasks?activity_id=${encodeURIComponent(activityId)}`),
-  createTask: (payload: TaskInput) =>
-    request<Task>('/tasks', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+    apiClient.get<Task[]>(`/tasks?activity_id=${encodeURIComponent(activityId)}`),
+  createTask: (payload: TaskInput) => apiClient.post<Task>('/tasks', payload),
   updateTask: (taskId: number, payload: TaskUpdate) =>
-    request<Task>(`/tasks/${taskId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
+    apiClient.put<Task>(`/tasks/${taskId}`, payload),
   deleteTask: (taskId: number) =>
-    request<DeleteByIdResponse>(`/tasks/${taskId}`, { method: 'DELETE' }),
+    apiClient.delete<DeleteByIdResponse>(`/tasks/${taskId}`),
 
+  // 決策紀錄
   listDecisions: (activityId: number) =>
-    request<Decision[]>(`/decisions?activity_id=${encodeURIComponent(activityId)}`),
-  createDecision: (payload: DecisionInput) =>
-    request<Decision>('/decisions', { method: 'POST', body: JSON.stringify(payload) }),
+    apiClient.get<Decision[]>(`/decisions?activity_id=${encodeURIComponent(activityId)}`),
+  createDecision: (payload: DecisionInput) => apiClient.post<Decision>('/decisions', payload),
   updateDecision: (decisionId: number, payload: DecisionUpdate) =>
-    request<Decision>(`/decisions/${decisionId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    apiClient.put<Decision>(`/decisions/${decisionId}`, payload),
   deleteDecision: (decisionId: number) =>
-    request<DeleteByIdResponse>(`/decisions/${decisionId}`, { method: 'DELETE' }),
+    apiClient.delete<DeleteByIdResponse>(`/decisions/${decisionId}`),
 
+  // 流程日程
   listSchedules: (activityId: number) =>
-    request<Schedule[]>(`/schedules?activity_id=${encodeURIComponent(activityId)}`),
-  createSchedule: (payload: ScheduleInput) =>
-    request<Schedule>('/schedules', { method: 'POST', body: JSON.stringify(payload) }),
+    apiClient.get<Schedule[]>(`/schedules?activity_id=${encodeURIComponent(activityId)}`),
+  createSchedule: (payload: ScheduleInput) => apiClient.post<Schedule>('/schedules', payload),
   updateSchedule: (scheduleId: number, payload: ScheduleUpdate) =>
-    request<Schedule>(`/schedules/${scheduleId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    apiClient.put<Schedule>(`/schedules/${scheduleId}`, payload),
   deleteSchedule: (scheduleId: number) =>
-    request<DeleteByIdResponse>(`/schedules/${scheduleId}`, { method: 'DELETE' }),
+    apiClient.delete<DeleteByIdResponse>(`/schedules/${scheduleId}`),
 
+  // 突發事件
   listIncidents: (activityId: number) =>
-    request<Incident[]>(`/incidents?activity_id=${encodeURIComponent(activityId)}`),
-  createIncident: (payload: IncidentInput) =>
-    request<Incident>('/incidents', { method: 'POST', body: JSON.stringify(payload) }),
+    apiClient.get<Incident[]>(`/incidents?activity_id=${encodeURIComponent(activityId)}`),
+  createIncident: (payload: IncidentInput) => apiClient.post<Incident>('/incidents', payload),
   updateIncident: (incidentId: number, payload: IncidentUpdate) =>
-    request<Incident>(`/incidents/${incidentId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    apiClient.put<Incident>(`/incidents/${incidentId}`, payload),
   deleteIncident: (incidentId: number) =>
-    request<DeleteByIdResponse>(`/incidents/${incidentId}`, { method: 'DELETE' }),
-  generateHandover: async (schedules: any[], decisions: any[]) => {
-    // 假設你的 FastAPI 跑在 8000 port
-    const response = await fetch('http://127.0.0.1:8000/handover/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ schedules, decisions })
-    });
-    
-    if (!response.ok) {
-      throw new Error('AI 生成失敗');
-    }
-    return response.json();
-  },
+    apiClient.delete<DeleteByIdResponse>(`/incidents/${incidentId}`),
+
+  // 交接摘要產生與入庫
+  generateHandover: (schedules: unknown[], decisions: unknown[]) =>
+    apiClient.post<{ summary: string }>('/handover/generate', { schedules, decisions }),
+
   saveHandover: (payload: { activity_id?: number; activity_name: string; content: string }) =>
-    request<{
+    apiClient.post<{
       status: string;
       message: string;
       filename: string;
       file_path: string;
       doc_id?: number | null;
       chunks_added: number;
-    }>('/handover/save', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+    }>('/handover/save', payload),
 };

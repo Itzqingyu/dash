@@ -1,178 +1,132 @@
 # DASH (Decision, Activity, Schedule, History)
 
-> **Event Management and Knowledge Base Decision Support System**  
-> Integrates event preparation dashboards, LLM-based document retrieval-augmented generation (RAG), and structured meeting minutes extraction with database storage.
+> **Team Event Lifecycle Management and Intelligent Decision Support System**  
+> Built for the complete event lifecycle: Integrating event dashboards, AI structured meeting minutes extraction, historical document retrieval-augmented generation (RAG), and automated handover reporting.
 
 [English](README.md) | [繁體中文](README.zh-TW.md)
 
 ---
 
-## Key Features (User Guide)
+## 1. Project Value & Key Features (User Guide - 60%)
 
-DASH consists of three core functional modules to assist teams in managing event workflows, meeting records, and associated documentation.
+### 1.1 Problems DASH Solves
 
-### Core Architecture
+Student associations, clubs, and project teams frequently encounter recurring friction during event planning:
+- **Scattered Meeting Records**: Notes and minutes are fragmented across chat apps and diverse docs; contexts are easily lost over time.
+- **Unclear Decision Rationale**: New members or next-generation leaders have no historical basis for why past decisions were made, leading to repetitive missteps.
+- **Severe Handover Gaps**: Institutional memory fails to pass down effectively, forcing every team to start from scratch each year.
+- **Cross-Project Clutter**: Action items, files, and discussions from different activities mix together without clear project boundaries.
 
-- **1. Event Management Dashboard**: Event overview, preparation progress, meeting logs, action items, key decisions, schedule timeline, and incident logs.
-- **2. AI Chat & Knowledge Retrieval (RAG)**: Dual conversation modes (General Chat / Knowledge Retrieval), source citation, context isolation, and centralized multi-format document management.
-- **3. AI Structured Meeting Minutes Extraction (Preview & Commit)**: Full-text structured extraction, inline field editing, and database persistence linked with the event dashboard.
-
----
-
-### 1. Control Dashboard: Activities, Meetings, Decisions, Schedules & Tasks
-
-Provides a management interface for the event lifecycle, organizing information and records across all stages:
-
-- **Event Overview & Progress Tracking (Overview)**:
-  - Displays preparation completion status and lifecycle stages (`Created` -> `In Preparation` -> `In Progress` -> `Post-Event Review`).
-  - Consolidates key details (dates, venues, coordinators, budget, expected attendance) and next steps.
-- **Preparation Meeting Management (Meetings)**:
-  - Records time, venue, attendees, and discussion notes across preparation meetings.
-  - Supports linking to uploaded source documents (`source_document_id`) to view original files.
-- **Key Decision Records (Decisions)**:
-  - Captures problem statements, considered options, final decisions, and reasons.
-  - Tracks confirmation status (`Pending` / `Confirmed`) and document sources.
-- **Action Task List (Tasks)**:
-  - Supports status filtering (`All` / `Pending` / `Completed`) with priority markers (`High` / `Medium` / `Low`).
-  - Tasks can be assigned to owners, set with deadlines, and linked to corresponding events and meetings.
-- **Schedule Timeline & Incident Logs (Schedule & Incidents)**:
-  - Detailed agenda schedules (owners, categories, remarks), along with incident tracking and response recommendations during event execution.
+The core mission of DASH is: **"From preparation and execution to review, preserve the experience of every team."** Through structured workflows, multi-vault isolation, and AI assistance, fragmented discussions are transformed into lasting organizational assets.
 
 ---
 
-### 2. LLM + RAG Historical Records & Knowledge Retrieval
+### 1.2 Core Capabilities
 
-Provides document-based search and question-answering capabilities:
+#### (1) Four-Stage Event Lifecycle Workspace
+Comprehensive management covering all four phases: "In Preparation -> In Progress -> Post-Event Review -> Archived":
+- **Event Metadata**: Manage event themes, year, coordinator-in-charge, time, venue, budget, and expected attendance.
+- **Preparation Meetings**: Log meeting times, venues, attendees, and discussions, with direct links to uploaded source documents.
+- **Key Decision Tracking**: Record Problem statements, Option alternatives, final Decisions, and underlying Reasons with confirmation statuses.
+- **Action Tasks**: Priority-based task tracking (High / Medium / Low), owner assignment, deadlines, and progress states (Pending / In Progress / Completed).
+- **Schedule Agenda**: Detailed event-day timelines, hourly task breakdowns, and responsible persons.
+- **Incident Response**: Log real-time unexpected incidents during execution, emergency actions taken, and post-event review suggestions.
 
-- **Document Conversion & Centralized Storage**:
-  - Supports `.md`, `.txt`, `.pdf`, and `.docx` file formats.
-  - Automatically parses and standardizes documents into Markdown files, decoupled from original local files once uploaded.
-- **Vector Retrieval**:
-  - Documents are chunked semantically, vectorized through an embedding model, and stored in a Chroma vector database.
-- **Dual Chat Modes**:
-  - **Knowledge Q&A Mode (`RAG`)**: Retrieves relevant document chunks based on user queries and injects them into the context for LLM responses, with collapsible source citation cards.
-  - **General Chat Mode (`Chat`)**: Interacts directly with the LLM using conversational context without querying the document repository.
-- **Context Isolation Mechanism (Clean Context Isolation)**:
-  - The chat database stores only user questions and model replies, keeping retrieved document chunks in isolated metadata.
-  - Multi-turn conversations avoid re-injecting historical document chunks, preventing context length inflation.
-- **Confirmation Safeguard**:
-  - Prompts a confirmation dialog when deleting chat sessions or removing knowledge base files to prevent accidental deletion.
+#### (2) AI Structured Meeting Minutes Extraction (Meeting Extract Agent)
+Eliminate tedious manual note formatting:
+- **Multi-Format Ingestion**: Upload meeting notes in Markdown, PDF, Word (.docx), or plain text (.txt).
+- **Automated Extraction**: Specialized prompt engineering parses the text to extract meeting summaries, key decisions, and concrete action tasks.
+- **Preview & Commit Workflow**: Results are presented in an editable preview grid. Teams can review and fine-tune fields inline before committing directly to the database in one click.
 
----
+#### (3) Historical Document Retrieval & Smart Chat (Smart Chat & Document RAG)
+Turn past documents into an interactive advisor:
+- **Document Q&A Mode (RAG Mode)**: Query uploaded historical documents; the system retrieves relevant chunks with collapsible citation sources for easy verification.
+- **General Chat Mode**: Consult the LLM directly for brainstorming event ideas, drafting announcements, or general queries.
+- **Multi-Session Management**: Create, rename, switch, and persist independent chat sessions.
+- **Clean Context Isolation**: Chat history preserves only query-response pairs while keeping retrieval chunks in metadata, ensuring multi-turn conversations remain concise and effective.
 
-### 3. AI Structured Meeting Minutes Extraction (Preview & Commit)
+#### (4) Automated Handover Report Generation (Handover Agent)
+- Consolidates all meetings, decisions, timelines, and incident response logs for an event in one click.
+- AI synthesizes a comprehensive, well-structured handover summary report with instant preview and Markdown export.
 
-Provides structured extraction and database persistence workflows for meeting minutes:
-
-- **Document Structured Extraction**:
-  - Select uploaded meeting minutes from the document repository.
-  - Utilizes a System Prompt to guide the LLM in analyzing the text and extracting meeting summaries, key decisions, and action items.
-- **Preview and Confirmation Workflow (Preview-Commit)**:
-  1. **Preview Stage**: Extracted results are presented in structured tables for inspection.
-  2. **Field Editing**: Users can edit meeting titles, dates, venues, decisions, and task details directly in the interface.
-  3. **Commit to Database**: After verification, clicking "Commit to Database" writes data to SQLite and updates the event management dashboard.
-
----
-
-## Technical Architecture & Developer Guide
-
-### System Layered Architecture
-
-- **Frontend Layer (Desktop Client)**
-  - **Core Technologies**: React 19 + TypeScript + Vite + Electron Forge.
-  - **Design Conventions**: Component-isolated CSS styles, strict Design Tokens (`:root`) inheritance, strictly zero Emojis.
-  - **Service Communication**: Centralized HTTP REST wrapper via `apiClient` with unified error handling.
-- **Backend Service Layer (Python / FastAPI)**
-  - **Interface**: Local HTTP RESTful API (defaulting to `http://127.0.0.1:8000`).
-  - **Entrypoint**: `python/src/dash_backend/main.py`.
-  - **Core Modules**:
-    - `activity_services/`: Implements SQLite CRUD operations for Activity, Meeting, Task, Decision, Schedule, and Incident.
-    - `ai_services/`: Core RAG engine (chunking, vectorization, reranking, retrieval) and LLM conversation/structured extraction (`rag_engine`, `llm_service`).
-    - `document_processing/`: Multi-format document conversion (PDF, DOCX, TXT) and Markdown repository storage (`converter`).
-    - `database.py`: Foundational SQLite connection pooling, schema migrations, and ChromaDB vector store instance.
-- **Local Storage Layer (`python/data/`)**
-  - **SQLite Database (`dash_database.sqlite`)**: Stores document metadata, chat sessions, message logs, and event records.
-  - **ChromaDB Vector Store (`chroma_db/`)**: Stores document chunks and feature vectors for semantic search.
-  - **Hosted Markdown Store (`markdown/`)**: Central storage for converted standard Markdown texts.
-
-### Technology Stack
-
-| Domain | Technology / Package | Description |
-| :--- | :--- | :--- |
-| **Frontend App** | React, TypeScript, Electron, Vite | Cross-platform desktop application framework |
-| **Icons & Aesthetics** | Lucide React | Unified icon system (strictly zero Emojis) |
-| **Markdown Rendering** | react-markdown | Message formatting and list hierarchy rendering |
-| **Backend Framework** | Python 3.10+, FastAPI, Uvicorn | Asynchronous RESTful API service |
-| **Package Manager** | uv | Python package and dependency manager |
-| **RAG & Retrieval** | LangChain, FastEmbed, ChromaDB | Text chunking, vectorization, and semantic search supporting CPU execution |
-| **LLM Interface** | LiteLLM | Unified calling interface for large language models |
-| **Document Conversion** | PyPDF, python-docx, markdown | Parses common formats and converts them to Markdown text |
-| **Database** | SQLite3, ChromaDB Persistent | Local relational and vector database storage |
+#### (5) Multi-Project Vaults & Team Collaboration
+- **Isolated Vaults**: Each event, department, or project operates within its own dedicated vault with completely isolated data and storage.
+- **Role-Based Access Control (RBAC)**:
+  - `Owner`: Full administrative authority including role updates, vault renaming, and deletion.
+  - `Admin`: Operational privileges including task management and invite code generation.
+  - `User`: Standard member access for workspace editing, chat, and document uploads.
+- **Expiring Invite Codes**: Generate 7-day secure invite codes for team onboarding.
+- **Backup & Migration (DASH OUT / DASH IN)**: Export full vaults into standardized ZIP bundles (structured JSON and Markdown files), or import backups as brand-new vaults.
 
 ---
 
-### Local Installation & Deployment
+## 2. Technical Architecture & Design Outline (Technical Architecture - 30%)
 
-#### 1. Prerequisites
-- **Node.js**: v18+ and npm
-- **Python**: 3.10+ (recommended: install [uv](https://github.com/astral-sh/uv))
-- **LLM API Key (.env)**: API key for the corresponding model service
+### 2.1 System Architecture
 
-#### 2. Environment Configuration
-Create a `.env` file in the `python/` directory or project root:
-```env
-# Set the corresponding API key and model name according to LiteLLM specifications
-API_KEY=your_api_key_here
-MODEL_NAME=your_model_name_here
+```text
+[ Web Client (React 19 + TypeScript + Vite) ]
+                    │
+                    ▼ (HTTP REST / JSON / Bearer JWT)
+[ Backend Services (FastAPI + Python 3.12 / Uvicorn) ]
+  ├── Auth & RBAC (auth/security.py) ─────────> bcrypt hashing + JWT Token + Dependency Injection
+  ├── Vault Management (vault_manager.py) ────> Vault lifecycle, invites, DASH IN / OUT
+  ├── Activity Services (activity_services/) ─> Activities, meetings, tasks, decisions, schedules, incidents
+  ├── AI & RAG Engine (ai_services/) ─────────> LiteLLM multi-model dispatch + pgvector search
+  └── Document Processing (document_processing/) > Format parsing to managed Markdown
+                    │
+                    ▼ (psycopg pool / SET search_path)
+[ Data Tier (PostgreSQL 16 + pgvector) ]
+  ├── public Schema: Global users, vaults registry, vault_memberships, invitations
+  └── vault_v_<uuid12> Schemas: Isolated business tables and vector chunk tables per vault
 ```
 
-#### 3. Backend Setup & Startup
+### 2.2 Technical Highlights
 
-Use `uv` for dependency synchronization and execution:
-
-```powershell
-# Navigate to the backend directory
-cd python
-
-# Install dependencies
-uv sync
-
-# Launch FastAPI backend server (default: http://127.0.0.1:8000)
-uv run python src/dash_backend/main.py
-```
-> After starting, visit `http://127.0.0.1:8000/docs` in your browser to test all APIs via the Swagger UI.
-
-#### 4. Frontend Setup & Startup
-
-Open another terminal window and navigate to the `react/` directory:
-
-```powershell
-# Navigate to the frontend directory
-cd react
-
-# Install dependencies
-npm install
-
-# Run tests to verify code integrity
-npm run test
-
-# Start Electron development environment
-npm run start
-```
+- **Physical Multi-Tenancy via Schema Isolation**:
+  Each vault maps to an independent `vault_v_<uuid12>` PostgreSQL Schema and filesystem directory `markdown/<vault_id>/`. Dynamically configured via `SET search_path TO "vault_v_<vault_id>", public;`, eliminating cross-tenant leakage risks.
+- **Unified PostgreSQL 16 + pgvector**:
+  Replaces separate external vector databases with PostgreSQL's native `vector` extension. Text embeddings are queried efficiently using Cosine Distance.
+- **Concurrency Deadlock Protection & Ownership Disambiguation**:
+  Thread-safe schema initialization locks and in-memory caches eliminate concurrent DDL deadlocks. Name resolution prioritizes caller `user_id`, enabling duplicate display names across users without collision.
+- **Dynamic Fallback & Safe Multi-User Eviction**:
+  Active vaults can be safely deleted; on deletion, the backend smoothly falls back to `v_default`. Meanwhile, active heartbeats and API interceptors force other concurrent members out to the home dashboard.
+- **Modular Frontend Architecture**:
+  Strictly partitioned into `common/`, `layout/`, and `features/`. Styles inherit unified CSS tokens (`:root` in `index.css`), adhering to the "one component, one CSS" principle and a strict no-emoji policy.
 
 ---
 
-### Testing Conventions & Project Guidelines
+## 3. Deployment & Quickstart (Deployment & Quickstart - 10%)
 
-- **Python Backend Tests**:
-  - Test scripts must be located in `python/tests/`.
-  - `python/tests/test_main.py`: Interactive CLI tool for end-to-end testing of document conversion, event operations, meeting extraction, and multi-turn conversations.
-- **React Frontend Tests**:
-  - Unit and integration tests are located in `react/tests/`, run with Vitest: `npm run test`.
-- **Code & Naming Style**:
-  - Files and directories: Lowercase letters with hyphens `-` (except code scripts, which follow language conventions).
-  - CSS guidelines: Color schemes strictly inherited from `:root` in `index.css`; one CSS file per component.
-  - Iconography: Strictly zero Emojis; all icons use `lucide-react`.
+### 3.1 Prerequisites
+- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) (or Docker Desktop) installed.
+
+### 3.2 One-Command Container Deployment
+
+```bash
+# 1. Copy the environment template and insert your LLM API Key
+cp python/.env.example python/.env
+
+# 2. Edit python/.env with your API credentials (e.g. OPENAI_API_KEY or GEMINI_API_KEY)
+
+# 3. Build and launch all services in background with Docker Compose
+docker compose up -d --build
+```
+
+Docker Compose will start three coordinated containers:
+- `dash-db`: PostgreSQL 16 with pgvector extension (internal port 5432).
+- `dash-backend`: FastAPI application (internal port 8000).
+- `dash-frontend`: Nginx serving the compiled React SPA (mapped to port 5173).
+
+### 3.3 Accessing the Application
+
+- **Web Frontend**: Open [http://localhost:5173](http://localhost:5173) in your browser to register and create your first vault.
+- **API Documentation**: Open [http://localhost:8000/docs](http://localhost:8000/docs) for the interactive Swagger API interface.
+
+### 3.4 Stopping the Services
+```bash
+docker compose down
+```
 
 ---
 

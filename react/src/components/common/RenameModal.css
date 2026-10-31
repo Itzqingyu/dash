@@ -1,0 +1,144 @@
+/* ==========================================
+   RenameModal.css - 對話重命名對話框樣式
+   統一繼承 index.css 之設計變數與毛玻璃模糊規範
+   ========================================== */
+
+.rename-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: var(--backdrop);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: renameModalFadeIn 0.18s ease-out forwards;
+}
+
+@keyframes renameModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.rename-modal-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  animation: renameModalScaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes renameModalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.rename-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.rename-modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--cyan-soft);
+  color: var(--cyan);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.rename-modal-title-area h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.rename-modal-title-area p {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.rename-modal-body {
+  margin-bottom: 24px;
+}
+
+.rename-modal-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.rename-modal-input:focus {
+  border-color: var(--cyan);
+}
+
+.rename-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.rename-cancel-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: var(--white);
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rename-cancel-btn:hover {
+  background: var(--canvas);
+}
+
+.rename-confirm-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  background: var(--cyan);
+  border: 1.5px solid var(--cyan);
+  color: var(--white);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 1.5px 1.5px 0 var(--line);
+}
+
+.rename-confirm-btn:hover {
+  filter: brightness(0.9);
+  
+}

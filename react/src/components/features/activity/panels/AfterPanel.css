@@ -1,0 +1,366 @@
+/* ==========================================
+   AfterPanel.css - 活動後檢討與交接面板樣式
+   ========================================== */
+
+.after-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  overflow: hidden;
+}
+
+.after-summary article {
+  padding: 18px;
+  border-right: 1px solid var(--line);
+}
+
+.after-summary article:last-child {
+  border: 0;
+}
+
+.after-summary span,
+.after-summary small,
+.after-summary strong {
+  display: block;
+}
+
+.after-summary span,
+.after-summary small {
+  color: var(--muted);
+  font-size: 0.67rem;
+}
+
+.after-summary strong {
+  margin: 5px 0;
+  font-size: 1.25rem;
+  color: var(--ink);
+}
+
+.review-card {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.review-head h3 {
+  margin: 6px 0 0;
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+
+.plan-actual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.plan-actual div {
+  padding: 16px;
+  border-radius: 9px;
+  background: var(--canvas);
+}
+
+.plan-actual strong {
+  display: block;
+  margin: 6px 0 3px;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.plan-actual p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.69rem;
+}
+
+.issue-callout {
+  margin-top: 13px;
+  padding: 15px;
+  border-left: 3px solid var(--danger);
+  border-radius: 7px;
+  background: var(--danger-soft);
+}
+
+.issue-callout span {
+  color: var(--danger);
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.issue-callout strong {
+  display: block;
+  margin: 5px 0;
+  font-size: 0.82rem;
+  color: var(--danger);
+}
+
+.issue-callout p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 13px;
+}
+
+.review-grid div {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--white);
+}
+
+.review-grid p {
+  margin: 7px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.handover-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--cyan-soft);
+}
+
+.handover-card h3,
+.handover-card p {
+  margin: 5px 0;
+}
+
+.handover-card h3 {
+  font-size: 0.94rem;
+  color: var(--ink);
+}
+
+.handover-card p:last-child {
+  color: var(--ink-soft);
+  font-size: 0.73rem;
+}
+
+.after-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: .75rem;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 16px;
+  line-height: 1.4;
+}
+
+.after-error-banner .error-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.after-error-banner .error-dismiss {
+  align-self: flex-end;
+  background: transparent;
+  border: none;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--danger);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* ==========================================
+   活動交接摘要彈窗與報告排版 (Handover Modal & Document)
+   遵循極簡公文/商務報告排版規範，配色統一繼承 index.css :root
+   ========================================== */
+
+#handover-modal.modal {
+  width: min(780px, calc(100vw - 40px));
+  max-width: 780px;
+}
+
+.handover-modal-body {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding: 18px 24px;
+  background: var(--white);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  line-height: 1.7;
+  text-align: left;
+}
+
+/* 報告主標題 (PDF 與預覽共用) */
+.handover-report-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--ink);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1.5px solid var(--line);
+  line-height: 1.35;
+}
+
+/* 載入中文字樣式 */
+.handover-loading-text {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 16px 0;
+}
+
+/* Markdown 極簡報告排版 */
+.handover-report-markdown {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.handover-report-markdown > *:first-child {
+  margin-top: 0;
+}
+
+.handover-report-markdown > *:last-child {
+  margin-bottom: 0;
+}
+
+/* 段落文字 */
+.handover-report-markdown p {
+  margin: 0 0 14px 0;
+  line-height: 1.75;
+  color: var(--ink-soft);
+}
+
+/* 強調粗體 */
+.handover-report-markdown strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* 標題排版 (極簡無裝飾風格，階層與間距分明) */
+.handover-report-markdown h1,
+.handover-report-markdown h2,
+.handover-report-markdown h3,
+.handover-report-markdown h4 {
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.handover-report-markdown h1 {
+  font-size: 1.25rem;
+  margin: 24px 0 12px 0;
+}
+
+.handover-report-markdown h2 {
+  font-size: 1.15rem;
+  margin: 22px 0 10px 0;
+}
+
+.handover-report-markdown h3 {
+  font-size: 1.05rem;
+  margin: 20px 0 10px 0;
+}
+
+.handover-report-markdown h4 {
+  font-size: 0.98rem;
+  margin: 16px 0 8px 0;
+}
+
+/* 清單排版 (舒適內縮、標號清晰對齊) */
+.handover-report-markdown ul,
+.handover-report-markdown ol {
+  margin: 8px 0 16px 0;
+  padding-left: 24px;
+}
+
+.handover-report-markdown ul {
+  list-style-type: disc;
+}
+
+.handover-report-markdown ol {
+  list-style-type: decimal;
+}
+
+.handover-report-markdown li {
+  margin: 6px 0;
+  padding-left: 4px;
+  line-height: 1.75;
+  color: var(--ink-soft);
+}
+
+.handover-report-markdown li > p {
+  margin: 0;
+}
+
+.handover-report-markdown li > ul,
+.handover-report-markdown li > ol {
+  margin: 4px 0 4px 0;
+  padding-left: 20px;
+}
+
+/* 引用區塊 */
+.handover-report-markdown blockquote {
+  margin: 14px 0;
+  padding: 8px 16px;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+  font-size: 0.92rem;
+  background: var(--canvas);
+  border-radius: 0 6px 6px 0;
+}
+
+/* 代碼與預格式化區塊 */
+.handover-report-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.handover-report-markdown pre {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.handover-report-markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* 分隔線 */
+.handover-report-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 20px 0;
+}

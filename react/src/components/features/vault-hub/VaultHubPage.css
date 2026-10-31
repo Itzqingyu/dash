@@ -1,0 +1,559 @@
+/* ==========================================
+   VaultHubPage.css - Vault 專屬操作介面樣式
+   繼承 index.css 統一設計變數，嚴禁 hardcode 顏色
+   ========================================== */
+
+.vault-hub-container {
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--canvas);
+  color: var(--ink);
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 頂部極簡麵包屑導航 */
+.vault-hub-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.hub-back-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-right: 4px;
+}
+
+.hub-back-btn:hover {
+  background-color: var(--panel);
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.hub-crumb-link {
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.hub-crumb-link:hover {
+  background-color: var(--panel);
+  color: var(--cyan);
+}
+
+.hub-crumb-separator {
+  color: var(--muted);
+  user-select: none;
+}
+
+.hub-crumb-active {
+  font-weight: 700;
+  color: var(--ink);
+  padding: 4px 8px;
+}
+
+/* 中央主視覺 Header 區塊 */
+.vault-hub-header {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.vault-hub-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.vault-hub-title-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vault-hub-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background-color: var(--navy);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vault-hub-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vault-hub-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vault-hub-title {
+  font-size: 2.25rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--navy);
+  line-height: 1.15;
+}
+
+.vault-hub-desc {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  max-width: 680px;
+  line-height: 1.5;
+}
+
+/* 操作按鈕群 */
+.vault-hub-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hub-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--line);
+  background-color: var(--canvas);
+  color: var(--ink-soft);
+}
+
+.hub-btn:hover {
+  background-color: var(--line);
+  color: var(--ink);
+}
+
+.hub-btn.danger {
+  color: var(--danger);
+}
+
+.hub-btn.danger:hover {
+  background-color: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+/* 核心功能卡片網格 */
+.vault-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.hub-card {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.hub-card:hover {
+  border-color: var(--cyan);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.hub-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.hub-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.hub-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hub-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.hub-card-desc {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.hub-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.hub-card-enter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+/* 彈窗背景與卡片 */
+.hub-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 27, 46, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.hub-modal-card {
+  background-color: var(--panel);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 32px rgba(16, 25, 40, 0.2);
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 28px;
+}
+
+.hub-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hub-modal-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.hub-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hub-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.hub-modal-footer .btn-primary,
+.hub-modal-footer button[type="submit"] {
+  padding: 8px 18px;
+  background-color: var(--cyan);
+  color: var(--white);
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.hub-modal-footer .btn-primary:hover:not(:disabled),
+.hub-modal-footer button[type="submit"]:hover:not(:disabled) {
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
+}
+
+.hub-modal-footer .btn-secondary,
+.hub-modal-footer button[type="button"]:not(.btn-close) {
+  padding: 8px 18px;
+  background-color: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.hub-modal-footer .btn-secondary:hover:not(:disabled),
+.hub-modal-footer button[type="button"]:not(.btn-close):hover:not(:disabled) {
+  background-color: var(--white);
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+
+/* 彈窗按鈕標準化 */
+.btn-primary {
+  padding: 8px 18px;
+  background-color: var(--cyan);
+  color: var(--white);
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 8px 18px;
+  background-color: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--white);
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-close:hover {
+  background-color: var(--hover);
+  color: var(--ink);
+}
+
+/* 表單元素標準化 */
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--cyan);
+  background-color: var(--panel);
+}
+
+/* 成員名單列表與排版 */
+.vault-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.vault-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  gap: 12px;
+}
+
+.vault-member-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-member-email {
+  color: var(--ink);
+}
+
+.vault-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.vault-member-role-btn {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background-color: var(--white);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vault-member-role-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background-color: var(--cyan-soft);
+}
+
+/* 邀請碼產生區塊 */
+.vault-invite-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  background-color: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-top: 4px;
+}
+
+.vault-invite-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--white);
+  border: 1px dashed var(--cyan);
+  border-radius: var(--radius);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.vault-invite-code-text {
+  font-family: monospace;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--cyan);
+  letter-spacing: 0.05em;
+}

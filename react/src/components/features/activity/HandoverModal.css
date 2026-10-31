@@ -1,0 +1,35 @@
+/**
+ * HandoverModal.css
+ * 活動交接報告預覽與匯出彈窗樣式
+ */
+
+.handover-modal-body {
+  padding: 16px;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-top: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.handover-report-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--ink);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.handover-report-markdown {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.handover-loading-text {
+  color: var(--muted);
+  font-style: italic;
+}
+

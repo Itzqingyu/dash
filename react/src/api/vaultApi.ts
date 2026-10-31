@@ -1,114 +1,66 @@
 /**
- * vaultApi.ts - 多 Vault 與 DASH OUT / DASH IN 前端 API 模組
+ * Vault 管理與 DASH OUT / DASH IN 前端 API 模組 (vaultApi.ts)
+ * 統一透過 apiClient 發送請求
  */
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+import { apiClient, API_BASE_URL } from './apiClient';
+import type {
+  VaultStats,
+  VaultManifest,
+  VaultItem,
+  InspectZipResponse,
+  ActiveVaultResponse,
+  SwitchVaultResponse,
+  CreateVaultResponse,
+  RenameVaultResponse,
+  DeleteVaultResponse,
+  ImportVaultResponse,
+} from '../types/vault';
+import type {
+  VaultMember,
+  InviteCodeResponse,
+  JoinVaultResponse,
+} from '../types/auth';
 
-export interface VaultStats {
-  vault_name: string;
-  activities_count: number;
-  meetings_count: number;
-  tasks_count: number;
-  decisions_count: number;
-  schedules_count: number;
-  incidents_count: number;
-  documents_count: number;
-  chat_sessions_count: number;
-  data_size_bytes: number;
-  db_size_bytes: number;
-  chroma_size_bytes: number;
-  markdown_size_bytes: number;
-  last_updated: string;
-}
-
-export interface VaultManifest {
-  app: string;
-  version: string;
-  vault_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
-  description: string;
-}
-
-export interface VaultItem {
-  name: string;
-  display_name: string;
-  vault_id: string;
-  path: string;
-  created_at: string;
-  updated_at: string;
-  description: string;
-  is_active: boolean;
-  stats: VaultStats;
-}
-
-export interface InspectZipResponse {
-  status: string;
-  manifest: VaultManifest;
-  suggested_name: string;
-}
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(options?.body && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
-      ...options?.headers,
-    },
-  });
-
-  let body: any = null;
-  try {
-    body = await response.json();
-  } catch {
-    // 預防空回應或檔案下載
-  }
-
-  if (!response.ok) {
-    const detail = body?.detail || `API request failed (${response.status})`;
-    throw new Error(detail);
-  }
-
-  return body as T;
-}
+// 重新匯出 Vault 領域型別供組件直接引用，保持向後相容
+export type {
+  VaultStats,
+  VaultManifest,
+  VaultItem,
+  InspectZipResponse,
+  ActiveVaultResponse,
+  SwitchVaultResponse,
+  CreateVaultResponse,
+  RenameVaultResponse,
+  DeleteVaultResponse,
+  ImportVaultResponse,
+};
 
 export const vaultApi = {
-  /** 取得所有 Vault 列表 */
-  listVaults: () => request<VaultItem[]>('/vaults'),
+  /** 取得當前使用者所屬之 Vault 列表 */
+  listVaults: () => apiClient.get<VaultItem[]>('/vaults'),
 
   /** 取得當前使用中 Vault 資訊與統計數據 */
-  getActiveVault: () => request<{ active_vault: string; stats: VaultStats }>('/vaults/active'),
+  getActiveVault: () => apiClient.get<ActiveVaultResponse>('/vaults/active'),
 
   /** 熱切換使用中的 Vault */
   switchVault: (vaultName: string) =>
-    request<{ status: string; message: string; active_vault: string; stats: VaultStats }>('/vaults/switch', {
-      method: 'POST',
-      body: JSON.stringify({ vault_name: vaultName }),
-    }),
+    apiClient.post<SwitchVaultResponse>('/vaults/switch', { vault_name: vaultName }),
 
-  /** 建立全新空白 Vault 並自動切換 */
+  /** 建立全新空白 Vault 並自動切換（將當前登入者設為 owner） */
   createVault: (vaultName: string, description?: string) =>
-    request<{ status: string; message: string; vault: any; stats: VaultStats }>('/vaults/create', {
-      method: 'POST',
-      body: JSON.stringify({ vault_name: vaultName, description: description || '' }),
-    }),
+    apiClient.post<CreateVaultResponse>('/vaults/create', { vault_name: vaultName, description: description || '' }),
 
   /** 重新命名 Vault */
   renameVault: (oldName: string, newName: string) =>
-    request<{ status: string; message: string; old_name: string; new_name: string }>('/vaults/rename', {
-      method: 'POST',
-      body: JSON.stringify({ old_name: oldName, new_name: newName }),
-    }),
+    apiClient.post<RenameVaultResponse>('/vaults/rename', { old_name: oldName, new_name: newName }),
 
-  /** 刪除指定的非使用中 Vault */
+  /** 刪除指定的非使用中 Vault (需 owner 權限) */
   deleteVault: (vaultName: string) =>
-    request<{ status: string; message: string; deleted_vault: string }>(`/vaults/${encodeURIComponent(vaultName)}`, {
-      method: 'DELETE',
-    }),
+    apiClient.delete<DeleteVaultResponse>(`/vaults/${encodeURIComponent(vaultName)}`),
 
   /** 取得當前使用中 Vault 之統計數據 */
-  getVaultStats: () => request<VaultStats>('/vault/stats'),
+  getVaultStats: () => apiClient.get<VaultStats>('/vault/stats'),
 
   /** DASH OUT 導出下載 URL */
   getExportUrl: () => `${API_BASE_URL}/vault/export`,
@@ -117,10 +69,7 @@ export const vaultApi = {
   inspectZip: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return request<InspectZipResponse>('/vault/inspect-zip', {
-      method: 'POST',
-      body: formData,
-    });
+    return apiClient.upload<InspectZipResponse>('/vault/inspect-zip', formData);
   },
 
   /** DASH IN: 匯入 ZIP 並建立為全新獨立 Vault */
@@ -128,15 +77,35 @@ export const vaultApi = {
     const formData = new FormData();
     formData.append('file', file);
     const query = targetName ? `?target_name=${encodeURIComponent(targetName)}` : '';
-    return request<{
-      status: string;
-      message: string;
-      vault_name: string;
-      manifest: VaultManifest;
-      stats: VaultStats;
-    }>(`/vault/import${query}`, {
-      method: 'POST',
-      body: formData,
-    });
+    return apiClient.upload<ImportVaultResponse>(`/vault/import${query}`, formData);
   },
+
+  /** 建立邀請碼 (需 owner 或 admin 權限) */
+  createInviteCode: (
+    vaultName: string,
+    defaultRole: 'admin' | 'user' = 'user',
+    expiresInDays: number = 7,
+    maxUses?: number
+  ) =>
+    apiClient.post<InviteCodeResponse>('/vaults/invite-code', {
+      vault_name: vaultName,
+      default_role: defaultRole,
+      expires_in_days: expiresInDays,
+      max_uses: maxUses || null,
+    }),
+
+  /** 憑邀請碼加入紀錄庫 */
+  joinVault: (inviteCode: string) =>
+    apiClient.post<JoinVaultResponse>('/vaults/join', { invite_code: inviteCode }),
+
+  /** 取得紀錄庫成員名單 */
+  getVaultMembers: (vaultName: string) =>
+    apiClient.get<VaultMember[]>(`/vaults/${encodeURIComponent(vaultName)}/members`),
+
+  /** 變更成員角色 (需 owner 權限，僅能設定為 admin 或 user) */
+  updateMemberRole: (vaultName: string, userId: number, role: 'admin' | 'user') =>
+    apiClient.patch<{ status: string; message: string; role: string }>(
+      `/vaults/${encodeURIComponent(vaultName)}/members/${userId}/role`,
+      { role }
+    ),
 };

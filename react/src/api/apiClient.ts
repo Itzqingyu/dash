@@ -1,9 +1,10 @@
 /**
  * 後端 API 網路請求核心客戶端 (apiClient.ts)
- * 統一管理 HTTP 請求、錯誤攔截與後端連線異常捕捉
+ * 統一管理 HTTP 請求、Bearer Token 自動附加、錯誤攔截與後端連線異常捕捉
  */
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
+export const TOKEN_STORAGE_KEY = 'dash_auth_token';
 
 /**
  * 自訂 API 錯誤類別，攜帶 HTTP 狀態碼與後端詳細錯誤說明
@@ -22,7 +23,7 @@ export class BackendApiError extends Error {
 
 /**
  * 通用 HTTP 請求封裝
- * 具備 JSON 解析與網路斷線異常捕捉
+ * 具備 JWT Token 自動注入、JSON 解析與網路異常捕捉
  */
 export async function apiRequest<T>(
   endpoint: string,
@@ -30,6 +31,14 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   const headers = new Headers(options.headers || {});
+
+  // 自動附加 JWT Bearer Token
+  if (!headers.has('Authorization')) {
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
 
   // 若非 FormData 上傳且無指定 Content-Type，預設帶入 application/json
   if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
@@ -72,6 +81,24 @@ export async function apiRequest<T>(
         // 若無法解析 JSON 則保留預設訊息
       }
 
+      // 若為 401 登入失效，發布全域通知
+      if (response.status === 401) {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        window.dispatchEvent(new Event('dash:unauthorized'));
+      }
+
+      // 若為 403 或 404 且與紀錄庫存取或已被刪除相關，發布強制退出通知
+      if (
+        (response.status === 403 || response.status === 404) &&
+        (errorMessage.includes('紀錄庫') || errorMessage.includes('無權存取') || errorMessage.includes('找不到'))
+      ) {
+        window.dispatchEvent(
+          new CustomEvent('dash:vault-kicked', {
+            detail: { message: errorMessage },
+          })
+        );
+      }
+
       throw new BackendApiError(errorMessage, response.status, detail);
     }
 
@@ -101,6 +128,12 @@ export const apiClient = {
   post: <T>(endpoint: string, body?: unknown) =>
     apiRequest<T>(endpoint, {
       method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
+  put: <T>(endpoint: string, body?: unknown) =>
+    apiRequest<T>(endpoint, {
+      method: 'PUT',
       body: body ? JSON.stringify(body) : undefined,
     }),
 

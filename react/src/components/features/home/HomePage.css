@@ -1,0 +1,463 @@
+/* ==========================================
+   DASH 主頁樣式 (HomePage.css)
+   繼承 index.css 統一設計變數，嚴禁 hardcode 顏色
+   ========================================== */
+
+.home-container {
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--canvas);
+  color: var(--ink);
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 頂部極簡導航欄 (與 Vault Hub 導航欄位置樣式完全一致) */
+.home-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.home-crumb-active {
+  font-weight: 700;
+  color: var(--ink);
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 中央主視覺 DASH 基本資料卡片 (與 Vault Hub 基本資料卡片位置與規格完全一致) */
+.home-dash-header {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.home-dash-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.home-dash-title-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.home-dash-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background-color: var(--navy);
+  color: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.home-dash-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home-dash-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-dash-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.home-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: var(--canvas);
+  border: 1px solid var(--line);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.home-dash-desc {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.home-dash-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 操作按鈕風格 (與 Vault Hub 規格統一) */
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--line);
+  background-color: var(--canvas);
+  color: var(--ink-soft);
+}
+
+.home-btn:hover {
+  background-color: var(--line);
+  color: var(--ink);
+}
+
+.home-btn.primary {
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  color: var(--panel);
+}
+
+.home-btn.primary:hover {
+  filter: brightness(1.1);
+}
+
+.home-btn.danger {
+  color: var(--danger);
+}
+
+.home-btn.danger:hover {
+  background-color: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+/* 主體內容容器 */
+.home-main {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 紀錄庫區域清單 */
+.vaults-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vaults-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: -0.02em;
+}
+
+.section-count-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.vaults-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* 點擊式紀錄庫卡片 */
+.vault-entry-card {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.vault-entry-card:hover {
+  border-color: var(--cyan);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.vault-entry-card.is-active {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px var(--cyan-soft);
+}
+
+.vault-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vault-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vault-card-icon {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.vault-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.vault-card-desc {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  min-height: 42px;
+}
+
+.vault-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.vault-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vault-card-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vault-card-enter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+/* 空白狀態 / 導引 (Onboarding) */
+.onboarding-card {
+  background-color: var(--panel);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 56px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.onboarding-icon-wrap {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.onboarding-desc {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  max-width: 480px;
+  line-height: 1.6;
+}
+
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 彈窗 (Modal) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 27, 46, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-card {
+  background-color: var(--panel);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 32px rgba(16, 25, 40, 0.2);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  color: var(--ink);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+/* 彈窗按鈕標準化 */
+.btn-primary {
+  padding: 8px 18px;
+  background-color: var(--cyan);
+  color: var(--white);
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--cyan);
+  border-color: var(--cyan);
+  filter: brightness(0.92);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 8px 18px;
+  background-color: var(--canvas);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--white);
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

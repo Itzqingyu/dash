@@ -1,205 +1,144 @@
 # SDD: DASH (Decision, Activity, Schedule, History)
 
 ## 1. 專案概述
-DASH 是一套結合活動與決策管理、LLM + RAG 歷史檢索問答，以及 AI 結構化會議紀錄整理（Preview & Commit）的現代化智能工作台。使用者可上傳多格式會議紀錄進行問答與提煉，並與活動控制面板聯動。
+DASH 是一套專為團隊打造的現代化活動歷程、決策交接與智能檢索工作台。
+系統提供全量結構化資料管理、多成員租戶隔離、基於 PostgreSQL + pgvector 的語意向量檢索智庫，以及 AI 結構化會議紀錄整理（Preview & Commit）。支援團隊多成員協作、三級權限階層控管與一鍵交接資料包匯出匯入。
 
 ## 2. 技術選型
 
 ### 前端
-- **框架**: React + TypeScript
-- **打包**: Electron (跨平台桌面應用)
-- **通訊**:
-  - 前端與主進程: Electron IPC + JSON
-  - 主進程與 Python 後端: HTTP API (RESTful)
-- **前端實用套件**: react-markdown (對話渲染), lucide-react (圖示庫)
+- **框架**: React 19 + TypeScript
+- **構建工具**: Vite 5 (Web SPA 單頁應用)
+- **通訊**: HTTP API (RESTful)，統一透過 apiClient 客戶端直接與後端連線，自動附加 JWT Bearer Token
+- **視覺與設計規範**: 全域 Design Tokens (:root) 繼承、嚴禁 hard code 顏色、無上帝組件、領域分層管理、全新 3 級階層式 SaaS 導航架構 (Level 0 認證 -> Level 1 根首頁 -> Level 2 紀錄庫 Hub -> Level 3 獨立置中業務面板，1200px 雙層居中容器、左上角「<」階層返回與頂部大卡片)，徹底移除舊式 Sidebar、Header 與常駐 Footer
+- **圖示庫**: lucide-react (全域禁止 emojis)
+- **其他套件**: react-markdown (對話與文件全文渲染), html2pdf.js (交接報告 PDF 匯出)
 
 ### 後端
-- **語言**: Python 3.10+
+- **語言**: Python 3.10+ (優先以 uv run 測試與運行)
 - **套件管理**: uv
-- **套件清單**
-    - **Web 框架**: FastAPI + uvicorn (提供本地 API 供 Electron 呼叫)
-    - **打包工具**: PyInstaller (編譯為獨立執行檔，無須使用者安裝 Python)
-    - **環境變數管理**: python-dotenv (管理雲端模型 API Key 等機密資訊)
-    - **RAG 套件**: LangChain (流程编排)
-    - **向量化**: fastembed (輕量級、無須 PyTorch 的 ONNX 推理引擎)
-    - **LLM API**: litellm (統一接口，支援 OpenAI/Claude)
+- **Web 框架**: FastAPI + uvicorn
+- **資料庫驅動**: psycopg 3 (含連線池 ConnectionPool)
+- **安全認證**: bcrypt (密碼雜湊與安全校驗), PyJWT (HS256 簽名與 Token 驗證)
+- **RAG 與向量檢索**: LangChain, fastembed (輕量級 ONNX 推理引擎，繁中模型 jina-embeddings-v2-base-zh 768 維度 + 多語言重排序 jina-reranker-v2-base-multilingual)
+- **LLM API**: litellm (統一介面，支援 OpenAI, Claude 等模型)
 
-### 資料庫與多 Vault 儲存架構 (~/.dash/)
-- **全域設定**: 存於使用者家目錄 `~/.dash/config.json`，記錄當前使用中的 `active_vault`
-- **Vault 集中目錄**: 統一收攏於 `~/.dash/vaults/<vault_name>/`
-- **開箱即用**: 首次啟動自動建立純淨的 `~/.dash/vaults/default/` 作為預設紀錄庫
-- **單一 Vault 內部結構**:
-  - `dash_manifest.json`: Vault 專屬身分識別檔（身分證），記載 vault_id、名稱、版本與建檔時間
-  - `dash_database.sqlite`: SQLite 核心資料庫（活動業務表、會議、決策、日程、突發事件、對話會話等）
-  - `chroma_db/`: ChromaDB 向量檢索索引切塊庫
-  - `markdown/`: 託管之標準 Markdown 文本文件庫
-- **DASH OUT (全量導出)**: 獨立工作面板，可一鍵將當前使用中 Vault 打包為內含 manifest 身分證的標準 `.zip` 檔案
-- **DASH IN (安全匯入)**: 側邊欄底部 Vault 控制列支援匯入 `.zip`，經身分證檢驗後解壓縮建立為全新獨立 Vault 並自動切換（絕不覆蓋舊資料）
+### 容器化與部屬架構 (Docker Compose)
+- **架構模式**: 單一 docker-compose.yml 統整三容器微服務拓撲
+- **資料庫容器 (dash-db)**: pgvector/pgvector:pg16（整合式關聯資料表與 HNSW 餘弦距離向量索引）
+- **後端容器 (dash-backend)**: Python FastAPI + Uvicorn，處理核心業務與 RAG 向量相似度檢索
+- **前端容器 (dash-frontend)**: Nginx 託管 React SPA，並透過 /api/ 反向代理轉發後端通訊
+- **持久化資料卷 (Volumes)**:
+  - `postgres-data`: PostgreSQL 核心關聯資料與向量資料持久化卷
+  - `./data/markdown`: 宿主機與後端掛載之 Markdown 原始檔案庫
 
-### 模型
-- **Embedding**: fastembed（使用 ONNX Runtime 於 CPU 運行之 Embedding 模型）
-- **LLM**: 透過 `litellm` 統一介面呼叫雲端或本地相容模型
+### 使用者身分認證與多租戶 RBAC 權限體系
+1. **強制登入認證**:
+   - 服務必須註冊並登入才能使用。以 Email + Password 作為帳號憑證。
+   - 密碼採用 bcrypt 進行 12 rounds 加鹽雜湊儲存於 `public.users`。
+   - 簽發 7 天有效期的 JWT Access Token (Bearer)。
+2. **多租戶紀錄庫隔離 (Multi-Tenant Isolation)**:
+   - 每個紀錄庫在實體層面使用獨立、不可變的 `vault_id` (格式 `v_<uuid12>`) 作為全域唯一隔離依據。
+   - PostgreSQL Schema 命名空間：`vault_v_<uuid12>`；磁碟 Markdown 託管路徑：`markdown/v_<uuid12>/`，達成實體儲存與向量資料之徹底物理隔離。
+   - 前端顯示名稱 (`display_name`) 與底層物理路徑解耦，不同使用者可各自建立同名紀錄庫而互不碰撞。更名為純元資料更新，無需更動 Schema 或搬遷磁碟檔案。
+   - 一個使用者可建立多個紀錄庫，一個紀錄庫也可包含多個使用者（多對多關係，以 `vault_id` 記錄於 `public.vault_members` 與 `public.vault_invitations`）。
+3. **三級權限階層 (RBAC)**:
+   - `owner`: 紀錄庫唯一創建者。具備所有權限，且唯一具備刪除該紀錄庫、晉升/降級成員身分的權力。系統嚴禁產生第二個 owner 或變更 owner。
+   - `admin`: 具備日常業務權限與邀請碼建立權限。不可刪除紀錄庫或變更其他成員角色。
+   - `user`: 一般成員，具備所有日常業務權限（活動、會議、待辦、決策、日程、文件上傳、AI 對話），但禁止危險管理與邀請操作。
+4. **邀請碼機制 (Invite System)**:
+   - 新增使用者至既有紀錄庫的唯一方式為「邀請碼」。
+   - 由該紀錄庫之 `owner` 或 `admin` 產生（記錄於 `public.vault_invitations`），預設 7 天時效，格式為 `DASH-XXXXXXXX`。
+   - 使用者憑邀請碼加入後自動指派預設角色。
 
 ## 3. 專案結構
+
 ```
-rag-project/
-├── react/                        # Electron + Vite + React 前端
+dash/
+├── docker-compose.yml            # Docker 微服務編排 (dash-db, dash-backend, dash-frontend)
+├── react/                        # React + Vite + TypeScript Web 前端
 │   ├── src/
-│   │   ├── App.tsx               # 頂層主畫面與導航路由 (活動工作台 vs AI 對話 vs DASH OUT)
-│   │   ├── api/                  # 後端 API 通訊服務層 (camelCase 命名)
-│   │   │   ├── apiTypes.ts       # 後端資料結構與 TypeScript 介面定義
-│   │   │   ├── apiClient.ts      # HTTP 請求封裝、錯誤攔截與後端斷線處理
-│   │   │   ├── chatService.ts    # 對話會話增刪查改與雙模式訊息發送
-│   │   │   ├── documentService.ts # 歷史紀錄文件清單、上傳轉檔向量化與刪除
-│   │   │   ├── meetingExtractService.ts # AI 會議紀錄結構化抽取 (1-shot) 與 Preview-Commit 寫入
-│   │   │   └── vaultApi.ts       # 多 Vault 管理與 DASH OUT 導出、DASH IN 匯入 API
-│   │   ├── components/           # 組件與同名獨立樣式 (.tsx & .css)
-│   │   │   ├── VaultManagerBar.tsx # 側邊欄底部 Vault 控制列 (切換、重命名、刪除防呆、新建空白、DASH IN)
-│   │   │   ├── VaultManagerBar.css # 側邊欄底部 Vault 控制列專屬樣式
-│   │   │   ├── DashOutPanel.tsx  # DASH OUT 全量資料導出專用面板 (資料統計卡片與一鍵打包 ZIP)
-│   │   │   ├── DashOutPanel.css  # DASH OUT 面板專屬樣式
-│   │   │   ├── ChatPanel.tsx     # LLM 聊天大面板主組件 (雙欄佈局、模式切換、即時 API 串接與真實錯誤反饋)
-│   │   │   ├── MeetingExtractPanel.tsx # AI 會議紀錄整理面板 (Preview-Commit 雙階段工作流)
-│   │   │   ├── SessionSidebar.tsx # 對話會話側邊欄 (新對話、切換、三點選單觸發重命名與刪除)
-│   │   │   ├── RenameModal.tsx   # 編輯會話名稱獨立彈窗 (霧化毛玻璃背景)
-│   │   │   ├── ConfirmModal.tsx  # 防手殘刪除確認獨立彈窗 (霧化毛玻璃背景)
-│   │   │   ├── DocumentDrawer.tsx # 歷史紀錄文檔抽屜 (文件清單、真實上傳與刪除)
-│   │   │   ├── BreadcrumbNav.tsx # 活動工作台頂部多層級麵包屑導航
-│   │   │   ├── MeetingPanel.tsx  # 會議管理面板
-│   │   │   └── ...               # 其餘活動管理面板 (Overview, Tasks, Decisions 等各自獨立 CSS)
+│   │   ├── main.tsx              # Web 應用渲染入口 (掛載 AuthProvider)
+│   │   ├── App.tsx               # 頂層主畫面與認證守衛 (首頁、工作台、文件庫、AI 對話、備份)
+│   │   ├── context/
+│   │   │   └── AuthContext.tsx   # 全域認證狀態 Context (提供 useAuth, login, register, logout)
+│   │   ├── api/                  # 後端 API 通訊服務層 (自動附加 Bearer Token)
+│   │   │   ├── apiClient.ts      # HTTP 請求封裝、401 自動攔截與 Base URL
+│   │   │   ├── authApi.ts        # 使用者註冊、登入與個人資料 API
+│   │   │   ├── vaultApi.ts       # 紀錄庫管理、邀請碼生成、加入與成員權限 API
+│   │   │   ├── activityApi.ts    # 活動與各階段細項 CRUD API
+│   │   │   ├── documentService.ts # 文件清單、上傳轉檔、刪除與全文讀取 API
+│   │   │   ├── chatService.ts    # 對話會話與雙模式訊息發送 API
+│   │   │   └── meetingExtractService.ts # AI 會議紀錄結構化抽取與寫入 API
+│   │   ├── types/                # 全域與業務領域型別定義
+│   │   │   ├── auth.ts           # 使用者、成員角色與邀請碼型別
+│   │   │   ├── vault.ts          # 紀錄庫統計、身分識別與清單型別
+│   │   │   ├── activity.ts       # 活動主體資料型別
+│   │   │   ├── meeting.ts        # 會議、待辦、決策、日程與突發事件型別
+│   │   │   ├── chat.ts           # 對話會話與歷史訊息型別
+│   │   │   └── document.ts       # 文件紀錄庫型別
+│   │   ├── components/           # 領域分層組件 (嚴禁上帝組件，每組件獨立 CSS)
+│   │   │   ├── common/           # 通用基礎組件 (ConfirmModal, RenameModal, DocumentDrawer)
+│   │   │   ├── layout/           # 應用骨架與頂層導航 (VaultBreadcrumb.tsx & VaultBreadcrumb.css)
+│   │   │   └── features/         # 業務領域專屬面板
+│   │   │       ├── auth/         # Level 0 獨立登入/註冊頁面 (AuthPage.tsx & AuthPage.css)
+│   │   │       ├── home/         # Level 1 系統根首頁 (HomePage.tsx & HomePage.css，無 Header/Sidebar/Footer，含帳戶條、建立/加入、備份匯入與紀錄庫卡片)
+│   │   │       ├── vault-hub/    # Level 2 紀錄庫操作中心 (VaultHubPage.tsx & VaultHubPage.css，紀錄庫標題、成員邀請管理、重命名/刪除與五大功能入口卡片)
+│   │   │       ├── activity/     # Level 3 活動工作台 (ActivityListView, ActivityWorkspace, 四階段面板，整合多級麵包屑)
+│   │   │       ├── document-management/ # Level 3 獨立文件紀錄庫 (DocumentManagementPanel.tsx & .css)
+│   │   │       ├── chat/         # Level 3 AI 智能對話 (ChatPanel.tsx & .css，整合式會話切換選單與操作選單)
+│   │   │       ├── meeting-extract/ # Level 3 會議提煉 (MeetingExtractPanel)
+│   │   │       └── dash-out/     # Level 3 紀錄庫備份與導出 (DashOutPanel)
 │   │   └── index.css             # 全域 Design Tokens (:root)、Reset 與 App Shell 樣式
 │
 ├── python/                       # Python 後端 (FastAPI)
 │   ├── src/
 │   │   └── dash_backend/
-│   │       ├── main.py           # FastAPI 伺服器入口 (REST API, 包含 Preview/Commit 預覽寫入端點)
-│   │       ├── database.py       # 統一資料庫層 (SQLite 連線池、Schema、Sessions/Messages 與 ChromaDB 向量庫)
-│   │       ├── vault_manager.py  # 全量交接管理器 (ZIP 打包、dash_manifest.json 簽名校驗、自動備份與還原)
-│   │       ├── prompts/          # System Prompt Markdown 檔案目錄
-│   │       │   ├── meeting_extraction.md # 會議紀錄 1-shot 結構化抽取 Prompt
-│   │       │   ├── rag_qa.md             # RAG 通用問答 Prompt
-│   │       │   └── chat_general.md       # 普通對話模式 AI 助手 Prompt
-│   │       ├── activity_services/# 活動與事項管理微服務套件
-│   │       │   ├── activity_common.py # 共用驗證與時間工具
-│   │       │   ├── activity.py       # Activity 活動管理 CRUD
-│   │       │   ├── meeting_task.py   # Meeting 會議與 Task 待辦事項 CRUD
-│   │       │   ├── decision.py       # Decision 決策紀錄 CRUD
-│   │       │   ├── schedule.py       # Schedule 流程日程 CRUD
-│   │       │   └── incident.py       # Incident 突發事件 CRUD
-│   │       ├── ai_services/          # AI 與 RAG 核心服務套件
-│   │       │   ├── rag_engine.py     # RAG 核心引擎 (Markdown 切塊, Embedding, Reranker, 語意檢索)
-│   │       │   └── llm_service.py    # LLM 統一呼叫與對話介面 (Clean Context Isolation 與結構化提煉)
-│   │       └── document_processing/  # 文件格式解析與轉換套件
-│   │           └── converter.py      # 多格式文件轉換模組 (MD, TXT, PDF, DOCX -> python/data/markdown/)
-│   ├── tests/                    # 測試指令碼與單元測試
-│   │   ├── test_main.py          # 整合 CLI 互動測試工具 (含 Session 多輪對話與模式切換測試)
-│   │   ├── test_converter.py     # 多格式文件轉換與複製單元測試
-│   │   ├── test_chat_session.py  # 對話會話、記憶防污染與模式切換單元測試
-│   │   ├── test_upload_duplicate.py # 同主檔名上傳防呆與覆蓋行為單元測試
-│   │   ├── test_meeting_extract_commit.py # AI 會議摘要寫入與來源文檔 source_document_id 自動關聯單元測試
-│   │   └── test_vault.py         # DASH IN & OUT 全量交接、ZIP 簽名防呆與快照備份單元測試
-│   ├── data/                     # 本地 SQLite, Chroma 向量庫與託管 Markdown 目錄
-│   │   ├── dash_database.sqlite  # SQLite 資料庫 (含 documents, sessions, chat_messages 及活動業務表)
-│   │   ├── chroma_db/            # ChromaDB 向量資料庫
-│   │   └── markdown/             # 託管之 Markdown 格式文本庫
-│   ├── data_backups/             # 本地安全快照備份目錄 (自動留存全量 ZIP 備份檔)
-│   └── pyproject.toml            # 依賴套件配置
+│   │       ├── main.py           # FastAPI 伺服器入口 (包含認證、紀錄庫、活動、文件端點)
+│   │       ├── database.py       # PostgreSQL 連線池、Schema 初始化與公用表管理
+│   │       ├── vault_manager.py  # 紀錄庫生命週期、成員權限、邀請碼與 ZIP 打包匯入管理器
+│   │       ├── auth/
+│   │       │   └── security.py   # bcrypt 雜湊、JWT Token 簽發驗證與 FastAPI RBAC 依賴注入
+│   │       ├── ai_services/      # AI 與 RAG 核心服務 (rag_engine, llm_service, handover_agent)
+│   │       ├── activity_services/# 活動各模組 CRUD 服務 (activity, meeting_task, decision, schedule, incident)
+│   │       └── document_processing/ # 多格式轉檔器 (converter.py)
+│   ├── tests/                    # 測試相關腳本 (一律置於此目錄)
+│   │   ├── test_auth_rbac.py     # 認證、租戶隔離、邀請碼與三級權限測試
+│   │   ├── test_database.py      # PostgreSQL Schema 與核心資料表 CRUD 測試
+│   │   ├── test_rag_engine.py    # pgvector 向量切塊與檢索測試
+│   │   ├── test_activity_services.py # 活動業務服務測試
+│   │   ├── test_vault_manager.py # 紀錄庫生命週期管理測試
+│   │   ├── test_vault_concurrency_and_disambiguation.py # 並行存取與同名紀錄庫隔離測試
+│   │   └── test_active_vault_deletion.py # 使用中紀錄庫直接刪除與多用戶強制退出測試
+│   └── pyproject.toml            # 依賴套件配置 (pyjwt, bcrypt, psycopg 等)
 ```
 
-## 4. 核心流程
+## 4. 核心工作流
 
-### 文件上傳與轉碼 (含同名防呆保護)
-1. 使用者選擇欲上傳之原始檔案 (MD, TXT, PDF, DOCX)。
-2. **前後端前置主檔名防呆校驗**：
-   - 前端 (`ChatPanel`, `MeetingExtractPanel`) 在發送請求前比對現有檔案清單，若主檔名重複（例如已存在 `meeting.md`，使用者又上傳 `meeting.docx` 或 `meeting.pdf`），立即中斷並於抽屜提示錯誤，不發送網路請求。
-   - 後端 (`/upload`) 在建立暫存檔與轉碼前查詢資料庫，若主檔名已存在直接回傳 `HTTP 409 Conflict`，嚴格禁止同名覆蓋以保護既有資料完整性。
-   - 系統全面採取「只增不覆蓋」原則；使用者欲更新檔案內容必須先顯式刪除舊文件後再行上傳。
-3. Python `converter.py`: 讀取原始檔案 → 轉換/複製為標準 Markdown 格式並儲存於 `python/data/markdown/`
-4. Python `rag_engine.py`: 讀取轉碼後 Markdown → 切片 (source metadata 標準化為 `markdown/{filename}`) → 向量化 → ChromaDB 儲存（若遇已存在紀錄拋出 `FileExistsError`）
-5. Python `database.py`: 記錄檔案 Metadata 到 SQLite (`file_path` 統一以相對於 `data/` 之 `markdown/{filename}` 相對路徑持久化，徹底避免跨機器或跨目錄路徑失效問題；移除無實質用途之 `raw_file_path` 欄位)
+### 1. 使用者註冊、登入與全域首頁
+1. 使用者造訪系統時，未登入狀態呈現極簡置中的身分驗證頁面 (`AuthPage`)，填寫 Email 與密碼發起登入或註冊。
+2. 後端校驗並以 bcrypt 驗證密碼，簽發包含 `sub` 與 `email` 的 JWT Token。
+3. 前端儲存 Token 至 `localStorage` 並寫入 `AuthContext`，後續所有請求自動透過 Header 附帶 `Authorization: Bearer <token>`。
+4. 驗證通過後系統一律預設開局於系統根首頁 (`HomePage`)，展示帳戶資訊條（建立紀錄庫、輸入邀請碼、匯入備份包）與使用者所有的紀錄庫卡片清單，絕不預設進入前次工作台。
 
-### AI 結構化提取與預覽寫入 (Preview-Commit 流程)
-1. 使用者選擇已導入之 Markdown 文件，發起 `/extract_summary` 請求
-2. `llm_service.py` 載入 `prompts/meeting_extraction.md`，直接自 `python/data/markdown/{filename}` 讀取實體 Markdown 全文，1-shot 餵給 LLM 進行結構化解析，同時回傳對應來源文件的 `doc_id`
-3. LLM 回傳 JSON (包含 `meeting`, `decisions`, `tasks`)
-4. 前端展示預覽結果供使用者校對修改，並於預覽標題處標示來源文件，於頂部提供「關聯目標活動 (必填)」卡片：
-   - 支援「選擇現有活動」下拉關聯既有活動；若無活動則給予提示並引導建立。
-   - 支援「快速建立新活動」即時填寫活動名稱、年份與狀態，支援立即建立選取或於確認寫入時自動連帶建立。
-   - 具備活動必填防呆機制：若未選取或未填妥活動名稱，全面阻擋寫入並提示使用者。
-5. 使用者確認後發起 `/commit_summary` 請求，帶入所選或新建之 `activity_id` 以及來源文件的 `doc_id`，後端自動將 `source_document_id` 注入並存入 SQLite `meetings` 表（外鍵指向 `documents.id`，具備 `ON DELETE SET NULL` 級聯防護），依序寫入 `meetings`, `decisions`, `tasks` 表；目前各筆資料各自提交，中途失敗時先前成功的資料會保留。
+### 2. 紀錄庫 Hub 與階層式導航 (Level 1 -> Level 2 -> Level 3)
+1. 進入紀錄庫：使用者在 `HomePage` 點擊任一紀錄庫卡片，自動切換 active vault 並進入該庫的專屬操作中心 (`VaultHubPage`)。
+2. 紀錄庫管理與邀請：在 `VaultHubPage` 中展示大標題與角色標籤。`owner` 或 `admin` 可點擊「成員與邀請碼」彈窗檢視成員列表、晉升降級或生成 `DASH-XXXXXXXX` 專屬邀請碼；`owner` 可進行紀錄庫重命名或執行危險刪除。
+3. 業務面板操作：從 `VaultHubPage` 的五大功能卡片進入活動工作台、文件紀錄庫、智能對話、會議提煉或備份導出（Level 3 全寬工作區）。
+4. 麵包屑導航：Level 3 各面板頂部皆常駐 `VaultBreadcrumb`（首頁 > 紀錄庫名稱 > 當前功能名稱），支援一鍵返回 Level 2 紀錄庫 Hub 或 Level 1 系統根首頁。
 
-### 對話互動與會話記憶 (Session & Multi-turn Chat)
-1. 使用者可透過 `/sessions` 端點建立或管理對話會話。
-2. 發送訊息至 `/sessions/{id}/messages`，可自由指定當輪模式：
-   - **普通聊天模式 (`mode='chat'`)**：無需經過 RAG 預處理，LLM 基於歷史對話脈絡與使用者問題直接自然回答。
-   - **紀錄庫檢索模式 (`mode='rag'`)**：ChromaDB 檢索相關切片並由 Reranker 重排序，將文本片段注入當前 Prompt 提供總結回答。
-3. **乾淨上下文隔離 (Clean Context Isolation)**：
-   - SQLite `chat_messages` 僅保存純粹的「使用者問題」與「AI 回答」，當輪檢索到的參考切片以 JSON 儲存於 `retrieved_chunks` 欄位供前端回溯。
-   - 歷史對話傳入 LLM 時，不疊加過往龐大的檢索內容，徹底杜絕同一個 Session 中多次 RAG 或切換模式造成的記憶污染。
+### 3. 文件上傳與向量智庫 (獨立文件管理面板)
+1. 使用者在「文件紀錄庫」面板拖曳或點選上傳檔案 (MD, TXT, PDF, DOCX)。
+2. 前端與後端雙層主檔名查重防呆（嚴格禁止同主檔名覆蓋）。
+3. 後端解析轉碼為標準 Markdown 存入託管目錄，由 `rag_engine` 切片並生成 768 維向量寫入 `document_chunks` (配合 HNSW 索引)。
+4. 使用者可直接在介面中點擊「閱讀全文」，透過 Markdown 閱讀器即時瀏覽解析後的內容。
 
-### 活動交接摘要生成與存入紀錄庫 (Handover Summary & Archive)
-1. 使用者在活動後面板點擊「產生交接摘要」呼叫 `/handover/generate`，以 LLM 整合活動之日程與決策數據生成 Markdown 格式之交接總結報告。
-2. 前端彈窗提供交接摘要預覽，支援「匯出為 PDF」與「存入紀錄庫」。
-3. 點擊「存入紀錄庫」時呼叫 `/handover/save`：
-   - 後端自動依 `{活動名稱}_交接報告_{YYYYMMDD}.md` 規格命名。
-   - 執行主檔名查重嚴格防呆（若已存在同名檔案則回傳 `HTTP 409 Conflict`，要求使用者先至歷史紀錄手動刪除舊文件後再行存入）。
-   - 將 Markdown 內容實體寫入託管目錄 `python/data/markdown/`。
-   - 呼叫 `rag_engine.add_document` 自動進行文本切片、fastembed 向量化寫入 ChromaDB，並登錄 Metadata 至 SQLite `documents` 表。
+### 4. 會議紀錄提煉 (Preview-Commit 雙階段工作流)
+1. 使用者選擇已入庫文件，發起 `/extract_summary`。
+2. LLM 讀取全文並進行 1-shot 結構化抽取，回傳包含會議細節、決策清單與待辦事項的 JSON。
+3. 前端展示預覽供使用者校對修改，並指定或快速建立關聯之活動。
+4. 使用者確認後發起 `/commit_summary`，後端原子性寫入活動各關聯表並建立雙向關聯。
 
-### DASH IN & OUT 全量交接與資料庫管理 (Vault Management)
-1. **全量導出 (Export)**：呼叫 `/vault/export`，後端將 `dash_database.sqlite`、`chroma_db/` 與 `markdown/` 連同包含應用程式版本與統計數據的 `dash_manifest.json` 打包成標準 ZIP 檔案，供無損遷移或交接給下一屆負責人。
-2. **防呆檢驗與導入 (Import)**：使用者透過「DASH IN & OUT」面板上傳 ZIP，後端 `/vault/import` 嚴格校驗是否內含 `dash_manifest.json` 與必要資料結構，若非本系統產物或結構損壞則回傳 400 拒絕導入。
-3. **安全快照備份 (Auto-backup)**：在全量覆蓋替換本地資料前，後端自動將當前 `data/` 壓縮留存於 `python/data_backups/backup_{YYYYMMDD_HHMMSS}.zip`，確保使用者資料零遺失風險。
-4. **歷史備份查看與還原 (Restore)**：面板提供快照歷史清單，支援一鍵還原回指定的歷史快照。
-
-## 5. 開發步驟
-
-```bash
-# 環境設置 (前端)
-npm install
-npm install react-markdown lucide-react
-
-# 環境設置 (後端)
-uv init
-uv add langchain langchain-chroma langchain-community fastembed litellm chromadb fastapi uvicorn pyinstaller python-dotenv pypdf python-docx
-
-# 開發
-# 需要同時啟動前端與後端 (可透過 npm script 如 concurrently 整合)
-uv run python/src/dash_backend/main.py          # 啟動 FastAPI 後端
-npm run dev                                      # 啟動 Electron 前端
-```
-
-### 活動管理後端
-- Activity 是所有活動資料的根節點；其他模組均以 `activity_id` 關聯。
-- Activity 存在任何子資料時禁止刪除，避免連帶遺失歷史脈絡。
-- Meeting 可用 nullable `source_document_id` 指向產生它的 Markdown 文件；文件刪除時 Meeting 保留並將此欄位設為 `NULL`，Task／Decision 可再透過 `meeting_id` 追溯來源。
-- Meeting 刪除後，Task／Decision／Schedule 保留並將 `meeting_id` 設為 `NULL`。
-- Incident 可選擇關聯 Schedule；Schedule 刪除後 Incident 保留並解除關聯。
-- Activity Management service 只接收文字或結構化內容；檔案讀取與 Markdown 轉換由 `converter.py` 處理。
-- CLI 測試工具會先選擇 Activity，再於該 Activity 範圍內操作 Meeting／Task／Decision／Schedule／Incident，以降低使用全域 ID 誤操作其他活動資料的風險。
-
-## 6. MVP 範圍
-- ✅ 文件上傳與轉換 (支援 MD, TXT, PDF, DOCX 格式)
-- ✅ 對話互動 (基於已導入之 Markdown 檔案並由 RAG + Reranker 檢索)
-- ✅ 文件管理 (查看、刪除已導入之 Markdown 文件，同步物理刪除託管 `.md` 與向量庫)
-- ✅ AI 結構化會議分析 (1-shot 摘要抽取與 Preview-Commit 寫入流程)
-- ✅ 活動管理 Python／SQLite 核心 CRUD 與關聯驗證
-- ✅ 前端 LLM 聊天大面板 UI 框架 (雙欄佈局、會話管理側欄、模式切換 Toggle Pill、極簡空狀態、歷史紀錄文檔抽屜)
-- ✅ 前後端 API 串接與端對端整合 (完整接入 Session、Message 雙模式、Document 上傳與向量化，全面剔除模擬假資料並建立嚴格錯誤反饋機制)
-- ✅ 前端「AI 功能」側欄下拉折疊導航與 AI 會議紀錄整理面板 (接入 /extract_summary 與 /commit_summary，實現 1-shot 萃取、即時預覽、歷史紀錄抽屜與快捷文檔上傳)
-- ⏳ Electron 打包與自動化端對端啟動流程整合 (進行中)
-- ❌ 高級權限與團隊協作 (後續)
-- ❌ 版本控制與複雜自訂設定 (後續)
-
-## 7. 備選方案：Web 服務
-- 前端：React
-- 後端：Node.js/Python + API
-- 資料庫：PostgreSQL + Pinecone/Qdrant
-- 適用：多用戶、團隊協作、跨設備
-
-## 8. 總結
-- 初版：本地桌面應用，核心功能：文件轉碼導入→AI 結構化提取與寫入→RAG 對話→活動紀錄管理
-- 關鍵設計：以 Markdown 為核心，Python 端以 FastAPI 提供微服務，並透過 PyInstaller 打包
-- 技術：React + Python + uv + FastAPI + LangChain + fastembed + litellm + python-dotenv + pypdf + python-docx
-- 資料庫：ChromaDB persistent mode + SQLite + 託管 Markdown 檔案庫 (均儲存於 `python/data/`)
-
+### 5. 紀錄庫備份與導出 (DASH OUT & DASH IN)
+1. DASH OUT：點擊「下載紀錄庫備份包 (.zip)」，後端將該紀錄庫的完整資料結構 (JSON) 與託管文件打包為標準備份包。
+2. DASH IN：使用者上傳備份包，後端校驗完整性並匯入建立為全新獨立紀錄庫，絕不覆蓋現存資料。

@@ -1,4 +1,4 @@
-"""Activity (活動管理) 的 SQLite CRUD 業務邏輯模組。
+"""Activity (活動管理) 的 PostgreSQL CRUD 業務邏輯模組。
 
 本模組提供 Activity 的建立、查詢、列表、修改與刪除功能，
 包含欄位驗證、日期範圍檢核與防呆處理。
@@ -134,6 +134,7 @@ def create_activity(
     expected_attendees: Optional[int] = None,
     budget: Optional[int] = None,
     *,
+    vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """建立新活動紀錄並回傳完整資料；回傳字典中的 'id' 即為其他業務模組引用的 activity_id。"""
@@ -152,18 +153,19 @@ def create_activity(
         }
     )
     _validate_date_range(values["start_date"], values["end_date"])
-    init_db(db_path)
+    init_db(vault_name=vault_name)
 
     now = _utc_now()
-    with get_connection(db_path) as conn:
-        cursor = conn.execute(
+    with get_connection(vault_name=vault_name) as conn:
+        row = conn.execute(
             """
             INSERT INTO activities (
                 name, year, status, start_date, end_date, venue,
                 activity_type, coordinator, expected_attendees, budget,
                 created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING *;
             """,
             (
                 values["name"],
@@ -179,34 +181,37 @@ def create_activity(
                 now,
                 now,
             ),
-        )
-        activity_id = cursor.lastrowid
-        conn.commit()
-
-        row = conn.execute(
-            "SELECT * FROM activities WHERE id = ?", (activity_id,)
         ).fetchone()
 
     return dict(row)
 
 
-def get_activity(activity_id: int, *, db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def get_activity(
+    activity_id: int,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
     """根據 activity_id 查詢單一活動詳情；找不到時回傳 None。"""
     _validate_activity_id(activity_id)
-    init_db(db_path)
+    init_db(vault_name=vault_name)
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
-            "SELECT * FROM activities WHERE id = ?", (activity_id,)
+            "SELECT * FROM activities WHERE id = %s", (activity_id,)
         ).fetchone()
     return dict(row) if row else None
 
 
-def list_activities(*, db_path: Optional[str] = None) -> List[Dict[str, Any]]:
+def list_activities(
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """列出系統中所有活動，預設依據年份與建立時間由新到舊排序。"""
-    init_db(db_path)
+    init_db(vault_name=vault_name)
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         rows = conn.execute(
             "SELECT * FROM activities ORDER BY year DESC, id DESC"
         ).fetchall()
@@ -216,6 +221,7 @@ def list_activities(*, db_path: Optional[str] = None) -> List[Dict[str, Any]]:
 def update_activity(
     activity_id: int,
     *,
+    vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
     **changes: Any,
 ) -> Optional[Dict[str, Any]]:
@@ -225,11 +231,11 @@ def update_activity(
         raise ValueError("至少需要提供一個要更新的欄位")
 
     normalized = _normalize_fields(changes)
-    init_db(db_path)
+    init_db(vault_name=vault_name)
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         current_row = conn.execute(
-            "SELECT * FROM activities WHERE id = ?", (activity_id,)
+            "SELECT * FROM activities WHERE id = %s", (activity_id,)
         ).fetchone()
         if current_row is None:
             return None
@@ -239,40 +245,38 @@ def update_activity(
         next_end_date = normalized.get("end_date", current["end_date"])
         _validate_date_range(next_start_date, next_end_date)
 
-        assignments = [f"{field_name} = ?" for field_name in normalized]
+        assignments = [f"{field_name} = %s" for field_name in normalized]
         values = list(normalized.values())
-        assignments.append("updated_at = ?")
+        assignments.append("updated_at = %s")
         values.append(_utc_now(after=current["updated_at"]))
         values.append(activity_id)
 
-        conn.execute(
-            f"UPDATE activities SET {', '.join(assignments)} WHERE id = ?",
-            values,
-        )
-        conn.commit()
         updated_row = conn.execute(
-            "SELECT * FROM activities WHERE id = ?", (activity_id,)
+            f"UPDATE activities SET {', '.join(assignments)} WHERE id = %s RETURNING *;",
+            values,
         ).fetchone()
 
-    return dict(updated_row)
+    return dict(updated_row) if updated_row else None
 
 
 def delete_activity(
-    activity_id: int, *, db_path: Optional[str] = None
+    activity_id: int,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    """刪除指定活動；若該活動旗下存有子紀錄（會議、待辦、決策等），SQLite 外鍵會拋出限制保護。"""
+    """刪除指定活動；若該活動旗下存有子紀錄（會議、待辦、決策等），外鍵限制會拋出保護錯誤。"""
     _validate_activity_id(activity_id)
-    init_db(db_path)
+    init_db(vault_name=vault_name)
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
-            "SELECT * FROM activities WHERE id = ?", (activity_id,)
+            "SELECT * FROM activities WHERE id = %s", (activity_id,)
         ).fetchone()
         if row is None:
             return None
 
         deleted = dict(row)
-        conn.execute("DELETE FROM activities WHERE id = ?", (activity_id,))
-        conn.commit()
+        conn.execute("DELETE FROM activities WHERE id = %s", (activity_id,))
 
     return deleted

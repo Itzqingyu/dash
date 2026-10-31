@@ -1,0 +1,181 @@
+/* ==========================================
+   BeforePanel.css - 活動前面板樣式
+   ========================================== */
+
+.prep-overview {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  overflow: hidden;
+}
+
+.prep-overview article {
+  min-height: 126px;
+  padding: 21px;
+  border-right: 1px solid var(--line);
+}
+
+.prep-overview article:last-child {
+  border: 0;
+}
+
+.prep-overview span,
+.prep-overview small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.prep-overview strong {
+  display: block;
+  margin: 7px 0 8px;
+  font-size: 1.55rem;
+  color: var(--ink);
+}
+
+.bar {
+  height: 6px;
+  border-radius: 6px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cyan);
+}
+
+.prep-score small {
+  margin-top: 10px;
+}
+
+.module-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.module-card {
+  min-height: 132px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 15px;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.module-card:hover {
+  border-color: var(--cyan);
+  box-shadow: 0 8px 28px rgba(16, 25, 40, 0.06);
+  transform: translateY(-1px);
+}
+
+.module-card.featured {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--white);
+}
+
+.module-number {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.featured .module-number {
+  background: var(--cyan);
+  color: var(--white);
+}
+
+.module-card p,
+.module-card h3,
+.module-card small {
+  margin: 0;
+  display: block;
+}
+
+.module-card p {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.module-card h3 {
+  margin: 4px 0;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.module-card small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.module-card.featured p,
+.module-card.featured small {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.module-card.featured h3 {
+  color: var(--white);
+}
+
+.module-card > b {
+  color: var(--cyan);
+  font-size: 0.72rem;
+}
+
+.alert-panel {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 17px 18px;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--warning-soft);
+}
+
+.alert-panel > span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--warning);
+  color: var(--white);
+  font-weight: 900;
+}
+
+.alert-panel strong,
+.alert-panel p {
+  margin: 0;
+}
+
+.alert-panel strong {
+  font-size: 0.82rem;
+  color: var(--warning);
+}
+
+.alert-panel p {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}

@@ -1,0 +1,194 @@
+/* ==========================================
+   DuringPanel.css - 活動中紀錄面板樣式
+   ========================================== */
+
+.live-heading {
+  padding: 17px 20px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--white);
+}
+
+.live-heading .eyebrow {
+  color: var(--cyan);
+}
+
+.live-heading p:last-child {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.live-clock {
+  text-align: right;
+}
+
+.live-clock span,
+.live-clock strong {
+  display: block;
+}
+
+.live-clock span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.65rem;
+}
+
+.live-clock strong {
+  margin-top: 3px;
+  font-size: 1.3rem;
+}
+
+.now-card {
+  display: grid;
+  grid-template-columns: 55px 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: 25px;
+  border-radius: 13px;
+  background: var(--cyan);
+  color: var(--white);
+  box-shadow: 0 12px 28px rgba(71, 118, 230, 0.2);
+}
+
+.now-label {
+  align-self: stretch;
+  padding-right: 17px;
+  border-right: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 0.65rem;
+  font-weight: 950;
+  letter-spacing: 0.13em;
+}
+
+.now-card time {
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.now-card h3 {
+  margin: 5px 0;
+  font-size: 1.45rem;
+}
+
+.now-card p {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.quick-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 15px;
+}
+
+.quick-facts span {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 0.65rem;
+}
+
+.quick-facts b {
+  margin-right: 4px;
+}
+
+.button.inverse {
+  background: var(--white);
+  color: var(--ink);
+}
+
+.next-strip {
+  display: grid;
+  grid-template-columns: 46px 52px auto 1fr auto;
+  gap: 13px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+}
+
+.next-strip > span {
+  color: var(--cyan);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+
+.next-strip time,
+.next-strip strong {
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.next-strip p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.execution-actions {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.incident-button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 13px;
+  padding: 19px;
+  border: 1px dashed var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger);
+  text-align: left;
+  cursor: pointer;
+}
+
+.incident-button > span {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: var(--white);
+  font-size: 1.15rem;
+}
+
+.incident-button strong {
+  font-size: 0.86rem;
+}
+
+.incident-button small {
+  color: var(--danger);
+  font-size: 0.67rem;
+}
+
+.execution-actions article {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.execution-actions article span,
+.execution-actions article small {
+  color: var(--muted);
+  font-size: 0.67rem;
+}
+
+.execution-actions article strong {
+  display: block;
+  margin: 5px 0 8px;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.execution-actions article small {
+  display: block;
+  margin-top: 7px;
+}

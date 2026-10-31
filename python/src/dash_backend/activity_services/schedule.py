@@ -1,4 +1,4 @@
-"""Schedule 的 SQLite CRUD 邏輯。"""
+"""Schedule 的 PostgreSQL CRUD 邏輯。"""
 
 from typing import Any, Dict, List, Optional
 
@@ -13,7 +13,6 @@ from dash_backend.activity_services.activity_common import (
     validate_time_range,
 )
 from dash_backend.database import get_connection, init_db
-
 
 SCHEDULE_FIELDS = {
     "activity_id",
@@ -63,6 +62,7 @@ def create_schedule(
     meeting_id: Optional[int] = None,
     outcome_note: Optional[str] = None,
     *,
+    vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """建立活動流程，並驗證可選 Meeting 與 Activity 的一致性。"""
@@ -81,21 +81,22 @@ def create_schedule(
         }
     )
     validate_time_range(values["start_time"], values["end_time"])
-    init_db(db_path)
+    init_db(vault_name=vault_name)
     now = utc_now()
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         ensure_activity_exists(conn, values["activity_id"])
         ensure_meeting_matches_activity(
             conn, values["meeting_id"], values["activity_id"]
         )
-        cursor = conn.execute(
+        row = conn.execute(
             """
             INSERT INTO schedules (
                 activity_id, meeting_id, name, start_time, end_time, location,
                 owner, notes, outcome_note, category, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING *;
             """,
             (
                 values["activity_id"],
@@ -111,32 +112,34 @@ def create_schedule(
                 now,
                 now,
             ),
-        )
-        schedule_id = cursor.lastrowid
-        conn.commit()
-        row = conn.execute(
-            "SELECT * FROM schedules WHERE id = ?", (schedule_id,)
         ).fetchone()
+
     return dict(row)
 
 
 def get_schedule(
-    schedule_id: int, *, db_path: Optional[str] = None
+    schedule_id: int,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     positive_id(schedule_id, "schedule_id")
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
-            "SELECT * FROM schedules WHERE id = ?", (schedule_id,)
+            "SELECT * FROM schedules WHERE id = %s", (schedule_id,)
         ).fetchone()
     return dict(row) if row else None
 
 
 def list_schedules(
-    activity_id: Optional[int] = None, *, db_path: Optional[str] = None
+    activity_id: Optional[int] = None,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         if activity_id is None:
             rows = conn.execute(
                 "SELECT * FROM schedules ORDER BY start_time, id"
@@ -146,7 +149,7 @@ def list_schedules(
             rows = conn.execute(
                 """
                 SELECT * FROM schedules
-                WHERE activity_id = ?
+                WHERE activity_id = %s
                 ORDER BY start_time, id
                 """,
                 (normalized_id,),
@@ -157,6 +160,7 @@ def list_schedules(
 def update_schedule(
     schedule_id: int,
     *,
+    vault_name: Optional[str] = None,
     db_path: Optional[str] = None,
     **changes: Any,
 ) -> Optional[Dict[str, Any]]:
@@ -164,11 +168,11 @@ def update_schedule(
     if not changes:
         raise ValueError("至少需要提供一個要更新的欄位")
     normalized = _normalize_fields(changes)
-    init_db(db_path)
+    init_db(vault_name=vault_name)
 
-    with get_connection(db_path) as conn:
+    with get_connection(vault_name=vault_name) as conn:
         current_row = conn.execute(
-            "SELECT * FROM schedules WHERE id = ?", (schedule_id,)
+            "SELECT * FROM schedules WHERE id = %s", (schedule_id,)
         ).fetchone()
         if current_row is None:
             return None
@@ -185,7 +189,7 @@ def update_schedule(
         conflicting_incident = conn.execute(
             """
             SELECT 1 FROM incidents
-            WHERE schedule_id = ? AND activity_id != ?
+            WHERE schedule_id = %s AND activity_id != %s
             LIMIT 1
             """,
             (schedule_id, next_activity_id),
@@ -193,33 +197,35 @@ def update_schedule(
         if conflicting_incident is not None:
             raise ValueError("Schedule 已被其他 Activity 的 Incident 使用，無法變更 activity_id")
 
-        assignments = [f"{field_name} = ?" for field_name in normalized]
+        assignments = [f"{field_name} = %s" for field_name in normalized]
         values = list(normalized.values())
-        assignments.append("updated_at = ?")
+        assignments.append("updated_at = %s")
         values.append(utc_now(after=current["updated_at"]))
         values.append(schedule_id)
-        conn.execute(
-            f"UPDATE schedules SET {', '.join(assignments)} WHERE id = ?", values
-        )
-        conn.commit()
+
         updated_row = conn.execute(
-            "SELECT * FROM schedules WHERE id = ?", (schedule_id,)
+            f"UPDATE schedules SET {', '.join(assignments)} WHERE id = %s RETURNING *;",
+            values,
         ).fetchone()
-    return dict(updated_row)
+
+    return dict(updated_row) if updated_row else None
 
 
 def delete_schedule(
-    schedule_id: int, *, db_path: Optional[str] = None
+    schedule_id: int,
+    *,
+    vault_name: Optional[str] = None,
+    db_path: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     positive_id(schedule_id, "schedule_id")
-    init_db(db_path)
-    with get_connection(db_path) as conn:
+    init_db(vault_name=vault_name)
+    with get_connection(vault_name=vault_name) as conn:
         row = conn.execute(
-            "SELECT * FROM schedules WHERE id = ?", (schedule_id,)
+            "SELECT * FROM schedules WHERE id = %s", (schedule_id,)
         ).fetchone()
         if row is None:
             return None
         deleted = dict(row)
-        conn.execute("DELETE FROM schedules WHERE id = ?", (schedule_id,))
-        conn.commit()
+        conn.execute("DELETE FROM schedules WHERE id = %s", (schedule_id,))
+
     return deleted
