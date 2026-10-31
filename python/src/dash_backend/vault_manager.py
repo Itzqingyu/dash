@@ -387,9 +387,6 @@ def delete_vault(vault_identifier: str, caller_user_id: Optional[int] = None) ->
     vid = database.resolve_vault_id(vault_identifier, user_id=caller_user_id)
     active_vid = get_active_vault_id()
 
-    if vid == database.DEFAULT_VAULT_ID or vid == "default":
-        raise ValueError("預設系統紀錄庫不可被刪除。")
-
     schema_name = database.sanitize_schema_name(vid)
     pool = database.get_pool()
     with pool.connection() as conn:
