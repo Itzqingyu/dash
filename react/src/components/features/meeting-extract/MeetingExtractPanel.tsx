@@ -16,7 +16,9 @@ import {
   Upload,
   Building2,
   FolderPlus,
+  Sparkles,
 } from 'lucide-react';
+import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
 import {
   fetchDocuments,
   uploadDocument,
@@ -63,9 +65,17 @@ const formatTimeString = (isoString?: string): string => {
  */
 export interface MeetingExtractPanelProps {
   hidden?: boolean;
+  vaultName?: string;
+  onNavigateToHome?: () => void;
+  onNavigateToVaultHub?: () => void;
 }
 
-export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({ hidden = false }) => {
+export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
+  hidden = false,
+  vaultName = 'default',
+  onNavigateToHome,
+  onNavigateToVaultHub,
+}) => {
   // 原生檔案選擇器參照 (快捷直上使用)
   const quickFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -608,54 +618,75 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({ hidden
   };
 
   return (
-    <div className="extract-panel-layout" hidden={hidden}>
-      {/* 頂部標題列 */}
-      <header className="extract-top-header">
-        <div className="extract-header-title">
-          <h2>DASH 會議紀錄整理</h2>
-        </div>
-        <div className="extract-header-actions">
-          <button
-            type="button"
-            className="button secondary sm-btn"
-            onClick={handleRefreshAll}
-            disabled={isLoadingDocs || isExtracting || isCommitting || isUploadingDoc}
-            title="重新整理畫面與預覽資料"
-          >
-            <RefreshCw size={14} className={isLoadingDocs ? 'spinning' : ''} />
-            <span>重新整理</span>
-          </button>
-          <button
-            type="button"
-            className="button secondary sm-btn"
-            onClick={() => setIsDocDrawerOpen(true)}
-            title="開啟歷史紀錄文檔抽屜"
-          >
-            <FileText size={15} />
-            <span>歷史紀錄 ({documents.length})</span>
-          </button>
-        </div>
-      </header>
+    <div className="extract-page-root" hidden={hidden}>
+      <div className="extract-container">
+        {/* 1. 頂部麵包屑導航 */}
+        <VaultBreadcrumb
+          vaultName={vaultName}
+          currentPageTitle="會議提煉"
+          onNavigateToHome={onNavigateToHome}
+          onNavigateToVaultHub={onNavigateToVaultHub}
+          onBack={onNavigateToVaultHub}
+        />
 
-      {/* 錯誤警示列 */}
-      {errorMessage && (
-        <div className="extract-api-error-banner" role="alert">
-          <div className="extract-api-error-info">
-            <AlertCircle size={16} />
-            <span>{errorMessage}</span>
+        {/* 2. 頂部大卡片 */}
+        <header className="extract-header-card">
+          <div className="extract-header-row">
+            <div className="extract-header-left">
+              <div className="extract-icon-badge">
+                <Sparkles size={28} />
+              </div>
+              <div className="extract-title-group">
+                <h1 className="extract-header-title">會議提煉</h1>
+                <p className="extract-header-desc">
+                  從已上傳的逐字稿中，由 AI 自動萃取關鍵決策、待辦事項與結論
+                </p>
+              </div>
+            </div>
+
+            <div className="extract-header-actions">
+              <button
+                type="button"
+                className="extract-header-btn secondary"
+                onClick={handleRefreshAll}
+                disabled={isLoadingDocs || isExtracting || isCommitting || isUploadingDoc}
+                title="重新整理畫面與預覽資料"
+              >
+                <RefreshCw size={15} className={isLoadingDocs ? 'spinning' : ''} />
+                <span>重新整理</span>
+              </button>
+              <button
+                type="button"
+                className="extract-header-btn secondary"
+                onClick={() => setIsDocDrawerOpen(true)}
+                title="開啟歷史紀錄文檔抽屜"
+              >
+                <FileText size={15} />
+                <span>歷史紀錄 ({documents.length})</span>
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            className="extract-api-error-dismiss"
-            onClick={() => setErrorMessage(null)}
-          >
-            關閉
-          </button>
-        </div>
-      )}
+        </header>
 
-      {/* 主內容獨立滾動區 */}
-      <div className="extract-content-scroll">
+        {/* 錯誤警示列 */}
+        {errorMessage && (
+          <div className="extract-api-error-banner" role="alert">
+            <div className="extract-api-error-info">
+              <AlertCircle size={16} />
+              <span>{errorMessage}</span>
+            </div>
+            <button
+              type="button"
+              className="extract-api-error-dismiss"
+              onClick={() => setErrorMessage(null)}
+            >
+              關閉
+            </button>
+          </div>
+        )}
+
+        {/* 主內容區 */}
+        <div className="extract-content-body">
         {/* 1. 選擇已上傳文件區塊 */}
         <section className="extract-card">
           <div className="extract-card-head">
@@ -1288,6 +1319,7 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({ hidden
           </button>
         </div>
       )}
+      </div>
 
       {/* 歷史紀錄文檔抽屜 */}
       <DocumentDrawer

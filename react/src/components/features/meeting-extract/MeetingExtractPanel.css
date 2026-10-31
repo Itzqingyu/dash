@@ -3,66 +3,123 @@
    專注呈現清晰結構化的標準會議表格
    ========================================== */
 
-.extract-panel-layout {
+.extract-page-root {
+  width: 100vw;
+  min-height: 100vh;
+  background-color: var(--canvas);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  background: var(--canvas);
-  color: var(--ink);
-  overflow: hidden;
-  position: relative;
+  padding-bottom: 80px;
+  box-sizing: border-box;
 }
 
-.extract-panel-layout[hidden] {
+.extract-page-root[hidden] {
   display: none !important;
 }
 
-/* 頂部標題列 */
-.extract-top-header {
-  flex-shrink: 0;
-  height: 56px;
-  padding: 0 28px;
+.extract-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  box-sizing: border-box;
+}
+
+/* 頂部大卡片 */
+.extract-header-card {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  box-shadow: var(--shadow-sm);
+}
+
+.extract-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--line);
-  background: var(--white);
+  gap: 24px;
+}
+
+.extract-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.extract-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  background-color: var(--navy);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.extract-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .extract-header-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.02em;
 }
 
-.extract-header-title h2 {
-  font-size: 1.1rem;
-  font-weight: 800;
+.extract-header-desc {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
   margin: 0;
-  color: var(--ink) !important;
+  line-height: 1.5;
 }
 
 .extract-header-actions {
   display: flex;
   align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.extract-header-btn {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
-.extract-sparkle-icon {
-  color: var(--cyan);
+.extract-header-btn.secondary {
+  background-color: var(--canvas);
+  color: var(--ink);
+  border-color: var(--line);
 }
 
-/* 內容可滾動串流區 */
-.extract-content-scroll {
-  flex: 1 1 0%;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 24px clamp(20px, 4vw, 48px) 40px;
+.extract-header-btn.secondary:hover {
+  background-color: var(--hover);
+  border-color: var(--muted);
+}
+
+/* 主內容區 */
+.extract-content-body {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  width: 100%;
 }
 
 /* 全域 API 異常提示列 */
@@ -562,13 +619,14 @@
 
 /* 底部確認寫入操作欄 */
 .extract-bottom-dock {
-  flex-shrink: 0;
-  padding: 14px 28px;
-  background: var(--white);
-  border-top: 1px solid var(--line);
+  padding: 20px 28px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-shadow: var(--shadow-sm);
 }
 
 .commit-btn {

@@ -20,7 +20,6 @@ import type { Activity, ActivityInput } from './types/activity';
 import { AuthPage } from './components/features/auth/AuthPage';
 import { HomePage } from './components/features/home/HomePage';
 import { VaultHubPage } from './components/features/vault-hub/VaultHubPage';
-import { VaultBreadcrumb } from './components/layout/VaultBreadcrumb';
 
 // Level 3 業務面板組件
 import ActivityListView from './components/features/activity/ActivityListView';
@@ -232,24 +231,7 @@ export default function App() {
     currentActivity != null &&
     !['home', 'vault-hub', 'activities', 'documents', 'chat', 'extract', 'vault'].includes(currentView);
 
-  // 功能標題轉換 helper
-  const getViewTitle = (view: string): string => {
-    switch (view) {
-      case 'activities':
-      case 'overview':
-        return '活動工作台';
-      case 'documents':
-        return '文件紀錄庫';
-      case 'chat':
-        return '智能對話';
-      case 'extract':
-        return '會議提煉';
-      case 'vault':
-        return '紀錄庫備份';
-      default:
-        return '專案工作區';
-    }
-  };
+
 
   // 1. 若系統正在確認登入狀態，顯示簡約載入畫面
   if (authLoading) {
@@ -309,19 +291,10 @@ export default function App() {
     );
   }
 
-  // 5. Level 3 具體業務面板層 (100% 寬高全螢幕無 Sidebar/Footer 工作區)
+  // 5. Level 3 具體業務面板層 (各面板自帶置中兩側留白與專屬麵包屑導航)
   return (
     <>
       <div className="app-shell" style={{ display: 'flex', flexDirection: 'column' }}>
-        {/* 面板頂部極簡麵包屑導航 */}
-        <VaultBreadcrumb
-          vaultName={activeVaultName}
-          currentPageTitle={getViewTitle(currentView)}
-          onNavigateToHome={() => setCurrentView('home')}
-          onNavigateToVaultHub={() => setCurrentView('vault-hub')}
-        />
-
-        {/* 主工作內容區 */}
         <main
           className={`main ${['chat', 'extract'].includes(currentView) ? 'chat-mode' : ''}`}
           id="main-content"
@@ -337,6 +310,9 @@ export default function App() {
               onSelectActivity={handleSelectActivity}
               onCreateActivity={openCreateActivity}
               onOpenQuickAdd={() => setQuickAddOpen(true)}
+              vaultName={activeVaultName}
+              onNavigateToHome={() => setCurrentView('home')}
+              onNavigateToVaultHub={() => setCurrentView('vault-hub')}
             />
           )}
 
@@ -355,20 +331,46 @@ export default function App() {
               onMeetingsChanged={() => setMeetingVersion((v) => v + 1)}
               onSchedulesChanged={() => setScheduleVersion((v) => v + 1)}
               onOpenHandover={handleOpenHandover}
+              vaultName={activeVaultName}
+              onNavigateToHome={() => setCurrentView('home')}
+              onNavigateToVaultHub={() => setCurrentView('vault-hub')}
             />
           )}
 
           {/* 5.3 獨立文件紀錄庫管理視圖 */}
-          {currentView === 'documents' && <DocumentManagementPanel />}
+          {currentView === 'documents' && (
+            <DocumentManagementPanel
+              vaultName={activeVaultName}
+              onNavigateToHome={() => setCurrentView('home')}
+              onNavigateToVaultHub={() => setCurrentView('vault-hub')}
+            />
+          )}
 
           {/* 5.4 LLM 聊天大面板視圖 */}
-          {currentView === 'chat' && <ChatPanel />}
+          {currentView === 'chat' && (
+            <ChatPanel
+              vaultName={activeVaultName}
+              onNavigateToHome={() => setCurrentView('home')}
+              onNavigateToVaultHub={() => setCurrentView('vault-hub')}
+            />
+          )}
 
           {/* 5.5 AI 會議紀錄整理視圖 (常駐掛載避免切換面板時預覽資料遺失) */}
-          <MeetingExtractPanel hidden={currentView !== 'extract'} />
+          <MeetingExtractPanel
+            hidden={currentView !== 'extract'}
+            vaultName={activeVaultName}
+            onNavigateToHome={() => setCurrentView('home')}
+            onNavigateToVaultHub={() => setCurrentView('vault-hub')}
+          />
 
           {/* 5.6 DASH OUT 本地交接導出視圖 */}
-          {currentView === 'vault' && <DashOutPanel />}
+          {currentView === 'vault' && (
+            <DashOutPanel
+              vaultName={activeVaultName}
+              onNavigateToHome={() => setCurrentView('home')}
+              onNavigateToVaultHub={() => setCurrentView('vault-hub')}
+            />
+          )}
         </main>
       </div>
 

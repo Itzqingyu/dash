@@ -10,7 +10,7 @@ DASH 是一套專為團隊打造的現代化活動歷程、決策交接與智能
 - **框架**: React 19 + TypeScript
 - **構建工具**: Vite 5 (Web SPA 單頁應用)
 - **通訊**: HTTP API (RESTful)，統一透過 apiClient 客戶端直接與後端連線，自動附加 JWT Bearer Token
-- **視覺與設計規範**: 全域 Design Tokens (:root) 繼承、嚴禁 hard code 顏色、無上帝組件、領域分層管理、全新 3 級階層式 SaaS 導航架構 (Level 0 認證 -> Level 1 根首頁 -> Level 2 紀錄庫 Hub -> Level 3 獨立全寬面板與頂部麵包屑)，徹底移除舊式 Sidebar、Header 與常駐 Footer
+- **視覺與設計規範**: 全域 Design Tokens (:root) 繼承、嚴禁 hard code 顏色、無上帝組件、領域分層管理、全新 3 級階層式 SaaS 導航架構 (Level 0 認證 -> Level 1 根首頁 -> Level 2 紀錄庫 Hub -> Level 3 獨立置中業務面板，1200px 雙層居中容器、左上角「<」階層返回與頂部大卡片)，徹底移除舊式 Sidebar、Header 與常駐 Footer
 - **圖示庫**: lucide-react (全域禁止 emojis)
 - **其他套件**: react-markdown (對話與文件全文渲染), html2pdf.js (交接報告 PDF 匯出)
 
@@ -82,9 +82,9 @@ dash/
 │   │   │       ├── auth/         # Level 0 獨立登入/註冊頁面 (AuthPage.tsx & AuthPage.css)
 │   │   │       ├── home/         # Level 1 系統根首頁 (HomePage.tsx & HomePage.css，無 Header/Sidebar/Footer，含帳戶條、建立/加入、備份匯入與紀錄庫卡片)
 │   │   │       ├── vault-hub/    # Level 2 紀錄庫操作中心 (VaultHubPage.tsx & VaultHubPage.css，紀錄庫標題、成員邀請管理、重命名/刪除與五大功能入口卡片)
-│   │   │       ├── activity/     # Level 3 活動工作台 (ActivityListView, ActivityWorkspace, ActivityBreadcrumb, 四階段面板)
+│   │   │       ├── activity/     # Level 3 活動工作台 (ActivityListView, ActivityWorkspace, 四階段面板，整合多級麵包屑)
 │   │   │       ├── document-management/ # Level 3 獨立文件紀錄庫 (DocumentManagementPanel.tsx & .css)
-│   │   │       ├── chat/         # Level 3 AI 智能對話 (ChatPanel, SessionSidebar)
+│   │   │       ├── chat/         # Level 3 AI 智能對話 (ChatPanel.tsx & .css，整合式會話切換選單與操作選單)
 │   │   │       ├── meeting-extract/ # Level 3 會議提煉 (MeetingExtractPanel)
 │   │   │       └── dash-out/     # Level 3 紀錄庫備份與導出 (DashOutPanel)
 │   │   └── index.css             # 全域 Design Tokens (:root)、Reset 與 App Shell 樣式

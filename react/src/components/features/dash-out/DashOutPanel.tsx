@@ -9,11 +9,23 @@ import {
   Database,
   RefreshCw,
   Info,
+  Archive,
 } from 'lucide-react';
+import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
 import { vaultApi, VaultStats } from '../../../api/vaultApi';
 import './DashOutPanel.css';
 
-export default function DashOutPanel() {
+export interface DashOutPanelProps {
+  vaultName?: string;
+  onNavigateToHome?: () => void;
+  onNavigateToVaultHub?: () => void;
+}
+
+export default function DashOutPanel({
+  vaultName,
+  onNavigateToHome,
+  onNavigateToVaultHub,
+}: DashOutPanelProps) {
   const [stats, setStats] = useState<VaultStats | null>(null);
   const [activeVaultName, setActiveVaultName] = useState<string>('default');
   const [isLoadingStats, setIsLoadingStats] = useState<boolean>(false);
@@ -89,27 +101,46 @@ export default function DashOutPanel() {
   };
 
   return (
-    <div className="dash-out-page">
-      {/* 頂部 Header */}
-      <div className="dash-out-header">
-        <div>
-          <span className="eyebrow">DASH OUT</span>
-          <h1>紀錄庫備份與導出</h1>
-          <p>
-            將當前紀錄庫「{activeVaultName}」的所有活動紀錄、會議歷程與託管文件完整封裝為標準備份包。
-          </p>
-        </div>
-        <button
-          className="button secondary"
-          type="button"
-          onClick={fetchStats}
-          disabled={isLoadingStats}
-          title="重新整理統計數據"
-        >
-          <RefreshCw size={14} className={isLoadingStats ? 'spin' : ''} />
-          <span>重新整理</span>
-        </button>
-      </div>
+    <div className="dash-out-page-root">
+      <div className="dash-out-container">
+        {/* 1. 麵包屑導航 */}
+        <VaultBreadcrumb
+          vaultName={vaultName || activeVaultName}
+          currentPageTitle="紀錄庫備份"
+          onNavigateToHome={onNavigateToHome}
+          onNavigateToVaultHub={onNavigateToVaultHub}
+          onBack={onNavigateToVaultHub}
+        />
+
+        {/* 2. 頂部大卡片 */}
+        <header className="dash-out-header-card">
+          <div className="dash-out-header-row">
+            <div className="dash-out-header-left">
+              <div className="dash-out-icon-badge">
+                <Archive size={28} />
+              </div>
+              <div className="dash-out-title-group">
+                <h1 className="dash-out-header-title">紀錄庫備份與導出</h1>
+                <p className="dash-out-header-desc">
+                  將當前紀錄庫「{activeVaultName}」的所有活動紀錄、會議歷程與託管文件完整封裝為標準備份包
+                </p>
+              </div>
+            </div>
+
+            <div className="dash-out-header-actions">
+              <button
+                className="dash-out-header-btn secondary"
+                type="button"
+                onClick={fetchStats}
+                disabled={isLoadingStats}
+                title="重新整理統計數據"
+              >
+                <RefreshCw size={15} className={isLoadingStats ? 'spin' : ''} />
+                <span>重新整理</span>
+              </button>
+            </div>
+          </div>
+        </header>
 
       {/* 訊息橫幅 */}
       {bannerMessage && (
@@ -206,10 +237,11 @@ export default function DashOutPanel() {
         <div className="dash-out-tip-content">
           <span className="dash-out-tip-title">如何還原或匯入備份包 (DASH IN)？</span>
           <span className="dash-out-tip-desc">
-            若需載入先前的備份包，可自左側導航選單中點擊紀錄庫選單的「匯入備份 (DASH IN)」。
+            若需載入先前的備份包，可自首頁紀錄庫管理進行備份包匯入。
             系統將會校驗完整性並將其建立為全新專案，絕不會覆蓋您現有的任何資料。
           </span>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
 import {
   fetchDocuments,
   uploadDocument,
@@ -30,7 +31,17 @@ import {
 import type { BackendDocument, DocumentContentResponse } from '../../../types/document';
 import './DocumentManagementPanel.css';
 
-export const DocumentManagementPanel: React.FC = () => {
+export interface DocumentManagementPanelProps {
+  vaultName?: string;
+  onNavigateToHome?: () => void;
+  onNavigateToVaultHub?: () => void;
+}
+
+export const DocumentManagementPanel: React.FC<DocumentManagementPanelProps> = ({
+  vaultName = 'default',
+  onNavigateToHome,
+  onNavigateToVaultHub,
+}) => {
   const [documents, setDocuments] = useState<BackendDocument[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -160,28 +171,49 @@ export const DocumentManagementPanel: React.FC = () => {
   );
 
   return (
-    <div className="doc-panel-container">
-      {/* 頂部說明卡片 */}
-      <div className="doc-panel-header">
-        <div className="doc-header-info">
-          <div className="doc-icon-badge">
-            <FileSpreadsheet size={24} />
-          </div>
-          <div className="doc-title-group">
-            <h2 className="doc-panel-title">文件紀錄庫管理</h2>
-            <p className="doc-panel-desc">
-              託管會議逐字稿、專案規章與活動企劃等歷史文件，系統自動解析 Markdown 並建立向量索引
-            </p>
-          </div>
-        </div>
+    <div className="doc-page-root">
+      <div className="doc-container">
+        {/* 1. 頂部麵包屑導航 */}
+        <VaultBreadcrumb
+          vaultName={vaultName}
+          currentPageTitle="文件紀錄庫"
+          onNavigateToHome={onNavigateToHome}
+          onNavigateToVaultHub={onNavigateToVaultHub}
+          onBack={onNavigateToVaultHub}
+        />
 
-        <div className="doc-header-stats">
-          <div className="doc-stat-pill">
-            <Layers size={16} />
-            <span>總文件數：{documents.length}</span>
+        {/* 2. 頂部大卡片 */}
+        <header className="doc-header-card">
+          <div className="doc-header-row">
+            <div className="doc-header-left">
+              <div className="doc-icon-badge">
+                <FileSpreadsheet size={28} />
+              </div>
+              <div className="doc-title-group">
+                <h1 className="doc-header-title">文件紀錄庫管理</h1>
+                <p className="doc-header-desc">
+                  託管會議逐字稿、專案規章與活動企劃等歷史文件，系統自動解析 Markdown 並建立向量切片索引
+                </p>
+              </div>
+            </div>
+
+            <div className="doc-header-actions">
+              <button
+                type="button"
+                className="doc-header-btn primary"
+                onClick={() => fileInputRef.current?.click()}
+                title="上傳新文件"
+              >
+                <UploadCloud size={16} />
+                <span>上傳文件</span>
+              </button>
+              <div className="doc-stat-pill">
+                <Layers size={15} />
+                <span>總文件數：{documents.length}</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </header>
 
       {/* 提示訊息橫幅 */}
       {alertMessage && (
@@ -357,6 +389,7 @@ export const DocumentManagementPanel: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

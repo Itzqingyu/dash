@@ -1,7 +1,15 @@
+/**
+ * LLM 智能對話面板 (ChatPanel.tsx)
+ * 職責：
+ * 1. 雙層容器包覆（滿版 canvas 底色 + 1200px 置中容器）。
+ * 2. 頂部麵包屑導航與標準大卡片（智能對話）。
+ * 3. 聊天主區頂部 Session 下拉選單（切換會話與新增對話）、三點操作選單（重新命名、刪除）與右側模式切換。
+ * 4. 移除獨立側邊欄，內部自適應高度獨立滾動。
+ */
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send,
-  Paperclip,
   Bot,
   User,
   MessageSquare,
@@ -10,9 +18,13 @@ import {
   FileText,
   BookOpen,
   AlertCircle,
+  Plus,
+  MoreVertical,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import SessionSidebar, { SessionItem } from './SessionSidebar';
+import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
 import DocumentDrawer, { DocumentItem } from '../../common/DocumentDrawer';
 import ConfirmModal from '../../common/ConfirmModal';
 import RenameModal from '../../common/RenameModal';
@@ -28,32 +40,29 @@ import {
   fetchDocuments,
   uploadDocument,
   deleteDocumentByIdentifier,
-  checkDuplicateFileStem,
 } from '../../../api/documentService';
 import { RetrievedChunk } from '../../../types/chat';
 import './ChatPanel.css';
 
-/**
- * 前端訊息氣泡介面定義
- */
+export interface SessionItem {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   mode?: 'chat' | 'rag';
   createdAt: string;
-  // 檢索切片引用來源清單
   retrievedChunks?: Array<{
     content: string;
     source?: string;
   }>;
-  // 是否為呼叫失敗的錯誤提示氣泡
   isError?: boolean;
 }
 
-/**
- * 格式化 ISO 日期字串為易讀時間格式 (例如 "14:30" 或 "09-17 14:30")
- */
 function formatTimeString(isoString?: string): string {
   if (!isoString) {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -67,45 +76,47 @@ function formatTimeString(isoString?: string): string {
   }
 }
 
-/**
- * LLM 聊天面板主組件 (Chat Panel)
- * 整合：
- * 1. 雙欄佈局 (會話清單邊欄 + 聊天串流主區)
- * 2. 模式切換 Toggle Pill (普通對話 vs 歷史紀錄問答)
- * 3. 完整接入 Python FastAPI 後端端點，無任何假資料或模擬回覆
- * 4. 後端連線異常或處理失敗時即時返回真實錯誤狀態
- * 5. 浮動歷史紀錄文檔抽屜 (支援真實上傳切片與刪除)
- */
-export const ChatPanel: React.FC = () => {
-  // 會話列表狀態 (來源為後端 /sessions)
+export interface ChatPanelProps {
+  vaultName?: string;
+  onNavigateToHome?: () => void;
+  onNavigateToVaultHub?: () => void;
+}
+
+export const ChatPanel: React.FC<ChatPanelProps> = ({
+  vaultName = 'default',
+  onNavigateToHome,
+  onNavigateToVaultHub,
+}) => {
+  // 會話列表狀態
   const [sessions, setSessions] = useState<SessionItem[]>([]);
-  // 當前選中的會話 ID (以 string 儲存對齊組件 props)
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  // 下拉選單與選單開關
+  const [sessionDropdownOpen, setSessionDropdownOpen] = useState(false);
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // 當前對話模式：'chat' (普通對話) 或 'rag' (歷史紀錄問答)
   const [currentMode, setCurrentMode] = useState<'chat' | 'rag'>('chat');
 
-  // 訊息串流狀態 (各會話的歷史訊息快取)
+  // 訊息串流狀態
   const [sessionMessages, setSessionMessages] = useState<Record<string, ChatMessage[]>>({});
 
-  // 輸入框文字狀態
+  // 輸入框文字與 Loading
   const [input, setInput] = useState('');
-  // 訊息發送與後端 LLM 推理中的 Loading 狀態
   const [loading, setLoading] = useState(false);
 
-  // 全域/頂部 API 連線或操作錯誤訊息
+  // 錯誤提示
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // 歷史紀錄文檔抽屜開啟狀態
+  // 文件抽屜狀態
   const [isDocDrawerOpen, setIsDocDrawerOpen] = useState(false);
-  // 歷史紀錄文件清單狀態 (來源為後端 /documents)
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  // 歷史紀錄文件上傳中狀態
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
-  // 歷史紀錄抽屜專屬錯誤訊息
   const [docDrawerError, setDocDrawerError] = useState<string | null>(null);
 
-  // 編輯會話名稱彈窗狀態 (霧化背景彈窗)
+  // 編輯會話名稱彈窗
   const [renameModal, setRenameModal] = useState<{
     isOpen: boolean;
     sessionId: string;
@@ -116,10 +127,10 @@ export const ChatPanel: React.FC = () => {
     currentTitle: '',
   });
 
-  // 參考切片折疊狀態 (key: messageId, value: boolean)
+  // 參考切片折疊
   const [expandedChunks, setExpandedChunks] = useState<Record<string, boolean>>({});
 
-  // 全域防手殘確認對話框狀態
+  // 確認對話框
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -129,12 +140,11 @@ export const ChatPanel: React.FC = () => {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => { },
+    onConfirm: () => {},
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 自動向下滾動至最新訊息
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -145,9 +155,21 @@ export const ChatPanel: React.FC = () => {
     scrollToBottom();
   }, [currentMessages, loading]);
 
-  /**
-   * 從後端獲取文件清單
-   */
+  // 點擊外部自動收合下拉選單與三點操作選單
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setSessionDropdownOpen(false);
+      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setSessionMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 從後端獲取文件清單
   const loadDocuments = useCallback(async () => {
     try {
       const backendDocs = await fetchDocuments();
@@ -165,9 +187,7 @@ export const ChatPanel: React.FC = () => {
     }
   }, []);
 
-  /**
-   * 從後端獲取會話清單
-   */
+  // 從後端獲取會話清單
   const loadSessions = useCallback(async () => {
     try {
       const backendSessions = await fetchSessions();
@@ -178,7 +198,6 @@ export const ChatPanel: React.FC = () => {
       }));
       setSessions(mappedSessions);
 
-      // 若目前尚未選擇會話且有歷史會話，預設選取最新一個
       if (mappedSessions.length > 0 && !activeSessionId) {
         setActiveSessionId(mappedSessions[0].id);
       }
@@ -188,9 +207,7 @@ export const ChatPanel: React.FC = () => {
     }
   }, [activeSessionId]);
 
-  /**
-   * 載入指定會話的歷史訊息
-   */
+  // 載入指定會話的歷史訊息
   const loadSessionHistory = useCallback(async (sessionIdStr: string) => {
     const numId = Number(sessionIdStr);
     if (isNaN(numId)) return;
@@ -198,7 +215,6 @@ export const ChatPanel: React.FC = () => {
     try {
       const detail = await fetchSessionDetail(numId);
       const mappedMessages: ChatMessage[] = (detail.messages || []).map((m) => {
-        // 解析檢索切片格式 (相容 SQLite 字串儲存或 Python 物件)
         let parsedChunks: Array<{ content: string; source?: string }> = [];
         if (m.retrieved_chunks) {
           try {
@@ -216,7 +232,7 @@ export const ChatPanel: React.FC = () => {
               }));
             }
           } catch {
-            // 若切片解析異常則略過
+            // 切片解析異常則略過
           }
         }
 
@@ -240,22 +256,18 @@ export const ChatPanel: React.FC = () => {
     }
   }, []);
 
-  // 組件載入時，從後端取得會話與文件資料
   useEffect(() => {
     loadSessions();
     loadDocuments();
   }, [loadSessions, loadDocuments]);
 
-  // 當切換會話且該會話歷史尚未載入時，觸發取得
   useEffect(() => {
     if (activeSessionId && !sessionMessages[activeSessionId]) {
       loadSessionHistory(activeSessionId);
     }
   }, [activeSessionId, sessionMessages, loadSessionHistory]);
 
-  /**
-   * 新增對話會話 (呼叫後端 POST /sessions)
-   */
+  // 新增對話會話
   const handleCreateSession = async () => {
     try {
       setApiError(null);
@@ -278,11 +290,9 @@ export const ChatPanel: React.FC = () => {
     }
   };
 
-  /**
-   * 刪除指定會話 (先跳出全螢幕模糊確認視窗，確認後呼叫後端 DELETE /sessions/{id})
-   */
-  const handleDeleteSession = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  // 刪除指定會話
+  const handleDeleteSession = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const numId = Number(id);
     if (isNaN(numId)) return;
 
@@ -299,7 +309,6 @@ export const ChatPanel: React.FC = () => {
           setApiError(null);
           await deleteSessionById(numId);
 
-          // 本機狀態同步移除
           setSessions((prev) => prev.filter((s) => s.id !== id));
           setSessionMessages((prev) => {
             const updated = { ...prev };
@@ -319,10 +328,7 @@ export const ChatPanel: React.FC = () => {
     });
   };
 
-  /**
-   * 編輯/重命名對話會話名稱 (呼叫 PATCH /sessions/{id})
-   * 同步更新後端 SQLite 資料庫與本地會話列表
-   */
+  // 重命名對話會話名稱
   const handleRenameSession = async (id: string, newTitle: string) => {
     const trimmed = newTitle.trim();
     if (!trimmed) return;
@@ -333,7 +339,6 @@ export const ChatPanel: React.FC = () => {
     try {
       setApiError(null);
       await updateSessionTitle(numId, trimmed);
-      // 本地狀態同步更新
       setSessions((prev) =>
         prev.map((s) => (s.id === id ? { ...s, title: trimmed } : s))
       );
@@ -343,9 +348,6 @@ export const ChatPanel: React.FC = () => {
     }
   };
 
-  /**
-   * 開啟重新命名對話框
-   */
   const handleOpenRenameModal = (id: string, currentTitle: string) => {
     setRenameModal({
       isOpen: true,
@@ -354,21 +356,14 @@ export const ChatPanel: React.FC = () => {
     });
   };
 
-  /**
-   * 確認並儲存新會話名稱
-   */
-  const handleConfirmRename = async (newTitle: string) => {
-    const targetId = renameModal.sessionId;
-    setRenameModal((prev) => ({ ...prev, isOpen: false }));
-    if (targetId) {
-      await handleRenameSession(targetId, newTitle);
+  const handleConfirmRename = (newTitle: string) => {
+    if (renameModal.sessionId) {
+      handleRenameSession(renameModal.sessionId, newTitle);
     }
+    setRenameModal((prev) => ({ ...prev, isOpen: false }));
   };
 
-  /**
-   * 發送訊息至後端 (呼叫 POST /sessions/{id}/messages)
-   * 絕不使用假資料模擬，後端異常則顯示真實錯誤
-   */
+  // 發送訊息
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -377,35 +372,26 @@ export const ChatPanel: React.FC = () => {
     setApiError(null);
 
     let targetSessionId = activeSessionId;
-
-    // 1. 若當前尚未有選中的會話，先向後端請求建立一個
     if (!targetSessionId) {
       try {
-        const newSession = await createNewSession(userText.slice(0, 16));
+        const newSession = await createNewSession(userText.slice(0, 16) || '新對話');
+        targetSessionId = String(newSession.id);
         const newSessionItem: SessionItem = {
-          id: String(newSession.id),
-          title: newSession.title || userText.slice(0, 16),
+          id: targetSessionId,
+          title: newSession.title || '新對話',
           createdAt: formatTimeString(newSession.created_at),
         };
         setSessions((prev) => [newSessionItem, ...prev]);
-        targetSessionId = newSessionItem.id;
-        setActiveSessionId(newSessionItem.id);
+        setActiveSessionId(targetSessionId);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        setApiError(`無法自動建立對話會話：${msg}`);
+        setApiError(`建立對話階段失敗：${msg}`);
         return;
       }
     }
 
-    const sessionIdNum = Number(targetSessionId);
-    if (isNaN(sessionIdNum)) {
-      setApiError('會話 ID 無效');
-      return;
-    }
-
-    // 2. 在前端即時插入使用者輸入氣泡 (樂觀更新)
-    const tempUserMsgId = `temp-user-${Date.now()}`;
-    const userMsg: ChatMessage = {
+    const tempUserMsgId = `temp-${Date.now()}`;
+    const optimisticUserMsg: ChatMessage = {
       id: tempUserMsgId,
       role: 'user',
       content: userText,
@@ -415,23 +401,38 @@ export const ChatPanel: React.FC = () => {
 
     setSessionMessages((prev) => ({
       ...prev,
-      [targetSessionId as string]: [...(prev[targetSessionId as string] || []), userMsg],
+      [targetSessionId as string]: [
+        ...(prev[targetSessionId as string] || []),
+        optimisticUserMsg,
+      ],
     }));
 
     setLoading(true);
 
-    // 3. 呼叫後端 API 發送訊息
     try {
-      const response = await sendChatMessage(sessionIdNum, userText, currentMode, 5);
+      const response = await sendChatMessage(Number(targetSessionId), userText, currentMode);
 
-      // 解析後端檢索切片來源
-      const rawChunks = response.retrieved_chunks || [];
-      const parsedChunks = rawChunks.map((c) => ({
-        content: c.content,
-        source: c.metadata?.source || '歷史紀錄文件',
-      }));
+      let parsedChunks: Array<{ content: string; source?: string }> = [];
+      if (response.assistant_message.retrieved_chunks) {
+        try {
+          const raw =
+            typeof response.assistant_message.retrieved_chunks === 'string'
+              ? JSON.parse(response.assistant_message.retrieved_chunks)
+              : response.assistant_message.retrieved_chunks;
+          if (Array.isArray(raw)) {
+            parsedChunks = raw.map((c: RetrievedChunk | Record<string, unknown>) => ({
+              content: (c as { content?: string }).content || '',
+              source:
+                (c as { metadata?: { source?: string } }).metadata?.source ||
+                (c as { source?: string }).source ||
+                '歷史紀錄文件',
+            }));
+          }
+        } catch {
+          // 略過切片解析異常
+        }
+      }
 
-      // 構建後端真實回傳之助手訊息
       const assistantMsg: ChatMessage = {
         id: String(response.assistant_message.id),
         role: 'assistant',
@@ -441,7 +442,6 @@ export const ChatPanel: React.FC = () => {
         retrievedChunks: parsedChunks.length > 0 ? parsedChunks : undefined,
       };
 
-      // 將臨時使用者訊息以真實後端紀錄取代，並附加助理回覆
       setSessionMessages((prev) => {
         const currentList = prev[targetSessionId as string] || [];
         const filteredList = currentList.filter((m) => m.id !== tempUserMsgId);
@@ -458,7 +458,6 @@ export const ChatPanel: React.FC = () => {
         };
       });
 
-      // 同步更新側邊欄會話標題 (若後端自動命名)
       setSessions((prev) =>
         prev.map((s) => {
           if (s.id === targetSessionId && (s.title === '新對話' || s.title === '對話會話')) {
@@ -468,7 +467,6 @@ export const ChatPanel: React.FC = () => {
         })
       );
     } catch (err: unknown) {
-      // 後端無回應或執行失敗時，嚴格返回真實錯誤訊息，絕不假裝回覆
       const msg = err instanceof Error ? err.message : String(err);
       setApiError(`後端服務處理失敗：${msg}`);
 
@@ -490,9 +488,6 @@ export const ChatPanel: React.FC = () => {
     }
   };
 
-  /**
-   * 鍵盤 Enter 鍵發送處理 (Shift+Enter 為換行)
-   */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -500,9 +495,6 @@ export const ChatPanel: React.FC = () => {
     }
   };
 
-  /**
-   * 切換切片折疊展開狀態
-   */
   const toggleChunkExpand = (messageId: string) => {
     setExpandedChunks((prev) => ({
       ...prev,
@@ -510,51 +502,32 @@ export const ChatPanel: React.FC = () => {
     }));
   };
 
-  /**
-   * 歷史紀錄文件真實上傳 (呼叫 POST /upload)
-   * 具備前置主檔名防呆：若清單中已有相同主檔名之文件，直接中斷並提示錯誤，不發送網路請求。
-   */
   const handleUploadFile = async (file: File) => {
     setDocDrawerError(null);
-
-    // 前端前置主檔名重複防呆校驗
-    const duplicate = checkDuplicateFileStem(file.name, documents.map((d) => d.name));
-    if (duplicate) {
-      setDocDrawerError(
-        `已存在相同主檔名之文件「${duplicate}」。系統不允許同名覆蓋，請先手動刪除舊文件或重新命名檔案後再行上傳。`
-      );
-      return;
-    }
-
     setIsUploadingDoc(true);
     try {
       await uploadDocument(file);
-      // 上傳完成後重新獲取文檔列表
       await loadDocuments();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setDocDrawerError(`上傳檔案失敗：${msg}`);
+      setDocDrawerError(`上傳失敗：${msg}`);
     } finally {
       setIsUploadingDoc(false);
     }
   };
 
-  /**
-   * 歷史紀錄文件真實刪除 (先跳出全螢幕模糊確認視窗，確認後呼叫後端 DELETE /documents/{id})
-   */
-  const handleDeleteDocument = (id: string) => {
-    const targetDoc = documents.find((d) => d.id === id);
-    const docName = targetDoc ? `「${targetDoc.name}」` : '此文件';
+  const handleDeleteDocument = async (docIdStr: string) => {
+    const docToDelete = documents.find((d) => d.id === docIdStr);
+    const fileName = docToDelete ? `「${docToDelete.name}」` : '此文檔';
 
     setConfirmDialog({
       isOpen: true,
       title: '確定要刪除歷史紀錄文檔？',
-      message: `確定要自歷史紀錄中移除 ${docName} 嗎？這將會同步自磁碟物理刪除該 Markdown 文件與向量檢索索引。`,
+      message: `確定要刪除 ${fileName} 嗎？刪除後對應的向量切片與全文將被移除。`,
       onConfirm: async () => {
         setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
         try {
-          setDocDrawerError(null);
-          await deleteDocumentByIdentifier(id);
+          await deleteDocumentByIdentifier(Number(docIdStr));
           await loadDocuments();
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -568,260 +541,359 @@ export const ChatPanel: React.FC = () => {
     sessions.find((s) => s.id === activeSessionId)?.title || '未選擇對話';
 
   return (
-    <div className="chat-panel-layout">
-      {/* 1. 左側：會話歷史側邊欄 */}
-      <SessionSidebar
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        onSelectSession={(id) => setActiveSessionId(id)}
-        onCreateSession={handleCreateSession}
-        onDeleteSession={handleDeleteSession}
-        onOpenRenameModal={handleOpenRenameModal}
-      />
+    <div className="chat-page-root">
+      <div className="chat-container">
+        {/* 1. 頂部麵包屑導航 */}
+        <VaultBreadcrumb
+          vaultName={vaultName}
+          currentPageTitle="智能對話"
+          onNavigateToHome={onNavigateToHome}
+          onNavigateToVaultHub={onNavigateToVaultHub}
+          onBack={onNavigateToVaultHub}
+        />
 
-      {/* 2. 右側：聊天主區域 */}
-      <section className="chat-main-area">
-        {/* 頂部資訊列 */}
-        <header className="chat-top-header">
-          <div className="chat-header-title">
-            <h2>{activeSessionId ? activeSessionTitle : 'DASH Agent'}</h2>
-          </div>
-          <div className="chat-header-actions">
-            <button
-              type="button"
-              className="button secondary sm-btn"
-              onClick={() => setIsDocDrawerOpen(true)}
-            >
-              <FileText size={15} />
-              <span>歷史紀錄 ({documents.length})</span>
-            </button>
+        {/* 2. 頂部大卡片 */}
+        <header className="chat-header-card">
+          <div className="chat-header-row">
+            <div className="chat-header-left">
+              <div className="chat-icon-badge">
+                <MessageSquare size={28} />
+              </div>
+              <div className="chat-title-group">
+                <h1 className="chat-header-title">智能對話</h1>
+                <p className="chat-header-desc">
+                  針對紀錄庫所有文件與歷史決策進行多輪對話與語意檢索問答
+                </p>
+              </div>
+            </div>
+
+            <div className="chat-header-actions">
+              <button
+                type="button"
+                className="chat-header-btn"
+                onClick={() => setIsDocDrawerOpen(true)}
+                title="開啟歷史紀錄文檔抽屜"
+              >
+                <FileText size={15} />
+                <span>歷史紀錄文檔 ({documents.length})</span>
+              </button>
+            </div>
           </div>
         </header>
 
-        {/* 全域 API 異常提示列 (後端未連線或報錯時顯示) */}
-        {apiError && (
-          <div className="chat-api-error-banner" role="alert">
-            <div className="chat-api-error-info">
-              <AlertCircle size={16} />
-              <span>{apiError}</span>
-            </div>
-            <button
-              type="button"
-              className="chat-api-error-dismiss"
-              onClick={() => setApiError(null)}
-            >
-              關閉
-            </button>
-          </div>
-        )}
+        {/* 3. 聊天主區塊 (滿版聊天卡片) */}
+        <div className="chat-card-area">
+          {/* 卡片頂部功能列 */}
+          <div className="chat-card-topbar">
+            {/* 左側：Session 下拉選單 + 三點操作按鈕 */}
+            <div className="chat-session-selector-group">
+              <div className="chat-session-dropdown-wrap" ref={dropdownRef}>
+                <button
+                  type="button"
+                  className="chat-session-select-btn"
+                  onClick={() => {
+                    setSessionDropdownOpen((v) => !v);
+                    setSessionMenuOpen(false);
+                  }}
+                  title="切換對話會話"
+                >
+                  <MessageSquare size={15} className="session-btn-icon" />
+                  <span className="session-current-title">{activeSessionTitle}</span>
+                  <ChevronDown
+                    size={14}
+                    className={`session-dropdown-chevron ${sessionDropdownOpen ? 'open' : ''}`}
+                  />
+                </button>
 
-        {/* 聊天串流訊息滾動區 */}
-        <div className="chat-stream-container">
-          {currentMessages.length === 0 ? (
-            // 極簡空狀態：簡潔文字與操作提示
-            <div className="chat-empty-state">
-              <h3>尚無訊息</h3>
-              <p>在下方輸入訊息開始對話</p>
-            </div>
-          ) : (
-            // 渲染訊息氣泡列表
-            <div className="chat-messages-flow">
-              {currentMessages.map((msg) => {
-                const isUser = msg.role === 'user';
-                const hasChunks = msg.retrievedChunks && msg.retrievedChunks.length > 0;
-                const isExpanded = !!expandedChunks[msg.id];
-                const isErrorBubble = !!msg.isError;
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={`chat-bubble-row ${isUser ? 'user-row' : 'assistant-row'}`}
-                  >
-                    {/* 頭像 */}
-                    <div
-                      className={`chat-avatar ${isUser
-                        ? 'user-avatar'
-                        : isErrorBubble
-                          ? 'assistant-avatar error-avatar'
-                          : 'assistant-avatar'
-                        }`}
+                {sessionDropdownOpen && (
+                  <div className="chat-session-dropdown-menu">
+                    <button
+                      type="button"
+                      className="dropdown-new-chat-btn"
+                      onClick={() => {
+                        handleCreateSession();
+                        setSessionDropdownOpen(false);
+                      }}
                     >
-                      {isUser ? (
-                        <User size={18} />
-                      ) : isErrorBubble ? (
-                        <AlertCircle size={18} />
+                      <Plus size={15} />
+                      <span>+ 新增對話</span>
+                    </button>
+                    <div className="dropdown-divider" />
+                    <div className="dropdown-session-list">
+                      {sessions.length === 0 ? (
+                        <div className="dropdown-empty-text">尚無歷史對話</div>
                       ) : (
-                        <Bot size={18} />
+                        sessions.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            className={`dropdown-session-item ${s.id === activeSessionId ? 'active' : ''}`}
+                            onClick={() => {
+                              setActiveSessionId(s.id);
+                              setSessionDropdownOpen(false);
+                            }}
+                          >
+                            <span className="dropdown-item-title">{s.title}</span>
+                            <span className="dropdown-item-time">{s.createdAt}</span>
+                          </button>
+                        ))
                       )}
                     </div>
+                  </div>
+                )}
+              </div>
 
-                    {/* 氣泡內容 */}
-                    <div className="chat-bubble-wrapper">
-                      <div className="chat-bubble-meta">
-                        <span className="bubble-author">
-                          {isUser ? '你' : isErrorBubble ? '系統提示' : 'AI 助手'}
-                        </span>
-                        <span className="bubble-time">{msg.createdAt}</span>
-                        {msg.mode && (
-                          <span className={`bubble-mode-tag ${msg.mode}`}>
-                            {msg.mode === 'rag' ? '歷史紀錄問答' : '普通對話'}
-                          </span>
-                        )}
-                      </div>
+              {/* 三個點選項 icon 收合 (僅對當前切換到的 session 操作) */}
+              {activeSessionId && (
+                <div className="chat-session-menu-wrap" ref={menuRef}>
+                  <button
+                    type="button"
+                    className="chat-session-more-btn"
+                    onClick={() => {
+                      setSessionMenuOpen((v) => !v);
+                      setSessionDropdownOpen(false);
+                    }}
+                    title="會話設定"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
 
-                      <div
-                        className={`chat-bubble-body ${isUser
-                          ? 'user-body'
-                          : isErrorBubble
-                            ? 'assistant-body error-body'
-                            : 'assistant-body'
-                          }`}
+                  {sessionMenuOpen && (
+                    <div className="chat-session-action-menu">
+                      <button
+                        type="button"
+                        className="action-menu-item"
+                        onClick={() => {
+                          setSessionMenuOpen(false);
+                          handleOpenRenameModal(activeSessionId, activeSessionTitle);
+                        }}
                       >
-                        <div className="chat-markdown-content">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        </div>
-
-                        {/* RAG 參考來源折疊卡片 */}
-                        {hasChunks && (
-                          <div className="rag-chunk-card">
-                            <button
-                              type="button"
-                              className="rag-chunk-header"
-                              onClick={() => toggleChunkExpand(msg.id)}
-                            >
-                              <div className="rag-chunk-title">
-                                <Paperclip size={14} />
-                                <strong>參考來源 ({msg.retrievedChunks!.length} 筆切片)</strong>
-                              </div>
-                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
-
-                            {isExpanded && (
-                              <div className="rag-chunk-content-list">
-                                {msg.retrievedChunks!.map((chunk, idx) => (
-                                  <div key={idx} className="rag-chunk-item">
-                                    <div className="rag-chunk-source">
-                                      <span>來源：</span>
-                                      <em>{chunk.source || '上傳文件'}</em>
-                                    </div>
-                                    <p className="rag-chunk-text">{chunk.content}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                        <Edit2 size={14} />
+                        <span>重新命名</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="action-menu-item danger"
+                        onClick={(e) => {
+                          setSessionMenuOpen(false);
+                          handleDeleteSession(activeSessionId, e);
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        <span>刪除對話</span>
+                      </button>
                     </div>
-                  </div>
-                );
-              })}
-
-              {/* 發送中的 Loading 骨架 */}
-              {loading && (
-                <div className="chat-bubble-row assistant-row">
-                  <div className="chat-avatar assistant-avatar">
-                    <Bot size={18} />
-                  </div>
-                  <div className="chat-bubble-wrapper">
-                    <div className="chat-bubble-body assistant-body loading-bubble">
-                      <span className="loading-dot"></span>
-                      <span className="loading-dot"></span>
-                      <span className="loading-dot"></span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
 
-        {/* 底部輸入區域 */}
-        <div className="chat-bottom-dock">
-          {/* 模式切換 Toggle Pill */}
-          <div className="mode-toggle-bar">
-            <div className="mode-toggle-pill">
+            {/* 右側：普通對話 / 歷史紀錄問答切換藥丸 */}
+            <div className="chat-mode-toggle-pill">
               <button
                 type="button"
-                className={`mode-toggle-option ${currentMode === 'chat' ? 'active' : ''}`}
+                className={`chat-mode-btn ${currentMode === 'chat' ? 'active' : ''}`}
                 onClick={() => setCurrentMode('chat')}
               >
-                <MessageSquare size={14} />
-                <strong>普通對話</strong>
+                <MessageSquare size={13} />
+                <span>普通對話</span>
               </button>
               <button
                 type="button"
-                className={`mode-toggle-option ${currentMode === 'rag' ? 'active' : ''}`}
+                className={`chat-mode-btn ${currentMode === 'rag' ? 'active' : ''}`}
                 onClick={() => setCurrentMode('rag')}
               >
-                <BookOpen size={14} />
-                <strong>歷史紀錄問答</strong>
+                <BookOpen size={13} />
+                <span>歷史紀錄問答</span>
               </button>
             </div>
-            {/* <span className="mode-tip-text">
-              {currentMode === 'rag'
-                ? '檢索已導入之文件向量切片輔助回答'
-                : '無需檢索文件，由 AI 自由推理與歷史上下文記憶對話'}
-            </span> */}
           </div>
 
-          {/* 輸入框與發送按鈕組 */}
-          <div className="chat-input-wrapper">
-            <textarea
-              className="chat-textarea"
-              placeholder={
-                currentMode === 'rag'
-                  ? '輸入想從歷史紀錄查詢的問題…'
-                  : '與 DASH Agent 對話…'
-              }
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-            />
+          {/* 全域 API 異常提示列 */}
+          {apiError && (
+            <div className="chat-api-error-banner" role="alert">
+              <div className="chat-api-error-info">
+                <AlertCircle size={16} />
+                <span>{apiError}</span>
+              </div>
+              <button
+                type="button"
+                className="chat-api-error-dismiss"
+                onClick={() => setApiError(null)}
+              >
+                關閉
+              </button>
+            </div>
+          )}
 
-            <button
-              type="button"
-              className="chat-input-btn send-btn"
-              disabled={!input.trim() || loading}
-              onClick={handleSendMessage}
-              title="發送訊息"
-            >
-              <Send size={18} />
-            </button>
+          {/* 聊天串流訊息滾動區 */}
+          <div className="chat-stream-container">
+            {currentMessages.length === 0 ? (
+              <div className="chat-empty-state">
+                <div className="empty-icon-wrapper">
+                  <Bot size={32} />
+                </div>
+                <h3>尚無對話訊息</h3>
+                <p>在下方輸入問題或想法，隨時展開智能對話</p>
+              </div>
+            ) : (
+              <div className="chat-messages-flow">
+                {currentMessages.map((msg) => {
+                  const isUser = msg.role === 'user';
+                  const hasChunks = msg.retrievedChunks && msg.retrievedChunks.length > 0;
+                  const isExpanded = !!expandedChunks[msg.id];
+                  const isErrorBubble = !!msg.isError;
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`chat-bubble-row ${isUser ? 'user-row' : 'assistant-row'}`}
+                    >
+                      <div
+                        className={`chat-avatar ${
+                          isUser
+                            ? 'user-avatar'
+                            : isErrorBubble
+                            ? 'assistant-avatar error-avatar'
+                            : 'assistant-avatar'
+                        }`}
+                      >
+                        {isUser ? <User size={18} /> : <Bot size={18} />}
+                      </div>
+
+                      <div className="chat-bubble-wrapper">
+                        <div className="chat-bubble-meta">
+                          <span className="bubble-author">{isUser ? '您' : 'DASH Agent'}</span>
+                          <span className="bubble-time">{msg.createdAt}</span>
+                          {msg.mode && (
+                            <span className={`bubble-mode-tag ${msg.mode}`}>
+                              {msg.mode === 'rag' ? '紀錄庫檢索' : '普通對話'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div
+                          className={`chat-bubble-body ${
+                            isUser ? 'user-body' : isErrorBubble ? 'error-body' : 'assistant-body'
+                          }`}
+                        >
+                          <div className="chat-markdown-content">
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          </div>
+
+                          {hasChunks && (
+                            <div className="retrieved-sources-section">
+                              <button
+                                type="button"
+                                className="source-toggle-btn"
+                                onClick={() => toggleChunkExpand(msg.id)}
+                              >
+                                <span className="source-toggle-title">
+                                  參考來源 ({msg.retrievedChunks!.length} 個切片)
+                                </span>
+                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              </button>
+
+                              {isExpanded && (
+                                <div className="sources-collapse-content">
+                                  {msg.retrievedChunks!.map((chunk, idx) => (
+                                    <div key={idx} className="source-chunk-card">
+                                      <div className="chunk-header">
+                                        <span className="chunk-badge">切片 #{idx + 1}</span>
+                                        {chunk.source && (
+                                          <span className="chunk-source-name">{chunk.source}</span>
+                                        )}
+                                      </div>
+                                      <div className="chunk-text">{chunk.content}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {loading && (
+                  <div className="chat-bubble-row assistant-row">
+                    <div className="chat-avatar assistant-avatar">
+                      <Bot size={18} />
+                    </div>
+                    <div className="chat-bubble-wrapper">
+                      <div className="chat-bubble-body assistant-body loading-bubble">
+                        <span className="loading-dot"></span>
+                        <span className="loading-dot"></span>
+                        <span className="loading-dot"></span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+
+          {/* 底部釘選輸入框 */}
+          <div className="chat-bottom-dock">
+            <div className="chat-input-wrapper">
+              <textarea
+                className="chat-textarea"
+                placeholder={
+                  currentMode === 'rag'
+                    ? '輸入想從歷史紀錄查詢的問題…'
+                    : '與 DASH Agent 對話…'
+                }
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={1}
+              />
+
+              <button
+                type="button"
+                className="chat-input-btn send-btn"
+                disabled={!input.trim() || loading}
+                onClick={handleSendMessage}
+                title="發送訊息"
+              >
+                <Send size={16} />
+              </button>
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* 3. 浮動/抽屜式歷史紀錄文檔管理 */}
-      <DocumentDrawer
-        isOpen={isDocDrawerOpen}
-        onClose={() => setIsDocDrawerOpen(false)}
-        documents={documents}
-        onUploadFile={handleUploadFile}
-        onDeleteDocument={handleDeleteDocument}
-        isUploading={isUploadingDoc}
-        errorMessage={docDrawerError}
-        onClearError={() => setDocDrawerError(null)}
-      />
+        {/* 4. 浮動/抽屜式歷史紀錄文檔管理 */}
+        <DocumentDrawer
+          isOpen={isDocDrawerOpen}
+          onClose={() => setIsDocDrawerOpen(false)}
+          documents={documents}
+          onUploadFile={handleUploadFile}
+          onDeleteDocument={handleDeleteDocument}
+          isUploading={isUploadingDoc}
+          errorMessage={docDrawerError}
+          onClearError={() => setDocDrawerError(null)}
+        />
 
-      {/* 4. 全域模糊防手殘確認對話框 */}
-      <ConfirmModal
-        isOpen={confirmDialog.isOpen}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        onConfirm={confirmDialog.onConfirm}
-        onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
-      />
+        {/* 5. 全域防手殘確認對話框 */}
+        <ConfirmModal
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+        />
 
-      {/* 5. 編輯對話名稱彈窗 (背景霧化) */}
-      <RenameModal
-        isOpen={renameModal.isOpen}
-        initialValue={renameModal.currentTitle}
-        onConfirm={handleConfirmRename}
-        onCancel={() => setRenameModal((prev) => ({ ...prev, isOpen: false }))}
-      />
+        {/* 6. 編輯對話名稱彈窗 */}
+        <RenameModal
+          isOpen={renameModal.isOpen}
+          initialValue={renameModal.currentTitle}
+          onConfirm={handleConfirmRename}
+          onCancel={() => setRenameModal((prev) => ({ ...prev, isOpen: false }))}
+        />
+      </div>
     </div>
   );
 };

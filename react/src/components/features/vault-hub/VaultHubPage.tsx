@@ -26,6 +26,7 @@ import {
   X,
   Edit2,
   Home,
+  ChevronLeft,
 } from 'lucide-react';
 import { vaultApi, VaultItem } from '../../../api/vaultApi';
 import type { VaultMember, InviteCodeResponse } from '../../../types/auth';
@@ -187,6 +188,14 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     <div className="vault-hub-container">
       {/* 頂部極簡麵包屑導航 */}
       <nav className="vault-hub-nav-bar" aria-label="麵包屑導航">
+        <button
+          type="button"
+          className="hub-back-btn"
+          onClick={onNavigateToHome}
+          title="回到首頁"
+        >
+          <ChevronLeft size={16} />
+        </button>
         <button
           type="button"
           className="hub-crumb-link"

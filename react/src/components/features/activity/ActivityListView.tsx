@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Calendar } from 'lucide-react';
+import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
 import type { Activity } from '../../../types/activity';
 import './ActivityListView.css';
 
@@ -20,7 +21,7 @@ function formatActivityDate(activity: Activity): string {
   return `${activity.start_date || '未定'} ～ ${activity.end_date}`;
 }
 
-interface ActivityListViewProps {
+export interface ActivityListViewProps {
   activities: Activity[];
   loading: boolean;
   error: string | null;
@@ -28,6 +29,9 @@ interface ActivityListViewProps {
   onSelectActivity: (activityId: number) => void;
   onCreateActivity: () => void;
   onOpenQuickAdd: () => void;
+  vaultName?: string;
+  onNavigateToHome?: () => void;
+  onNavigateToVaultHub?: () => void;
 }
 
 /**
@@ -42,6 +46,9 @@ export const ActivityListView: React.FC<ActivityListViewProps> = ({
   onSelectActivity,
   onCreateActivity,
   onOpenQuickAdd,
+  vaultName = 'default',
+  onNavigateToHome,
+  onNavigateToVaultHub,
 }) => {
   const [searchKeyword, setSearchKeyword] = useState('');
 
@@ -61,175 +68,194 @@ export const ActivityListView: React.FC<ActivityListViewProps> = ({
   const emptyRowsCount = Math.max(1, MIN_ROWS - visibleActivities.length);
 
   return (
-    <section className="page" id="activity-list-view">
-      {/* 頁面標題與操作區 */}
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">ACTIVITY HUB</p>
-          <h1>活動工作台</h1>
-          <p>從籌備、執行到檢討，把每一屆的經驗留下來。</p>
-        </div>
-        <div className="heading-actions">
-          <button
-            className="button secondary"
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            title="重新整理活動清單"
-          >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            <span>重新整理</span>
-          </button>
-          <button
-            className="button secondary open-record"
-            type="button"
-            onClick={onOpenQuickAdd}
-          >
-            + 新增紀錄
-          </button>
-          <button
-            className="button primary"
-            id="open-new-activity"
-            type="button"
-            onClick={onCreateActivity}
-          >
-            + 新增活動
-          </button>
-        </div>
-      </div>
+    <div className="activity-page-root" id="activity-list-view">
+      <div className="activity-container">
+        {/* 1. 麵包屑導航 */}
+        <VaultBreadcrumb
+          vaultName={vaultName}
+          currentPageTitle="活動工作台"
+          onNavigateToHome={onNavigateToHome}
+          onNavigateToVaultHub={onNavigateToVaultHub}
+          onBack={onNavigateToVaultHub}
+        />
 
-      {/* 活動狀態摘要條 */}
-      <div className="summary-strip" aria-label="活動摘要">
-        <article>
-          <span>全部活動</span>
-          <strong>{activities.length}</strong>
-          <small>SQLite 中的真實資料</small>
-        </article>
-        <article>
-          <span>正在處理</span>
-          <strong>{activeCount}</strong>
-          <small>準備中或進行中</small>
-        </article>
-        <article>
-          <span>已完成</span>
-          <strong>{completedCount}</strong>
-          <small>可進入活動後檢討</small>
-        </article>
-        <article className="accent-card">
-          <span>AI 紀錄庫累積</span>
-          <strong>{archivedCount} 份已完成報告</strong>
-          <small>成功轉化為組織決策記憶</small>
-        </article>
-      </div>
+        {/* 2. 頂部大卡片 */}
+        <header className="activity-header-card">
+          <div className="activity-header-row">
+            <div className="activity-header-left">
+              <div className="activity-icon-badge">
+                <Calendar size={28} />
+              </div>
+              <div className="activity-title-group">
+                <h1 className="activity-header-title">活動工作台</h1>
+                <p className="activity-header-desc">
+                  從籌備、執行到檢討，把每一屆的經驗留下來
+                </p>
+              </div>
+            </div>
 
-      {/* 活動表格與搜尋欄 */}
-      <div className="surface">
-        <div className="toolbar">
-          <div className="year-switch" aria-label="資料來源">
-            <strong>全部年度</strong>
+            <div className="activity-header-actions">
+              <button
+                className="activity-header-btn secondary"
+                type="button"
+                onClick={onRefresh}
+                disabled={loading}
+                title="重新整理活動清單"
+              >
+                <RefreshCw size={15} className={loading ? 'spin' : ''} />
+                <span>重新整理</span>
+              </button>
+              <button
+                className="activity-header-btn secondary"
+                type="button"
+                onClick={onOpenQuickAdd}
+              >
+                + 新增紀錄
+              </button>
+              <button
+                className="activity-header-btn primary"
+                id="open-new-activity"
+                type="button"
+                onClick={onCreateActivity}
+              >
+                + 新增活動
+              </button>
+            </div>
           </div>
-          <label className="search-field">
-            <span aria-hidden="true">⌕</span>
-            <input
-              type="search"
-              placeholder="搜尋活動"
-              aria-label="搜尋活動"
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-            />
-          </label>
+        </header>
+
+        {/* 3. 活動狀態摘要條 */}
+        <div className="summary-strip" aria-label="活動摘要">
+          <article>
+            <span>全部活動</span>
+            <strong>{activities.length}</strong>
+            <small>SQLite 中的真實資料</small>
+          </article>
+          <article>
+            <span>正在處理</span>
+            <strong>{activeCount}</strong>
+            <small>準備中或進行中</small>
+          </article>
+          <article>
+            <span>已完成</span>
+            <strong>{completedCount}</strong>
+            <small>可進入活動後檢討</small>
+          </article>
+          <article className="accent-card">
+            <span>AI 紀錄庫累積</span>
+            <strong>{archivedCount} 份已完成報告</strong>
+            <small>成功轉化為組織決策記憶</small>
+          </article>
         </div>
 
-        {error && <div className="api-message error" role="alert">{error}</div>}
-        {loading && <div className="api-state">載入活動中…</div>}
-        {!loading && !error && visibleActivities.length === 0 && (
-          <div className="api-state empty">
-            <h3>沒有活動資料</h3>
-            <p>建立第一個活動後即可開始管理會議與待辦。</p>
-            <button className="button primary" type="button" onClick={onCreateActivity}>
-              新增活動
-            </button>
+        {/* 4. 活動表格與搜尋欄 */}
+        <div className="surface">
+          <div className="toolbar">
+            <div className="year-switch" aria-label="資料來源">
+              <strong>全部年度</strong>
+            </div>
+            <label className="search-field">
+              <span aria-hidden="true">⌕</span>
+              <input
+                type="search"
+                placeholder="搜尋活動"
+                aria-label="搜尋活動"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+              />
+            </label>
           </div>
-        )}
 
-        <div className="table-wrap" hidden={loading || visibleActivities.length === 0}>
-          <table className="activity-table">
-            <thead>
-              <tr>
-                <th>活動</th>
-                <th>日期</th>
-                <th>狀態</th>
-                <th>地點/預算</th>
-                <th>負責人</th>
-                <th><span className="sr-only">操作</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleActivities.map((activity, index) => (
-                <tr
-                  key={activity.id}
-                  className="activity-row"
-                  tabIndex={0}
-                  onClick={() => onSelectActivity(activity.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      onSelectActivity(activity.id);
-                    }
-                  }}
-                >
-                  <td>
-                    <span className={`activity-glyph ${GLYPH_COLORS[index % GLYPH_COLORS.length]}`}>
-                      {activity.name.charAt(0)}
-                    </span>
-                    <span>
-                      <strong>{activity.name}</strong>
+          {error && <div className="api-message error" role="alert">{error}</div>}
+          {loading && <div className="api-state">載入活動中…</div>}
+          {!loading && !error && visibleActivities.length === 0 && (
+            <div className="api-state empty">
+              <h3>沒有活動資料</h3>
+              <p>建立第一個活動後即可開始管理會議與待辦。</p>
+              <button className="button primary" type="button" onClick={onCreateActivity}>
+                新增活動
+              </button>
+            </div>
+          )}
+
+          <div className="table-wrap" hidden={loading || visibleActivities.length === 0}>
+            <table className="activity-table">
+              <thead>
+                <tr>
+                  <th>活動</th>
+                  <th>日期</th>
+                  <th>狀態</th>
+                  <th>地點/預算</th>
+                  <th>負責人</th>
+                  <th><span className="sr-only">操作</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleActivities.map((activity, index) => (
+                  <tr
+                    key={activity.id}
+                    className="activity-row"
+                    tabIndex={0}
+                    onClick={() => onSelectActivity(activity.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        onSelectActivity(activity.id);
+                      }
+                    }}
+                  >
+                    <td>
+                      <span className={`activity-glyph ${GLYPH_COLORS[index % GLYPH_COLORS.length]}`}>
+                        {activity.name.charAt(0)}
+                      </span>
+                      <span>
+                        <strong>{activity.name}</strong>
+                        <small>
+                          {activity.activity_type || '未分類'}・
+                          {activity.expected_attendees == null ? '人數未定' : `${activity.expected_attendees} 人`}
+                        </small>
+                      </span>
+                    </td>
+                    <td>{formatActivityDate(activity)}</td>
+                    <td>
+                      <span className={`status ${getStatusClass(activity.status)}`}>
+                        {activity.status}
+                      </span>
+                    </td>
+                    <td>
+                      <strong>{activity.venue || '地點未定'}</strong>
                       <small>
-                        {activity.activity_type || '未分類'}・
-                        {activity.expected_attendees == null ? '人數未定' : `${activity.expected_attendees} 人`}
+                        預算 {activity.budget == null ? '未填寫' : new Intl.NumberFormat('zh-TW').format(activity.budget)}
                       </small>
-                    </span>
-                  </td>
-                  <td>{formatActivityDate(activity)}</td>
-                  <td>
-                    <span className={`status ${getStatusClass(activity.status)}`}>
-                      {activity.status}
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{activity.venue || '地點未定'}</strong>
-                    <small>
-                      預算 {activity.budget == null ? '未填寫' : new Intl.NumberFormat('zh-TW').format(activity.budget)}
-                    </small>
-                  </td>
-                  <td>
-                    <span className="person">{(activity.coordinator || '?').charAt(0)}</span>
-                    {activity.coordinator || '未指定'}
-                  </td>
-                  <td>›</td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      <span className="person">{(activity.coordinator || '?').charAt(0)}</span>
+                      {activity.coordinator || '未指定'}
+                    </td>
+                    <td>›</td>
+                  </tr>
+                ))}
 
-              {Array.from({ length: emptyRowsCount }).map((_, index) => (
-                <tr
-                  key={`empty-${index}`}
-                  className="activity-row empty-row"
-                  aria-hidden="true"
-                >
-                  <td>&nbsp;</td>
-                  <td>&nbsp;</td>
-                  <td>&nbsp;</td>
-                  <td>&nbsp;</td>
-                  <td>&nbsp;</td>
-                  <td>&nbsp;</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                {Array.from({ length: emptyRowsCount }).map((_, index) => (
+                  <tr
+                    key={`empty-${index}`}
+                    className="activity-row empty-row"
+                    aria-hidden="true"
+                  >
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 
 export default ActivityListView;
-

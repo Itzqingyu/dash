@@ -3,70 +3,119 @@
    繼承 index.css 統一設計變數，嚴禁 hardcode 顏色
    ========================================== */
 
-.doc-panel-container {
+.doc-page-root {
+  width: 100vw;
+  min-height: 100vh;
+  background-color: var(--canvas);
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  width: 100%;
+  padding-bottom: 80px;
+  box-sizing: border-box;
 }
 
-/* 面板頂部導言 */
-.doc-panel-header {
+.doc-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  box-sizing: border-box;
+}
+
+/* 頂部大卡片 */
+.doc-header-card {
+  background-color: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  box-shadow: var(--shadow-sm);
+}
+
+.doc-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 24px;
+  gap: 24px;
 }
 
-.doc-header-info {
+.doc-header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .doc-icon-badge {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--radius);
-  background-color: var(--cyan-soft);
-  color: var(--cyan);
+  background-color: var(--navy);
+  color: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .doc-title-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-.doc-panel-title {
-  font-size: 1.25rem;
+.doc-header-title {
+  font-size: 1.85rem;
   font-weight: 800;
   color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.02em;
 }
 
-.doc-panel-desc {
-  font-size: 0.85rem;
+.doc-header-desc {
+  font-size: 0.95rem;
   color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
 }
 
-.doc-header-stats {
+.doc-header-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.doc-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.doc-header-btn.primary {
+  background-color: var(--navy);
+  color: var(--white);
+  border-color: var(--navy);
+}
+
+.doc-header-btn.primary:hover {
+  background-color: var(--navy-light);
+  border-color: var(--navy-light);
 }
 
 .doc-stat-pill {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: 999px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
   background-color: var(--canvas);
   border: 1px solid var(--line);
   font-size: 0.85rem;
@@ -76,7 +125,7 @@
 
 /* 上傳拖曳區塊 */
 .doc-upload-card {
-  background-color: var(--panel);
+  background-color: var(--white);
   border: 2px dashed var(--line);
   border-radius: var(--radius);
   padding: 32px 24px;
@@ -108,7 +157,7 @@
 }
 
 .doc-upload-card.drag-over .upload-icon-circle {
-  background-color: var(--panel);
+  background-color: var(--white);
 }
 
 .upload-card-text {
@@ -147,7 +196,7 @@
 
 /* 文件列表卡片 */
 .doc-list-card {
-  background-color: var(--panel);
+  background-color: var(--white);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   display: flex;
@@ -182,7 +231,7 @@
 
 .doc-search-input:focus {
   border-color: var(--cyan);
-  background-color: var(--panel);
+  background-color: var(--white);
 }
 
 .doc-search-icon {
@@ -262,7 +311,7 @@
   padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background-color: var(--panel);
+  background-color: var(--white);
   color: var(--ink-soft);
   font-size: 0.8rem;
   font-weight: 600;
@@ -309,7 +358,7 @@
 }
 
 .reader-modal-card {
-  background-color: var(--panel);
+  background-color: var(--white);
   border-radius: var(--radius);
   border: 1px solid var(--line);
   box-shadow: 0 12px 40px rgba(16, 25, 40, 0.25);
@@ -382,7 +431,7 @@
 
 .markdown-body pre {
   background-color: var(--navy);
-  color: var(--panel);
+  color: var(--white);
   padding: 16px;
   border-radius: var(--radius);
   overflow-x: auto;

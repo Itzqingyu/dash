@@ -25,6 +25,27 @@
   color: var(--muted);
 }
 
+.hub-back-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-right: 4px;
+}
+
+.hub-back-btn:hover {
+  background-color: var(--panel);
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
 .hub-crumb-link {
   background: transparent;
   border: none;
