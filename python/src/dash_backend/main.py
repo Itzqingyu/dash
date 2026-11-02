@@ -1409,7 +1409,8 @@ async def api_inspect_vault_zip(file: UploadFile = File(...)):
 @app.post("/vault/import", tags=["Vault Management"])
 async def api_import_vault(
     file: UploadFile = File(...),
-    target_name: Optional[str] = None
+    target_name: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """DASH IN: 驗證 ZIP 並解壓建立為全新獨立 Vault，完成後自動切換（絕不覆蓋）"""
     if not file.filename or not file.filename.lower().endswith(".zip"):
@@ -1421,7 +1422,11 @@ async def api_import_vault(
         with open(temp_zip_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        result = import_vault_from_zip(temp_zip_path, target_name=target_name)
+        result = import_vault_from_zip(
+            temp_zip_path,
+            target_name=target_name,
+            owner_user_id=current_user["id"],
+        )
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
