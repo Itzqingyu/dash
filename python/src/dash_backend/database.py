@@ -365,21 +365,6 @@ def init_db(
             # 3. 建立公用設定與 Vault 清冊表 (位於 public)
             conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS public.vaults (
-                    vault_id VARCHAR(64) PRIMARY KEY,
-                    name VARCHAR(100) NOT NULL,
-                    display_name TEXT NOT NULL,
-                    owner_id INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
-                    description TEXT DEFAULT '',
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS idx_vaults_owner ON public.vaults(owner_id);
-                CREATE INDEX IF NOT EXISTS idx_vaults_name ON public.vaults(name);
-                """
-            )
-            conn.execute(
-                """
                 CREATE TABLE IF NOT EXISTS public.system_settings (
                     key VARCHAR(50) PRIMARY KEY,
                     value TEXT NOT NULL
@@ -396,6 +381,21 @@ def init_db(
                     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
                 );
                 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.vaults (
+                    vault_id VARCHAR(64) PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    display_name TEXT NOT NULL,
+                    owner_id INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
+                    description TEXT DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_vaults_owner ON public.vaults(owner_id);
+                CREATE INDEX IF NOT EXISTS idx_vaults_name ON public.vaults(name);
                 """
             )
             conn.execute(
