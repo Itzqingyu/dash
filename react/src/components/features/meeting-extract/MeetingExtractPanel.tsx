@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileText,
   CheckCircle2,
@@ -13,7 +13,6 @@ import {
   RotateCcw,
   Plus,
   Trash2,
-  Upload,
   Building2,
   FolderPlus,
   Sparkles,
@@ -21,14 +20,11 @@ import {
 import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
 import {
   fetchDocuments,
-  uploadDocument,
   deleteDocumentByIdentifier,
-  checkDuplicateFileStem,
 } from '../../../api/documentService';
 import { BackendDocument } from '../../../types/document';
 import {
   extractMeetingSummary,
-  transcribeMeetingAudio,
   commitMeetingSummary,
   fetchActivities,
   createActivity,
@@ -38,11 +34,6 @@ import {
 import DocumentDrawer, { DocumentItem } from '../../common/DocumentDrawer';
 import ConfirmModal from '../../common/ConfirmModal';
 import './MeetingExtractPanel.css';
-
-const AUDIO_EXTENSIONS = new Set([
-  '.flac', '.mp3', '.mp4', '.mpeg', '.mpga', '.m4a', '.ogg', '.wav', '.webm',
-]);
-const MAX_AUDIO_FILE_SIZE = 25 * 1024 * 1024;
 
 /**
  * 格式化 ISO 時間字串為簡短展示文字
@@ -64,7 +55,7 @@ const formatTimeString = (isoString?: string): string => {
 /**
  * AI 會議紀錄整理面板 (Meeting Extract Panel)
  * 核心功能：
- * 1. 從已上傳的文件挑選一份會議紀錄 (支援快捷上傳與歷史紀錄抽屜管理)
+ * 1. 從文件紀錄庫挑選一份會議紀錄
  * 2. 呼叫 LLM 依據 System Prompt 提煉成標準化結構（會議摘要、決策、待辦）
  * 3. 呈現結構化標準表格並提供使用者確認
  * 4. 確認後一鍵寫入資料庫
@@ -82,9 +73,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
   onNavigateToHome,
   onNavigateToVaultHub,
 }) => {
-  // 原生檔案選擇器參照 (快捷直上使用)
-  const quickFileInputRef = useRef<HTMLInputElement>(null);
-
   // 已入庫文檔清單
   const [documents, setDocuments] = useState<BackendDocument[]>([]);
   // 當前選中的文檔 ID
@@ -92,8 +80,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
 
   // 歷史紀錄文檔抽屜開啟狀態
   const [isDocDrawerOpen, setIsDocDrawerOpen] = useState(false);
-  // 文檔上傳中狀態
-  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   // 抽屜專屬錯誤訊息
   const [docDrawerError, setDocDrawerError] = useState<string | null>(null);
 
@@ -126,7 +112,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
   const [isExtracting, setIsExtracting] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [isCommitted, setIsCommitted] = useState(false);
-  const [isAudioCompleteDialogOpen, setIsAudioCompleteDialogOpen] = useState(false);
 
   // 提示與錯誤訊息
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -205,80 +190,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
   }, [hidden, loadDocumentsList, loadActivitiesList]);
 
   /**
-   * 文檔真實上傳處理 (支援快捷按鈕與側邊抽屜上傳)
-   * 具備前置主檔名防呆：若清單中已有相同主檔名之文件，直接中斷並提示錯誤，不發送網路請求。
-   * 上傳並向量化成功後，自動更新列表並自動選中該新上傳之文件
-   */
-  const handleUploadFile = async (file: File) => {
-    setDocDrawerError(null);
-    setErrorMessage(null);
-
-    const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
-    const isAudio = AUDIO_EXTENSIONS.has(extension);
-    if (isAudio && file.size > MAX_AUDIO_FILE_SIZE) {
-      const msg = '錄音檔不得超過 25 MB（Groq 免費方案單檔上限）。';
-      setDocDrawerError(msg);
-      setErrorMessage(msg);
-      return;
-    }
-
-    // 前端前置主檔名重複防呆校驗
-    const existingNames = documents.map((d) => d.filename || d.file_path);
-    const duplicate = checkDuplicateFileStem(file.name, existingNames);
-    if (duplicate) {
-      const msg = `已存在相同主檔名之文件「${duplicate}」。系統不允許同名覆蓋，請先手動刪除舊文件或重新命名檔案後再行上傳。`;
-      setDocDrawerError(msg);
-      setErrorMessage(msg);
-      return;
-    }
-
-    setIsUploadingDoc(true);
-    try {
-      if (isAudio) {
-        const res = await transcribeMeetingAudio(file);
-        const freshDocs = await fetchDocuments();
-        setDocuments(freshDocs);
-        setSelectedDocId(res.doc_id);
-        setIsUploadingDoc(false);
-        await handleExtract(res.doc_id, res.filename, true);
-        return;
-      }
-
-      const res = await uploadDocument(file);
-      const freshDocs = await fetchDocuments();
-      setDocuments(freshDocs);
-
-      // 若後端有回傳 doc_id 則直接選中，否則比對檔名選中
-      if (res.doc_id) {
-        setSelectedDocId(res.doc_id);
-      } else if (freshDocs.length > 0) {
-        const matched = freshDocs.find((d) => d.filename === file.name);
-        if (matched) {
-          setSelectedDocId(matched.id);
-        }
-      }
-      setSuccessMessage(`文檔「${file.name}」上傳成功，已自動載入並選中！`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setDocDrawerError(`上傳檔案失敗：${msg}`);
-      setErrorMessage(`上傳檔案失敗：${msg}`);
-    } finally {
-      setIsUploadingDoc(false);
-    }
-  };
-
-  /**
-   * 快捷檔案選擇器 Change 事件處理
-   */
-  const handleQuickFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      handleUploadFile(file);
-      e.target.value = '';
-    }
-  };
-
-  /**
    * 刪除指定文件 (呼叫 DELETE /documents/{id})
    * 若刪除之文件為當前選中項，自動重設選中狀態並清空預覽
    */
@@ -315,11 +226,7 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
   /**
    * 步驟 1：觸發 LLM 根據 system prompt 整理會議紀錄 (POST /extract_summary)
    */
-  const handleExtract = async (
-    docIdOverride?: number,
-    sourceFilename?: string,
-    showAudioCompleteDialog = false,
-  ) => {
+  const handleExtract = async (docIdOverride?: number, sourceFilename?: string) => {
     const targetDocId = docIdOverride ?? selectedDocId;
     if (!targetDocId) {
       setErrorMessage('請先從下拉選單選擇欲整理的會議文件');
@@ -365,9 +272,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
         venue: res.preview_data.meeting.location || '',
         activity_type: '會議',
       });
-      if (showAudioCompleteDialog) {
-        setIsAudioCompleteDialogOpen(true);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMessage(`會議整理失敗：${msg}`);
@@ -628,7 +532,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
     setErrorMessage(null);
     setExtractedDocId(null);
     setExtractedDocName(null);
-    setIsAudioCompleteDialogOpen(false);
   };
 
   /**
@@ -674,7 +577,7 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
               <div className="extract-title-group">
                 <h1 className="extract-header-title">會議提煉</h1>
                 <p className="extract-header-desc">
-                  從支援上傳逐字稿與錄音檔，由 AI 自動萃取關鍵決策、待辦事項與結論
+                  從文件記錄庫選擇檔案，並由 AI 自動萃取關鍵決策、待辦事項與結論
                 </p>
               </div>
             </div>
@@ -684,7 +587,7 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
                 type="button"
                 className="extract-header-btn secondary"
                 onClick={handleRefreshAll}
-                disabled={isLoadingDocs || isExtracting || isCommitting || isUploadingDoc}
+                disabled={isLoadingDocs || isExtracting || isCommitting}
                 title="重新整理畫面與預覽資料"
               >
                 <RefreshCw size={15} className={isLoadingDocs ? 'spinning' : ''} />
@@ -738,7 +641,7 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
                 id="meeting-doc-picker"
                 value={selectedDocId}
                 onChange={(e) => setSelectedDocId(e.target.value ? Number(e.target.value) : '')}
-                disabled={isExtracting || isCommitting || isUploadingDoc}
+                disabled={isExtracting || isCommitting}
               >
                 {documents.length === 0 ? (
                   <option value="">尚未有已入庫之文件</option>
@@ -752,30 +655,11 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
               </select>
             </div>
 
-            {/* 快捷上傳按鈕 */}
-            <button
-              type="button"
-              className="button secondary upload-shortcut-btn"
-              onClick={() => quickFileInputRef.current?.click()}
-              disabled={isExtracting || isCommitting || isUploadingDoc}
-              title="上傳逐字稿或錄音檔"
-            >
-              <Upload size={14} className={isUploadingDoc ? 'spinning' : ''} />
-              <span>{isUploadingDoc ? '上傳中…' : '上傳文件'}</span>
-            </button>
-            <input
-              ref={quickFileInputRef}
-              type="file"
-              accept=".md,.txt,.pdf,.docx,.flac,.mp3,.mp4,.mpeg,.mpga,.m4a,.ogg,.wav,.webm"
-              style={{ display: 'none' }}
-              onChange={handleQuickFileChange}
-            />
-
             <button
               type="button"
               className="button extract-run-btn"
               onClick={handleExtract}
-              disabled={isExtracting || !selectedDocId || documents.length === 0 || isUploadingDoc}
+              disabled={isExtracting || !selectedDocId || documents.length === 0}
             >
               <span>{isExtracting ? 'LLM 整理分析中…' : '開始整理會議紀錄'}</span>
             </button>
@@ -1361,9 +1245,7 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
         isOpen={isDocDrawerOpen}
         onClose={() => setIsDocDrawerOpen(false)}
         documents={drawerDocuments}
-        onUploadFile={handleUploadFile}
         onDeleteDocument={handleDeleteDocument}
-        isUploading={isUploadingDoc}
         errorMessage={docDrawerError}
         onClearError={() => setDocDrawerError(null)}
       />
@@ -1376,28 +1258,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
       />
-      {isAudioCompleteDialogOpen && (
-        <div className="audio-complete-dialog-backdrop" role="presentation">
-          <section
-            className="audio-complete-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="audio-complete-dialog-message"
-          >
-            <CheckCircle2 size={32} aria-hidden="true" />
-            <p id="audio-complete-dialog-message">
-              該錄音檔逐字稿已存入文件紀錄庫與結構化紀錄整理
-            </p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => setIsAudioCompleteDialogOpen(false)}
-            >
-              查看結構化預覽
-            </button>
-          </section>
-        </div>
-      )}
     </div>
   );
 };
