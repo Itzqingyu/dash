@@ -14,7 +14,7 @@
   padding: 24px;
 }
 
-/* 大大的 DASH 標題區塊 */
+/* DASH 品牌圖示 */
 .auth-brand-block {
   display: flex;
   flex-direction: column;
@@ -24,12 +24,10 @@
   text-align: center;
 }
 
-.auth-brand-title {
-  font-size: 3.5rem;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  color: var(--navy);
-  line-height: 1;
+.auth-brand-image {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
 }
 
 /* 登入 / 註冊卡片容器 */
