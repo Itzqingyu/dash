@@ -21,13 +21,16 @@ DASH 是一套專為團隊打造的現代化活動歷程、決策交接與智能
 - **資料庫驅動**: psycopg 3 (含連線池 ConnectionPool)
 - **安全認證**: bcrypt (密碼雜湊與安全校驗), PyJWT (HS256 簽名與 Token 驗證)
 - **RAG 與向量檢索**: LangChain, fastembed (輕量級 ONNX 推理引擎，繁中模型 jina-embeddings-v2-base-zh 768 維度 + 多語言重排序 jina-reranker-v2-base-multilingual)
-- **LLM API**: litellm (統一介面，支援 OpenAI, Claude 等模型)
+- **LLM API**: litellm (統一介面，支援 OpenAI, DeepSeek, Claude 等模型)
+- **語音轉文字**: Groq Whisper Large V3 (whisper-large-v3 / whisper-large-v3-turbo)
+- **Discord 整合**: discord.py 2.3+ (dash_dc_bot 模組，支援文字頻道與紀錄庫綁定、時間區間對話擷取、LLM Markdown 整理與自動 RAG 向量入庫)
 
 ### 容器化與部屬架構 (Docker Compose)
-- **架構模式**: 單一 docker-compose.yml 統整三容器微服務拓撲
+- **架構模式**: 單一 docker-compose.yml 統整四容器微服務拓撲
 - **資料庫容器 (dash-db)**: pgvector/pgvector:pg16（整合式關聯資料表與 HNSW 餘弦距離向量索引）
 - **後端容器 (dash-backend)**: Python FastAPI + Uvicorn，處理核心業務與 RAG 向量相似度檢索
 - **前端容器 (dash-frontend)**: Nginx 託管 React SPA，並透過 /api/ 反向代理轉發後端通訊
+- **Discord 機器人容器 (dash-discord-bot)**: 長連線常駐監聽 Discord 事件，執行頻道授權、對話擷取與結構化會議紀錄入庫，獨立隔離日誌便於排錯
 - **持久化資料卷 (Volumes)**:
   - `postgres-data`: PostgreSQL 核心關聯資料與向量資料持久化卷
   - `./data/markdown`: 宿主機與後端掛載之 Markdown 原始檔案庫
@@ -102,6 +105,8 @@ dash/
 │   │       ├── ai_services/      # AI 與 RAG 核心服務 (rag_engine, llm_service, handover_agent)
 │   │       ├── activity_services/# 活動各模組 CRUD 服務 (activity, meeting_task, decision, schedule, incident)
 │   │       └── document_processing/ # 多格式轉檔器 (converter.py)
+│   │   └── prompts/              # 系統提示詞範本 (含 discord_meeting_extraction.md)
+│   ├── src/dash_dc_bot/          # Discord 機器人服務 (bot.py, runner.py)
 │   ├── tests/                    # 測試相關腳本 (一律置於此目錄)
 │   │   ├── test_auth_rbac.py     # 認證、租戶隔離、邀請碼與三級權限測試
 │   │   ├── test_database.py      # PostgreSQL Schema 與核心資料表 CRUD 測試
@@ -109,8 +114,9 @@ dash/
 │   │   ├── test_activity_services.py # 活動業務服務測試
 │   │   ├── test_vault_manager.py # 紀錄庫生命週期管理測試
 │   │   ├── test_vault_concurrency_and_disambiguation.py # 並行存取與同名紀錄庫隔離測試
-│   │   └── test_active_vault_deletion.py # 使用中紀錄庫直接刪除與多用戶強制退出測試
-│   └── pyproject.toml            # 依賴套件配置 (pyjwt, bcrypt, psycopg 等)
+│   │   ├── test_active_vault_deletion.py # 使用中紀錄庫直接刪除與多用戶強制退出測試
+│   │   └── test_discord_bot.py   # Discord Bot 核心解析與資料庫綁定測試
+│   └── pyproject.toml            # 依賴套件配置 (pyjwt, bcrypt, psycopg, discord.py 等)
 ```
 
 ## 4. 核心工作流
@@ -142,3 +148,9 @@ dash/
 ### 5. 紀錄庫備份與導出 (DASH OUT & DASH IN)
 1. DASH OUT：點擊「下載紀錄庫備份包 (.zip)」，後端將該紀錄庫的完整資料結構 (JSON) 與託管文件打包為標準備份包。
 2. DASH IN：使用者上傳備份包，後端校驗完整性並匯入建立為全新獨立紀錄庫，絕不覆蓋現存資料。
+
+### 6. Discord 會議紀錄擷取 (dash_dc_bot)
+1. 頻道授權綁定：在 Discord 文字頻道執行 `/dash-bind invite_code:XXXX`，以紀錄庫邀請碼驗證身份，將該頻道與目標紀錄庫建立綁定關係（持久化於 `public.discord_channel_bindings`）。
+2. 狀態查詢與解綁：使用 `/dash-status` 檢視當前頻道關聯之紀錄庫名稱與建立者；使用 `/dash-unbind` 解除綁定。
+3. 討論時段擷取與提煉：討論完畢後執行 `/dash-extract hours: 2`（或指定精確時間 `since: 2026-11-03 14:00`），Bot 自動撈取指定時段對話，過濾雜訊後交由 LLM 提示詞模組提煉為完整 Markdown 會議紀錄。
+4. 自動入庫與預覽卡片：產生的 Markdown 文件自動存入該紀錄庫實體目錄並經由 RAG 引擎切塊寫入向量資料庫，Bot 於頻道即時回覆包含摘要與待辦清單的 Embed 卡片。

@@ -114,7 +114,11 @@ def add_document(
     # 1. 判斷預期的託管 Markdown 檔案路徑
     raw_name = os.path.basename(file_path)
     file_stem, ext = os.path.splitext(raw_name)
-    md_dir = DEFAULT_MARKDOWN_DIR or get_default_markdown_dir()
+    if vault_name:
+        from dash_backend.vault_manager import get_markdown_dir
+        md_dir = DEFAULT_MARKDOWN_DIR or get_markdown_dir(vault_name)
+    else:
+        md_dir = DEFAULT_MARKDOWN_DIR or get_default_markdown_dir()
     target_md_path = os.path.join(md_dir, f"{file_stem}.md")
 
     # 2. 檢查 PostgreSQL 紀錄是否存在，若已存在則拋出 FileExistsError

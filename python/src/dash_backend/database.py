@@ -429,6 +429,20 @@ def init_db(
                 CREATE INDEX IF NOT EXISTS idx_invitations_vault_id ON public.vault_invitations(vault_id);
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.discord_channel_bindings (
+                    channel_id VARCHAR(64) PRIMARY KEY,
+                    guild_id VARCHAR(64) NOT NULL,
+                    vault_id VARCHAR(64) NOT NULL REFERENCES public.vaults(vault_id) ON DELETE CASCADE,
+                    channel_name VARCHAR(128),
+                    bound_by_discord_user VARCHAR(128),
+                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_discord_bindings_vault_id ON public.discord_channel_bindings(vault_id);
+                """
+            )
 
             # 4. 建立 Vault 內的 10 個核心實體資料表
             conn.execute(
@@ -915,3 +929,64 @@ def get_chat_messages(
                 except Exception:
                     pass
         return messages
+
+
+
+# ==========================================
+# 11. Discord 頻道綁定模組
+# ==========================================
+
+def bind_discord_channel(
+    channel_id: str,
+    guild_id: str,
+    vault_id: str,
+    channel_name: Optional[str] = None,
+    bound_by_discord_user: Optional[str] = None,
+) -> Dict[str, Any]:
+    """綁定 Discord 文字頻道至指定 Vault。"""
+    pool = get_pool()
+    with pool.connection() as conn:
+        row = conn.execute(
+            """
+            INSERT INTO public.discord_channel_bindings 
+                (channel_id, guild_id, vault_id, channel_name, bound_by_discord_user, updated_at)
+            VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (channel_id) DO UPDATE SET
+                guild_id = EXCLUDED.guild_id,
+                vault_id = EXCLUDED.vault_id,
+                channel_name = EXCLUDED.channel_name,
+                bound_by_discord_user = EXCLUDED.bound_by_discord_user,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *;
+            """,
+            (channel_id, guild_id, vault_id, channel_name, bound_by_discord_user),
+        ).fetchone()
+        return dict(row) if row else {}
+
+
+def unbind_discord_channel(channel_id: str) -> bool:
+    """解除指定 Discord 頻道的 Vault 綁定。"""
+    pool = get_pool()
+    with pool.connection() as conn:
+        res = conn.execute(
+            "DELETE FROM public.discord_channel_bindings WHERE channel_id = %s RETURNING channel_id;",
+            (channel_id,),
+        ).fetchone()
+        return bool(res)
+
+
+def get_discord_channel_binding(channel_id: str) -> Optional[Dict[str, Any]]:
+    """取得指定 Discord 頻道的 Vault 綁定資訊（包含紀錄庫名稱與顯示名稱）。"""
+    pool = get_pool()
+    with pool.connection() as conn:
+        row = conn.execute(
+            """
+            SELECT b.*, v.name AS vault_name, v.display_name AS vault_display_name
+            FROM public.discord_channel_bindings b
+            JOIN public.vaults v ON b.vault_id = v.vault_id
+            WHERE b.channel_id = %s
+            LIMIT 1;
+            """,
+            (channel_id,),
+        ).fetchone()
+        return dict(row) if row else None

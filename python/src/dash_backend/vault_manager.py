@@ -903,3 +903,35 @@ def import_vault_from_zip(
         "manifest": manifest,
         "stats": switch_result.get("stats", {}),
     }
+
+
+
+def validate_invite_code_for_binding(invite_code: str) -> Dict[str, Any]:
+    """驗證邀請碼並回傳其關聯之 Vault 資訊（供 Discord Bot 綁定使用）。"""
+    clean_code = invite_code.strip()
+    if not clean_code:
+        raise ValueError("邀請碼不能為空。")
+
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        inv = conn.execute(
+            """
+            SELECT i.*, v.name AS vault_name, v.display_name AS vault_display_name
+            FROM public.vault_invitations i
+            JOIN public.vaults v ON i.vault_id = v.vault_id
+            WHERE i.invite_code = %s
+            LIMIT 1;
+            """,
+            (clean_code,),
+        ).fetchone()
+        if not inv:
+            raise ValueError("邀請碼不存在或無效。")
+
+        now = datetime.now(timezone.utc)
+        if inv.get("expires_at") and inv["expires_at"] < now:
+            raise ValueError("此邀請碼已過期。")
+
+        if inv.get("max_uses") is not None and inv["used_count"] >= inv["max_uses"]:
+            raise ValueError("此邀請碼已達使用次數上限。")
+
+        return dict(inv)
