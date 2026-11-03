@@ -28,8 +28,30 @@ import {
   fetchDocumentContent,
   checkDuplicateFileStem,
 } from '../../../api/documentService';
+import { transcribeMeetingAudio } from '../../../api/meetingExtractService';
 import type { BackendDocument, DocumentContentResponse } from '../../../types/document';
 import './DocumentManagementPanel.css';
+
+function formatUploadDate(uploadDate?: string): string {
+  if (!uploadDate) return '未知';
+
+  const date = new Date(uploadDate);
+  if (Number.isNaN(date.getTime())) return uploadDate;
+
+  const formatted = new Intl.DateTimeFormat('zh-TW', {
+    calendar: 'gregory',
+    numberingSystem: 'latn',
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date);
+
+  return `${formatted} UTC+8`;
+}
 
 export interface DocumentManagementPanelProps {
   vaultName?: string;
@@ -83,14 +105,20 @@ export const DocumentManagementPanel: React.FC<DocumentManagementPanelProps> = (
     setAlertMessage(null);
 
     // 格式校驗
-    const validExts = ['.md', '.txt', '.pdf', '.docx'];
+    const validExts = ['.md', '.txt', '.pdf', '.docx', '.mp3', '.wav', '.m4a'];
     const lowerName = file.name.toLowerCase();
     const isSupported = validExts.some((ext) => lowerName.endsWith(ext));
     if (!isSupported) {
       setAlertMessage({
         type: 'error',
-        text: `不支援的檔案格式「${file.name}」，僅接受 .md, .txt, .pdf, .docx 檔案。`,
+        text: `不支援的檔案格式「${file.name}」，請使用支援的文本或音檔格式。`,
       });
+      return;
+    }
+
+    const isAudio = ['.mp3', '.wav', '.m4a'].some((ext) => lowerName.endsWith(ext));
+    if (isAudio && file.size > 25 * 1024 * 1024) {
+      setAlertMessage({ type: 'error', text: '音檔大小不得超過 25MB。' });
       return;
     }
 
@@ -107,11 +135,19 @@ export const DocumentManagementPanel: React.FC<DocumentManagementPanelProps> = (
 
     setUploading(true);
     try {
-      const res = await uploadDocument(file);
-      setAlertMessage({
-        type: 'success',
-        text: `成功上傳並解析「${file.name}」（新增 ${res.chunks_added ?? 0} 個向量分塊）`,
-      });
+      if (isAudio) {
+        const res = await transcribeMeetingAudio(file);
+        setAlertMessage({
+          type: 'success',
+          text: `成功轉錄並存入「${res.filename}」（新增 ${res.chunks_added ?? 0} 個向量分塊）`,
+        });
+      } else {
+        const res = await uploadDocument(file);
+        setAlertMessage({
+          type: 'success',
+          text: `成功上傳並解析「${file.name}」（新增 ${res.chunks_added ?? 0} 個向量分塊）`,
+        });
+      }
       await loadDocuments();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '上傳文件失敗';
@@ -250,7 +286,7 @@ export const DocumentManagementPanel: React.FC<DocumentManagementPanelProps> = (
           type="file"
           ref={fileInputRef}
           style={{ display: 'none' }}
-          accept=".md,.txt,.pdf,.docx"
+          accept=".md,.txt,.pdf,.docx,.mp3,.wav,.m4a"
           onChange={(e) => {
             if (e.target.files && e.target.files[0]) {
               handleUploadFile(e.target.files[0]);
@@ -266,7 +302,9 @@ export const DocumentManagementPanel: React.FC<DocumentManagementPanelProps> = (
             : '點擊或將文件拖曳至此處上傳'}
         </p>
         <span className="upload-card-hint">
-          支援格式：.md, .txt, .pdf, .docx（檔案大小上限 50MB，同主檔名嚴格防呆）
+          支援文本格式：.md、.txt、.pdf、.docx（檔案大小上限 50MB）
+          <br />
+          支援音檔格式：.mp3、.wav、.m4a（檔案大小上限 25MB）
         </span>
       </div>
 
@@ -322,7 +360,7 @@ export const DocumentManagementPanel: React.FC<DocumentManagementPanelProps> = (
                         <span>{doc.filename}</span>
                       </div>
                     </td>
-                    <td>{doc.upload_date || '未知'}</td>
+                    <td>{formatUploadDate(doc.upload_date)}</td>
                     <td>
                       <span className="doc-chunk-badge">
                         {doc.chunk_count} chunks

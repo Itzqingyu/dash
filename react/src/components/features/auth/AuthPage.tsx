@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { LogIn, UserPlus, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import dashLogo from '../../../assets/icon/dash.png';
 import './AuthPage.css';
 
 export const AuthPage: React.FC = () => {
@@ -41,9 +42,9 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div className="auth-page-container">
-      {/* 大大的 DASH 品牌名稱 */}
+      {/* DASH 品牌圖示 */}
       <div className="auth-brand-block">
-        <h1 className="auth-brand-title">DASH</h1>
+        <img className="auth-brand-image" src={dashLogo} alt="DASH" />
       </div>
 
       {/* 登入 / 註冊卡片 */}

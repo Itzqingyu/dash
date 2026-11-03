@@ -57,19 +57,23 @@
 .home-dash-title-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
 }
 
 .home-dash-icon-badge {
   width: 56px;
   height: 56px;
   border-radius: 14px;
-  background-color: var(--navy);
-  color: var(--panel);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.home-dash-icon-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .home-dash-title-group {

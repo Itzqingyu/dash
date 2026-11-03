@@ -98,7 +98,7 @@ export const DocumentDrawer: React.FC<DocumentDrawerProps> = ({
         </div>
 
         {/* 上傳區域 (Drag & Drop 骨架) */}
-        <div className="doc-upload-box">
+        {onUploadFile && <div className="doc-upload-box">
           <input
             ref={fileInputRef}
             type="file"
@@ -134,7 +134,20 @@ export const DocumentDrawer: React.FC<DocumentDrawerProps> = ({
               <span>檔案上傳後將自動切片並建立向量索引</span>
             </div>
           )}
-        </div>
+        </div>}
+        {!onUploadFile && errorMessage && (
+          <div className="doc-error-banner" role="alert">
+            <AlertCircle size={15} />
+            <div className="doc-error-content">
+              <span>{errorMessage}</span>
+              {onClearError && (
+                <button type="button" className="doc-error-dismiss" onClick={onClearError}>
+                  關閉
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 文件清單標題與數量統計 */}
         <div className="doc-list-head">

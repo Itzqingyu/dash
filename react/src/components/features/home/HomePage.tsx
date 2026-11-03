@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { vaultApi, VaultItem } from '../../../api/vaultApi';
+import dashIcon from '../../../assets/icon/dash-without-word.png';
 import './HomePage.css';
 
 interface HomePageProps {
@@ -229,7 +230,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="home-dash-title-row">
           <div className="home-dash-title-left">
             <div className="home-dash-icon-badge">
-              <Activity size={28} />
+              <img src={dashIcon} alt="" aria-hidden="true" />
             </div>
             <div className="home-dash-title-group">
               <div className="home-dash-name-wrap">
