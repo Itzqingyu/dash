@@ -817,9 +817,9 @@
 }
 
 /* ==========================================
-   移動端最佳化 (Viewport <= 440px)
+   移動端最佳化 (Viewport <= 530px)
    ========================================== */
-@media (max-width: 440px) {
+@media (max-width: 530px) {
   .chat-container {
     padding: 16px 12px;
     gap: 14px;
