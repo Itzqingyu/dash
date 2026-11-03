@@ -2,7 +2,7 @@
  * 使用者身分認證與權限模型 (auth.ts)
  */
 
-export type VaultMemberRole = 'owner' | 'admin' | 'user';
+export type VaultMemberRole = 'owner' | 'admin' | 'user' | 'bot';
 
 export interface User {
   id: number;
@@ -17,11 +17,14 @@ export interface AuthResponse {
 }
 
 export interface VaultMember {
-  id: number;
-  user_id: number;
+  id: number | string;
+  user_id?: number | null;
   email: string;
   role: VaultMemberRole;
   joined_at?: string;
+  is_bot?: boolean;
+  channel_id?: string;
+  channel_name?: string;
 }
 
 export interface InviteCodeResponse {

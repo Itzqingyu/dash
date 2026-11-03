@@ -642,3 +642,13 @@
   color: var(--white);
   border-color: var(--danger);
 }
+
+.role-badge.role-bot {
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+}
+
+.member-icon-bot {
+  color: var(--cyan);
+}

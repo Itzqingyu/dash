@@ -587,16 +587,44 @@ def list_vault_members(vault_name: str, caller_user_id: Optional[int] = None) ->
             (vid,),
         ).fetchall()
 
-        return [
+        members = [
             {
                 "id": r["id"],
                 "user_id": r["user_id"],
                 "email": r["email"],
                 "role": r["role"],
                 "joined_at": r["joined_at"].isoformat() if r.get("joined_at") else None,
+                "is_bot": False,
             }
             for r in rows
         ]
+
+        # 查詢是否有綁定的 Discord 頻道
+        dc_rows = conn.execute(
+            """
+            SELECT channel_id, guild_id, vault_id, channel_name, bound_by_discord_user, created_at
+            FROM public.discord_channel_bindings
+            WHERE vault_id = %s
+            ORDER BY created_at ASC;
+            """,
+            (vid,),
+        ).fetchall()
+
+        for dc in dc_rows:
+            ch_raw = dc.get("channel_name") or dc["channel_id"]
+            ch_display = f"#{ch_raw}" if not ch_raw.startswith("#") else ch_raw
+            members.append({
+                "id": f"dc_{dc['channel_id']}",
+                "user_id": None,
+                "email": f"{ch_display} (dc bot)",
+                "role": "bot",
+                "joined_at": dc["created_at"].isoformat() if dc.get("created_at") else None,
+                "is_bot": True,
+                "channel_id": dc["channel_id"],
+                "channel_name": dc.get("channel_name"),
+            })
+
+        return members
 
 
 def update_member_role(

@@ -12,6 +12,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Database,
   Users,
+  Bot,
   Settings,
   Trash2,
   LayoutGrid,
@@ -477,17 +478,18 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
                   {members.map((m) => {
                     const isSelf = m.user_id === user?.id;
                     const isTargetOwner = m.role === 'owner';
+                    const isBot = Boolean(m.is_bot || m.role === 'bot');
                     return (
                       <div key={m.id} className="vault-member-row">
                         <div className="vault-member-left">
-                          <Users size={14} />
+                          {isBot ? <Bot size={14} className="member-icon-bot" /> : <Users size={14} />}
                           <span className="vault-member-email">{m.email}</span>
                         </div>
                         <div className="vault-member-actions">
                           <span className={`role-badge role-${m.role}`}>
-                            {m.role.toUpperCase()}
+                            {isBot ? 'DC BOT' : m.role.toUpperCase()}
                           </span>
-                          {isOwner && !isSelf && !isTargetOwner && (
+                          {!isBot && isOwner && !isSelf && !isTargetOwner && (
                             <button
                               type="button"
                               className="vault-member-role-btn"
