@@ -18,10 +18,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
-import {
-  fetchDocuments,
-  deleteDocumentByIdentifier,
-} from '../../../api/documentService';
+import { fetchDocuments } from '../../../api/documentService';
 import { BackendDocument } from '../../../types/document';
 import {
   extractMeetingSummary,
@@ -31,7 +28,6 @@ import {
   BackendActivity,
   MeetingPreviewData,
 } from '../../../api/meetingExtractService';
-import DocumentDrawer, { DocumentItem } from '../../common/DocumentDrawer';
 import ConfirmModal from '../../common/ConfirmModal';
 import './MeetingExtractPanel.css';
 
@@ -77,11 +73,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
   const [documents, setDocuments] = useState<BackendDocument[]>([]);
   // 當前選中的文檔 ID
   const [selectedDocId, setSelectedDocId] = useState<number | ''>('');
-
-  // 歷史紀錄文檔抽屜開啟狀態
-  const [isDocDrawerOpen, setIsDocDrawerOpen] = useState(false);
-  // 抽屜專屬錯誤訊息
-  const [docDrawerError, setDocDrawerError] = useState<string | null>(null);
 
   // 活動關聯與建立狀態 (活動為會議與事項必填之外部關聯)
   const [activities, setActivities] = useState<BackendActivity[]>([]);
@@ -134,17 +125,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
   });
 
   /**
-   * 將 BackendDocument[] 轉換為 DocumentDrawer 所需的 DocumentItem[] 介面
-   */
-  const drawerDocuments: DocumentItem[] = documents.map((doc) => ({
-    id: String(doc.id),
-    name: doc.filename,
-    size: `${doc.chunk_count} 個切片`,
-    uploadedAt: formatTimeString(doc.upload_date),
-    chunkCount: doc.chunk_count,
-  }));
-
-  /**
    * 載入已上傳文件清單
    */
   const loadDocumentsList = useCallback(async () => {
@@ -188,40 +168,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
       loadActivitiesList();
     }
   }, [hidden, loadDocumentsList, loadActivitiesList]);
-
-  /**
-   * 刪除指定文件 (呼叫 DELETE /documents/{id})
-   * 若刪除之文件為當前選中項，自動重設選中狀態並清空預覽
-   */
-  const handleDeleteDocument = (id: string) => {
-    const targetDoc = documents.find((d) => String(d.id) === id);
-    const docName = targetDoc ? `「${targetDoc.filename}」` : '此文件';
-
-    setConfirmDialog({
-      isOpen: true,
-      title: '確定要刪除歷史紀錄文檔？',
-      message: `確定要自歷史紀錄中移除 ${docName} 嗎？這將會同步自磁碟物理刪除該 Markdown 文件與向量檢索索引。`,
-      onConfirm: async () => {
-        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-        try {
-          setDocDrawerError(null);
-          await deleteDocumentByIdentifier(id);
-          const freshDocs = await fetchDocuments();
-          setDocuments(freshDocs);
-
-          // 若刪除的是當前選中項，清空選中項與預覽資料
-          if (String(selectedDocId) === id) {
-            setSelectedDocId(freshDocs.length > 0 ? freshDocs[0].id : '');
-            setPreviewData(null);
-            setIsCommitted(false);
-          }
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          setDocDrawerError(`刪除文檔失敗：${msg}`);
-        }
-      },
-    });
-  };
 
   /**
    * 步驟 1：觸發 LLM 根據 system prompt 整理會議紀錄 (POST /extract_summary)
@@ -541,7 +487,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
   const handleRefreshAll = async () => {
     handleReset();
     setActivityNotice(null);
-    setDocDrawerError(null);
     setNewActivityData({
       name: '',
       year: new Date().getFullYear(),
@@ -592,15 +537,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
               >
                 <RefreshCw size={15} className={isLoadingDocs ? 'spinning' : ''} />
                 <span>重新整理</span>
-              </button>
-              <button
-                type="button"
-                className="extract-header-btn secondary"
-                onClick={() => setIsDocDrawerOpen(true)}
-                title="開啟歷史紀錄文檔抽屜"
-              >
-                <FileText size={15} />
-                <span>歷史紀錄 ({documents.length})</span>
               </button>
             </div>
           </div>
@@ -1239,16 +1175,6 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
         </div>
       )}
       </div>
-
-      {/* 歷史紀錄文檔抽屜 */}
-      <DocumentDrawer
-        isOpen={isDocDrawerOpen}
-        onClose={() => setIsDocDrawerOpen(false)}
-        documents={drawerDocuments}
-        onDeleteDocument={handleDeleteDocument}
-        errorMessage={docDrawerError}
-        onClearError={() => setDocDrawerError(null)}
-      />
 
       {/* 全域模糊防手殘確認對話框 */}
       <ConfirmModal

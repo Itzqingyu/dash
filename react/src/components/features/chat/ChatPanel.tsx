@@ -15,7 +15,6 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronUp,
-  FileText,
   BookOpen,
   AlertCircle,
   Plus,
@@ -25,7 +24,6 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
-import DocumentDrawer, { DocumentItem } from '../../common/DocumentDrawer';
 import ConfirmModal from '../../common/ConfirmModal';
 import RenameModal from '../../common/RenameModal';
 import {
@@ -36,11 +34,6 @@ import {
   deleteSessionById,
   sendChatMessage,
 } from '../../../api/chatService';
-import {
-  fetchDocuments,
-  uploadDocument,
-  deleteDocumentByIdentifier,
-} from '../../../api/documentService';
 import { RetrievedChunk } from '../../../types/chat';
 import './ChatPanel.css';
 
@@ -110,12 +103,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   // 錯誤提示
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // 文件抽屜狀態
-  const [isDocDrawerOpen, setIsDocDrawerOpen] = useState(false);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
-  const [docDrawerError, setDocDrawerError] = useState<string | null>(null);
-
   // 編輯會話名稱彈窗
   const [renameModal, setRenameModal] = useState<{
     isOpen: boolean;
@@ -167,24 +154,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // 從後端獲取文件清單
-  const loadDocuments = useCallback(async () => {
-    try {
-      const backendDocs = await fetchDocuments();
-      const mappedDocs: DocumentItem[] = backendDocs.map((doc) => ({
-        id: String(doc.id),
-        name: doc.filename,
-        size: `${doc.chunk_count} 個切片`,
-        uploadedAt: formatTimeString(doc.upload_date),
-        chunkCount: doc.chunk_count,
-      }));
-      setDocuments(mappedDocs);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setDocDrawerError(`無法載入歷史紀錄文檔：${msg}`);
-    }
   }, []);
 
   // 從後端獲取會話清單
@@ -258,8 +227,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
   useEffect(() => {
     loadSessions();
-    loadDocuments();
-  }, [loadSessions, loadDocuments]);
+  }, [loadSessions]);
 
   useEffect(() => {
     if (activeSessionId && !sessionMessages[activeSessionId]) {
@@ -502,41 +470,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     }));
   };
 
-  const handleUploadFile = async (file: File) => {
-    setDocDrawerError(null);
-    setIsUploadingDoc(true);
-    try {
-      await uploadDocument(file);
-      await loadDocuments();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setDocDrawerError(`上傳失敗：${msg}`);
-    } finally {
-      setIsUploadingDoc(false);
-    }
-  };
-
-  const handleDeleteDocument = async (docIdStr: string) => {
-    const docToDelete = documents.find((d) => d.id === docIdStr);
-    const fileName = docToDelete ? `「${docToDelete.name}」` : '此文檔';
-
-    setConfirmDialog({
-      isOpen: true,
-      title: '確定要刪除歷史紀錄文檔？',
-      message: `確定要刪除 ${fileName} 嗎？刪除後對應的向量切片與全文將被移除。`,
-      onConfirm: async () => {
-        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-        try {
-          await deleteDocumentByIdentifier(Number(docIdStr));
-          await loadDocuments();
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          setDocDrawerError(`刪除文檔失敗：${msg}`);
-        }
-      },
-    });
-  };
-
   const activeSessionTitle =
     sessions.find((s) => s.id === activeSessionId)?.title || '未選擇對話';
 
@@ -567,17 +500,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
             </div>
 
-            <div className="chat-header-actions">
-              <button
-                type="button"
-                className="chat-header-btn"
-                onClick={() => setIsDocDrawerOpen(true)}
-                title="開啟歷史紀錄文檔抽屜"
-              >
-                <FileText size={15} />
-                <span>歷史紀錄文檔 ({documents.length})</span>
-              </button>
-            </div>
+
           </div>
         </header>
 
@@ -865,19 +788,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           </div>
         </div>
 
-        {/* 4. 浮動/抽屜式歷史紀錄文檔管理 */}
-        <DocumentDrawer
-          isOpen={isDocDrawerOpen}
-          onClose={() => setIsDocDrawerOpen(false)}
-          documents={documents}
-          onUploadFile={handleUploadFile}
-          onDeleteDocument={handleDeleteDocument}
-          isUploading={isUploadingDoc}
-          errorMessage={docDrawerError}
-          onClearError={() => setDocDrawerError(null)}
-        />
-
-        {/* 5. 全域防手殘確認對話框 */}
+        {/* 4. 全域防手殘確認對話框 */}
         <ConfirmModal
           isOpen={confirmDialog.isOpen}
           title={confirmDialog.title}
@@ -886,7 +797,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
         />
 
-        {/* 6. 編輯對話名稱彈窗 */}
+        {/* 5. 編輯對話名稱彈窗 */}
         <RenameModal
           isOpen={renameModal.isOpen}
           initialValue={renameModal.currentTitle}
