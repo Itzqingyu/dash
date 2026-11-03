@@ -152,7 +152,7 @@ dash/
 2. DASH IN：使用者上傳備份包，後端校驗完整性並匯入建立為全新獨立紀錄庫，絕不覆蓋現存資料。
 
 ### 6. Discord 會議紀錄擷取 (dash_dc_bot)
-1. 頻道授權綁定：在 Discord 文字頻道執行 `/dash-bind invite_code:XXXX`，以紀錄庫邀請碼驗證身份，將該頻道與目標紀錄庫建立綁定關係（持久化於 `public.discord_channel_bindings`）。
+1. 頻道授權綁定：在 Discord 文字頻道執行 `/dash-bind invite_code:XXXX`，以紀錄庫邀請碼驗證身份，將該頻道與目標紀錄庫建立綁定關係（持久化於 `public.discord_channel_bindings`）。若當前頻道已有綁定則嚴格禁止覆蓋，需先執行 `/dash-unbind` 解除既有綁定後方可重新綁定。
 2. 狀態查詢與解綁：使用 `/dash-status` 檢視當前頻道關聯之紀錄庫名稱與建立者；使用 `/dash-unbind` 解除綁定。
 3. 討論時段擷取與提煉：討論完畢後執行 `/dash-extract hours: 2`（或指定精確時間 `since: 2026-11-03 14:00`），Bot 自動撈取指定時段對話，過濾雜訊後交由 LLM 提示詞模組提煉為完整 Markdown 會議紀錄。
 4. 自動入庫與預覽卡片：產生的 Markdown 文件自動存入該紀錄庫實體目錄並經由 RAG 引擎切塊寫入向量資料庫，Bot 於頻道即時回覆包含摘要與待辦清單的 Embed 卡片。

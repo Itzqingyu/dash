@@ -190,6 +190,27 @@ async def cmd_dash_bind(interaction: discord.Interaction, invite_code: str):
         await interaction.response.send_message("此指令僅能在伺服器文字頻道中使用。", ephemeral=True)
         return
 
+    # 1. 檢查當前頻道是否已綁定，禁止直接覆蓋
+    existing_binding = db.get_discord_channel_binding(str(channel.id))
+    if existing_binding:
+        cur_vault = (
+            existing_binding.get("vault_display_name")
+            or existing_binding.get("vault_name")
+            or existing_binding.get("vault_id")
+        )
+        embed = discord.Embed(
+            title="頻道已綁定紀錄庫，無法直接覆蓋",
+            description=(
+                f"當前頻道 **#{channel.name}** 已經綁定至紀錄庫 **{cur_vault}** (`{existing_binding.get('vault_id')}`)！\n\n"
+                "為維護資料隔離與安全性，系統禁止直接覆蓋既有綁定。\n"
+                "若要更換或綁定至新的紀錄庫，請先執行 `/dash-unbind` 解除舊有綁定後，再重新進行綁定操作。"
+            ),
+            color=0xD97706,
+        )
+        embed.set_footer(text="DASH Discord Bot - 會議記錄與智能交接工作台")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
     try:
         inv_info = vm.validate_invite_code_for_binding(invite_code)
     except Exception as exc:
