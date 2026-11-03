@@ -434,7 +434,7 @@
 }
 
 .btn-close:hover {
-  background-color: var(--hover);
+  background-color: var(--canvas);
   color: var(--ink);
 }
 
@@ -629,14 +629,16 @@
 }
 
 .btn-danger {
-  background-color: var(--red-soft);
-  color: var(--red);
-  border: 1px solid var(--red);
+  background-color: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
   cursor: pointer;
-  transition: all var(--transition);
+  font-weight: 600;
+  transition: all 0.15s ease;
 }
 
 .btn-danger:hover {
-  background-color: var(--red);
+  background-color: var(--danger);
   color: var(--white);
+  border-color: var(--danger);
 }
