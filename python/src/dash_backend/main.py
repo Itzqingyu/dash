@@ -24,6 +24,7 @@ from dash_backend.auth.security import (
 from dash_backend.vault_manager import (
     MARKDOWN_ROOT,
     DASH_ROOT,
+    TEMP_DIR,
     ensure_default_vault,
     get_active_vault_id,
     get_active_vault_name,
@@ -72,6 +73,7 @@ from dash_backend.ai_services.llm_service import (
     extract_structured_meeting_data,
     chat_with_context,
 )
+from dash_backend.ai_services.transcription_service import transcribe_audio
 from dash_backend.activity_services.activity import (
     create_activity,
     get_activity,
@@ -569,6 +571,86 @@ def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@app.post("/meeting-audio/transcribe", tags=["AI Structured Extraction"])
+def upload_meeting_audio(file: UploadFile = File(...)):
+    """將錄音轉為 Markdown 逐字稿並加入目前 Vault 的文件紀錄庫。"""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="未提供有效的檔案名稱")
+
+    base_name = os.path.basename(file.filename.replace("\\", "/"))
+    file_stem, ext = os.path.splitext(base_name)
+    ext = ext.lower()
+    supported_extensions = {
+        ".flac", ".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".ogg", ".wav", ".webm"
+    }
+    if ext not in supported_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail="不支援的錄音格式。請使用 FLAC、MP3、MP4、MPEG、MPGA、M4A、OGG、WAV 或 WEBM。",
+        )
+
+    file.file.seek(0, os.SEEK_END)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="錄音檔不得超過 25 MB（Groq 免費方案單檔上限）。")
+
+    safe_stem = (
+        re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", file_stem).strip(" .")
+        or "錄音逐字稿"
+    )
+    target_md_path = os.path.join(get_markdown_target_dir(), f"{safe_stem}.md")
+    existing_doc = get_doc_by_path(target_md_path)
+    if existing_doc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"文件紀錄庫已存在同名文件「{safe_stem}」，請重新命名錄音檔後再上傳。",
+        )
+
+    temp_audio_path = None
+    target_md_created = False
+    transcript_saved = False
+    try:
+        with tempfile.NamedTemporaryFile(dir=TEMP_DIR, suffix=ext, delete=False) as temp_audio:
+            temp_audio_path = temp_audio.name
+            shutil.copyfileobj(file.file, temp_audio)
+
+        try:
+            transcript = transcribe_audio(temp_audio_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        with open(target_md_path, "x", encoding="utf-8") as markdown_file:
+            target_md_created = True
+            markdown_file.write(f"# {safe_stem} 逐字稿\n\n## 逐字稿\n\n{transcript}\n")
+
+        chunks_added = add_document(file_path=target_md_path)
+        transcript_saved = True
+        doc_record = get_doc_by_path(target_md_path)
+        if not doc_record:
+            raise RuntimeError("逐字稿已建立，但無法取得文件紀錄")
+
+        return {
+            "status": "success",
+            "doc_id": doc_record["id"],
+            "filename": doc_record["filename"],
+            "chunks_added": chunks_added,
+        }
+    except FileExistsError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"錄音處理失敗：{exc}") from exc
+    finally:
+        if temp_audio_path and os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
+        if target_md_created and not transcript_saved and os.path.exists(target_md_path):
+            os.remove(target_md_path)
 
 
 @app.delete("/documents/{identifier:path}", tags=["RAG Document"])
