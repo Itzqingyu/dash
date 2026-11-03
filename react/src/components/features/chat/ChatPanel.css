@@ -118,8 +118,8 @@
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 280px);
-  min-height: 550px;
+  height: calc(100vh - 240px);
+  min-height: 800px;
   overflow: hidden;
 }
 
