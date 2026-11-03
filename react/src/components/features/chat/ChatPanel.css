@@ -45,6 +45,8 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex: 1 1 320px;
+  min-width: 0;
 }
 
 .chat-icon-badge {
@@ -63,6 +65,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .chat-header-title {
@@ -84,6 +87,7 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .chat-header-btn {

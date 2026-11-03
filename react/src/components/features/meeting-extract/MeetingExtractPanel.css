@@ -34,6 +34,9 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -41,6 +44,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 24px;
 }
 
@@ -48,6 +52,8 @@
   display: flex;
   align-items: center;
   gap: 20px;
+  flex: 1 1 320px;
+  min-width: 0;
 }
 
 .extract-icon-badge {
@@ -66,6 +72,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .extract-header-title {
@@ -121,7 +128,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .extract-header-btn {
