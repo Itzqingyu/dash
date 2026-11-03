@@ -37,6 +37,8 @@ from dash_backend.vault_manager import (
     delete_vault,
     create_invite_code,
     join_vault_by_invite,
+    list_vault_invitations,
+    revoke_vault_invitation,
     list_vault_members,
     update_member_role,
     export_vault_to_zip,
@@ -1376,6 +1378,50 @@ def api_create_invite_code(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"建立邀請碼失敗: {str(exc)}")
+
+
+@app.get("/vaults/{vault_id}/invitations", tags=["Vault Management"])
+@app.get("/api/vaults/{vault_id}/invitations", tags=["Vault Management"])
+def api_list_vault_invitations(
+    vault_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """取得特定紀錄庫當前有效且未被使用的邀請碼清單（限 owner 或 admin）"""
+    try:
+        require_vault_role(vault_id, "admin", current_user)
+        return list_vault_invitations(vault_name=vault_id, user_id=current_user["id"])
+    except HTTPException:
+        raise
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"取得邀請碼清單失敗: {str(exc)}")
+
+
+@app.delete("/vaults/{vault_id}/invitations/{invite_id}", tags=["Vault Management"])
+@app.delete("/api/vaults/{vault_id}/invitations/{invite_id}", tags=["Vault Management"])
+def api_revoke_vault_invitation(
+    vault_id: str,
+    invite_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """撤銷並徹底自資料庫刪除特定邀請碼（限 owner 或 admin）"""
+    try:
+        require_vault_role(vault_id, "admin", current_user)
+        success = revoke_vault_invitation(vault_name=vault_id, invite_id=invite_id, user_id=current_user["id"])
+        if not success:
+            raise HTTPException(status_code=404, detail="找不到該邀請碼或已失效刪除")
+        return {"status": "success", "message": "已成功撤銷並刪除該邀請碼"}
+    except HTTPException:
+        raise
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"撤銷邀請碼失敗: {str(exc)}")
 
 
 @app.post("/vaults/join", tags=["Vault Management"])

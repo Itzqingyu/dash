@@ -29,7 +29,7 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { vaultApi, VaultItem } from '../../../api/vaultApi';
-import type { VaultMember, InviteCodeResponse } from '../../../types/auth';
+import type { VaultMember, InviteCodeResponse, VaultInvitationItem } from '../../../types/auth';
 import { useAuth } from '../../../context/AuthContext';
 import ConfirmModal from '../../common/ConfirmModal';
 import './VaultHubPage.css';
@@ -64,6 +64,9 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
   const [createdInvite, setCreatedInvite] = useState<InviteCodeResponse | null>(null);
   const [creatingInvite, setCreatingInvite] = useState<boolean>(false);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
+  const [activeInvites, setActiveInvites] = useState<VaultInvitationItem[]>([]);
+  const [loadingInvites, setLoadingInvites] = useState<boolean>(false);
+  const [copiedCodeId, setCopiedCodeId] = useState<number | null>(null);
 
   const [renameModalOpen, setRenameModalOpen] = useState<boolean>(false);
   const [renameValue, setRenameValue] = useState<string>('');
@@ -103,15 +106,32 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
   const isOwner = userRole === 'owner';
   const isOwnerOrAdmin = isOwner || userRole === 'admin';
 
-  // 載入成員清單
+  // 載入有效邀請碼清單
+  const refreshInvites = useCallback(async (vid: string) => {
+    if (!isOwnerOrAdmin) return;
+    setLoadingInvites(true);
+    try {
+      const list = await vaultApi.getInviteCodes(vid);
+      setActiveInvites(list);
+    } catch {
+      // 靜默處理
+    } finally {
+      setLoadingInvites(false);
+    }
+  }, [isOwnerOrAdmin]);
+
+  // 載入成員與邀請碼清單
   const handleOpenMembersModal = async () => {
     setCreatedInvite(null);
     setErrorMessage(null);
     setMembersModalOpen(true);
     setLoadingMembers(true);
     try {
-      const list = await vaultApi.getVaultMembers(effectiveVaultId);
-      setMembers(list);
+      const [membersList] = await Promise.all([
+        vaultApi.getVaultMembers(effectiveVaultId),
+        refreshInvites(effectiveVaultId),
+      ]);
+      setMembers(membersList);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : '載入成員名單失敗');
     } finally {
@@ -119,7 +139,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     }
   };
 
-  // 產生邀請碼
+  // 產生邀請碼 (嚴格單次使用)
   const handleCreateInvite = async () => {
     setCreatingInvite(true);
     setCopySuccess(false);
@@ -127,6 +147,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     try {
       const res = await vaultApi.createInviteCode(effectiveVaultId, inviteRole, 7);
       setCreatedInvite(res);
+      await refreshInvites(effectiveVaultId);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : '建立邀請碼失敗');
     } finally {
@@ -134,12 +155,32 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
     }
   };
 
-  // 複製邀請碼
-  const handleCopyInviteCode = () => {
-    if (!createdInvite) return;
-    navigator.clipboard.writeText(createdInvite.invite_code);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
+  // 撤銷並刪除邀請碼
+  const handleRevokeInvite = async (inviteId: number, code: string) => {
+    if (!window.confirm(`確定要撤銷邀請碼「${code}」嗎？撤銷後將立即自系統刪除且無法再使用。`)) {
+      return;
+    }
+    try {
+      await vaultApi.revokeInviteCode(effectiveVaultId, inviteId);
+      if (createdInvite?.invite_code === code) {
+        setCreatedInvite(null);
+      }
+      await refreshInvites(effectiveVaultId);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '撤銷邀請碼失敗');
+    }
+  };
+
+  // 複製特定邀請碼
+  const handleCopyCode = (code: string, id?: number) => {
+    navigator.clipboard.writeText(code);
+    if (id !== undefined) {
+      setCopiedCodeId(id);
+      setTimeout(() => setCopiedCodeId(null), 2000);
+    } else {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
   };
 
   // 晉升 / 降級成員
@@ -463,10 +504,10 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
                 </div>
               )}
 
-              {/* 邀請碼產生區塊 (限 Owner 或 Admin) */}
+              {/* 邀請碼管理區塊 (限 Owner 或 Admin) */}
               {isOwnerOrAdmin && (
                 <div className="vault-invite-box">
-                  <label className="form-label">建立邀請碼</label>
+                  <label className="form-label">建立新邀請碼（單次使用）</label>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     {isOwner ? (
                       <select
@@ -501,13 +542,13 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
                           {createdInvite.invite_code}
                         </span>
                         <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block' }}>
-                          角色：{createdInvite.default_role} · 有效期 7 天
+                          角色：{createdInvite.default_role} · 有效期 7 天（使用 1 次即失效刪除）
                         </span>
                       </div>
                       <button
                         type="button"
                         className="btn-secondary"
-                        onClick={handleCopyInviteCode}
+                        onClick={() => handleCopyCode(createdInvite.invite_code)}
                         style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
                       >
                         <Copy size={12} />
@@ -515,6 +556,51 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
                       </button>
                     </div>
                   )}
+
+                  {/* 有效邀請碼清單 */}
+                  <div className="vault-invites-section">
+                    <label className="form-label" style={{ marginTop: '4px', marginBottom: '4px' }}>
+                      有效邀請碼管理 ({activeInvites.length})
+                    </label>
+                    {loadingInvites ? (
+                      <p className="loading-state" style={{ fontSize: '0.85rem', padding: '6px 0' }}>載入邀請碼中...</p>
+                    ) : activeInvites.length === 0 ? (
+                      <p className="vault-empty-invites">目前無待使用的有效邀請碼。</p>
+                    ) : (
+                      <div className="vault-invites-list">
+                        {activeInvites.map((inv) => (
+                          <div key={inv.id} className="vault-invite-item">
+                            <div className="vault-invite-item-info">
+                              <span className="vault-invite-item-code">{inv.invite_code}</span>
+                              <span className="vault-invite-item-meta">
+                                身分: {inv.default_role} · 建立者: {inv.creator_email} · 有效期: {inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : '7天'}
+                              </span>
+                            </div>
+                            <div className="vault-invite-item-actions">
+                              <button
+                                type="button"
+                                className="btn-secondary btn-sm"
+                                onClick={() => handleCopyCode(inv.invite_code, inv.id)}
+                                title="複製邀請碼"
+                              >
+                                <Copy size={12} />
+                                <span>{copiedCodeId === inv.id ? '已複製' : '複製'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-danger btn-sm"
+                                onClick={() => handleRevokeInvite(inv.id, inv.invite_code)}
+                                title="撤銷並刪除此邀請碼"
+                              >
+                                <Trash2 size={12} />
+                                <span>撤銷</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

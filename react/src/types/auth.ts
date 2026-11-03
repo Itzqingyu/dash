@@ -34,6 +34,16 @@ export interface InviteCodeResponse {
   used_count: number;
 }
 
+export interface VaultInvitationItem {
+  id: number;
+  invite_code: string;
+  vault_id: string;
+  default_role: 'admin' | 'user';
+  expires_at?: string;
+  created_at?: string;
+  creator_email: string;
+}
+
 export interface JoinVaultResponse {
   status: string;
   message: string;
@@ -41,4 +51,3 @@ export interface JoinVaultResponse {
   vault_name: string;
   role: string;
 }
-

@@ -557,3 +557,86 @@
   color: var(--cyan);
   letter-spacing: 0.05em;
 }
+
+/* 有效邀請碼清單管理 */
+.vault-invites-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.vault-empty-invites {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 4px 0;
+}
+
+.vault-invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.vault-invite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  gap: 10px;
+}
+
+.vault-invite-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vault-invite-item-code {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--cyan);
+  letter-spacing: 0.04em;
+}
+
+.vault-invite-item-meta {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.vault-invite-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-danger {
+  background-color: var(--red-soft);
+  color: var(--red);
+  border: 1px solid var(--red);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-danger:hover {
+  background-color: var(--red);
+  color: var(--white);
+}
