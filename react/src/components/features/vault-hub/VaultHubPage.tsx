@@ -33,6 +33,7 @@ import { vaultApi, VaultItem } from '../../../api/vaultApi';
 import type { VaultMember, InviteCodeResponse, VaultInvitationItem } from '../../../types/auth';
 import { useAuth } from '../../../context/AuthContext';
 import ConfirmModal from '../../common/ConfirmModal';
+import dashIcon from '../../../assets/icon/dash-without-word.png';
 import './VaultHubPage.css';
 
 interface VaultHubPageProps {
@@ -249,7 +250,7 @@ export const VaultHubPage: React.FC<VaultHubPageProps> = ({
           className="hub-crumb-link"
           onClick={onNavigateToHome}
         >
-          <Home size={14} />
+          <img src={dashIcon} alt="首頁" className="crumb-home-logo" />
           <span>首頁</span>
         </button>
         <span className="hub-crumb-separator">/</span>
