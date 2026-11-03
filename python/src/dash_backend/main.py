@@ -1227,17 +1227,10 @@ def api_save_handover(payload: HandoverSaveRequest):
 @app.get("/api/vaults", tags=["Vault Management"])
 @app.get("/user/vaults", tags=["Vault Management"])
 @app.get("/api/user/vaults", tags=["Vault Management"])
-def api_list_vaults(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)):
-    """若提供有效 Bearer Token 則列出該登入使用者所屬之 Vault；未提供或無效時回傳公開/預設 Vault 清冊"""
-    if credentials and credentials.credentials:
-        try:
-            payload = decode_access_token(credentials.credentials)
-            user_id = int(payload.get("sub", 0))
-            if user_id > 0:
-                return list_user_vaults(user_id)
-        except Exception:
-            pass
-    return list_vaults()
+def api_list_vaults(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """嚴格要求登入身分：列出該登入使用者所屬之紀錄庫清冊；未提供有效 Token 或憑證失效一律回傳 401 要求重新登入。"""
+    user_id = int(current_user["id"])
+    return list_user_vaults(user_id)
 
 
 @app.get("/vaults/active", tags=["Vault Management"])
