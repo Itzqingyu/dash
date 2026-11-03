@@ -331,3 +331,90 @@
   color: var(--ink-soft);
   line-height: 1.5;
 }
+
+/* ==========================================
+   移動端最佳化 (Viewport <= 530px)
+   ========================================== */
+@media (max-width: 530px) {
+  .dash-out-container {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .dash-out-header-card {
+    padding: 20px 14px;
+    gap: 14px;
+  }
+
+  .dash-out-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .dash-out-header-title {
+    font-size: 1.35rem;
+  }
+
+  .dash-out-header-desc {
+    display: none;
+  }
+
+  .dash-out-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .dash-out-header-btn {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .dash-out-header-btn span {
+    display: none;
+  }
+
+  .dash-out-card {
+    padding: 20px 14px;
+    gap: 16px;
+  }
+
+  .dash-out-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .dash-out-stat-card {
+    padding: 12px 14px;
+  }
+
+  .dash-out-storage-list {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dash-out-action-box {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px 14px;
+    gap: 14px;
+  }
+
+  .dash-out-action-sub {
+    display: none;
+  }
+
+  .dash-out-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dash-out-tip-card {
+    padding: 14px 14px;
+  }
+
+  .dash-out-tip-desc {
+    display: none;
+  }
+}
