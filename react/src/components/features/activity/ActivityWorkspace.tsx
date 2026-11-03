@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Edit2, Trash2 } from 'lucide-react';
 import type { Activity } from '../../../types/activity';
 import { VaultBreadcrumb, type BreadcrumbItem } from '../../layout/VaultBreadcrumb';
 import OverviewPanel from './panels/OverviewPanel';
@@ -166,16 +166,20 @@ export const ActivityWorkspace: React.FC<ActivityWorkspaceProps> = ({
                 type="button"
                 className="workspace-header-btn secondary"
                 onClick={onEditActivity}
+                title="編輯活動"
               >
-                編輯活動
+                <Edit2 size={16} />
+                <span>編輯活動</span>
               </button>
               <button
                 type="button"
                 className="workspace-header-btn danger"
                 onClick={onDeleteActivity}
                 disabled={activityDeleting}
+                title="刪除活動"
               >
-                刪除活動
+                <Trash2 size={16} />
+                <span>刪除活動</span>
               </button>
             </div>
           </div>

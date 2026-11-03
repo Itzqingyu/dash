@@ -815,3 +815,62 @@
   color: var(--muted);
   cursor: not-allowed;
 }
+
+/* ==========================================
+   移動端最佳化 (Viewport <= 440px)
+   ========================================== */
+@media (max-width: 440px) {
+  .chat-container {
+    padding: 16px 12px;
+    gap: 14px;
+  }
+
+  .chat-header-card {
+    padding: 18px 14px;
+    gap: 12px;
+  }
+
+  .chat-header-desc {
+    display: none;
+  }
+
+  .chat-header-title {
+    font-size: 1.35rem;
+  }
+
+  .chat-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .chat-header-btn {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .chat-header-btn span {
+    display: none;
+  }
+
+  .chat-card-area {
+    min-height: 520px;
+    height: calc(100vh - 170px);
+  }
+
+  .chat-card-topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .chat-mode-toggle span {
+    display: none;
+  }
+
+  .chat-stream-container {
+    padding: 14px 10px;
+  }
+
+  .chat-bottom-dock {
+    padding: 10px 12px;
+  }
+}
