@@ -73,6 +73,13 @@ export interface ExtractSummaryResponse {
   preview_data: MeetingPreviewData;
 }
 
+export interface TranscribeMeetingAudioResponse {
+  status: string;
+  doc_id: number;
+  filename: string;
+  chunks_added: number;
+}
+
 /**
  * /commit_summary 請求結構
  */
@@ -148,6 +155,18 @@ export async function extractMeetingSummary(
   }
 
   return await apiClient.post<ExtractSummaryResponse>('/extract_summary', payload);
+}
+
+/** 上傳錄音，轉成逐字稿並存入文件紀錄庫 */
+export async function transcribeMeetingAudio(
+  file: File
+): Promise<TranscribeMeetingAudioResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return await apiClient.upload<TranscribeMeetingAudioResponse>(
+    '/meeting-audio/transcribe',
+    formData,
+  );
 }
 
 /**
