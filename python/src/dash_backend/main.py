@@ -330,7 +330,9 @@ class VaultSwitchRequest(BaseModel):
 
 
 class VaultCreateRequest(BaseModel):
-    vault_name: str
+    vault_name: Optional[str] = None
+    name: Optional[str] = None
+    display_name: Optional[str] = None
     description: Optional[str] = ""
 
 
@@ -1223,6 +1225,8 @@ def api_save_handover(payload: HandoverSaveRequest):
 
 @app.get("/vaults", tags=["Vault Management"])
 @app.get("/api/vaults", tags=["Vault Management"])
+@app.get("/user/vaults", tags=["Vault Management"])
+@app.get("/api/user/vaults", tags=["Vault Management"])
 def api_list_vaults(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)):
     """若提供有效 Bearer Token 則列出該登入使用者所屬之 Vault；未提供或無效時回傳公開/預設 Vault 清冊"""
     if credentials and credentials.credentials:
@@ -1274,6 +1278,10 @@ def api_switch_vault(
 
 @app.post("/vaults/create", tags=["Vault Management"])
 @app.post("/api/vaults/create", tags=["Vault Management"])
+@app.post("/vault/init", tags=["Vault Management"])
+@app.post("/api/vault/init", tags=["Vault Management"])
+@app.post("/vaults/init", tags=["Vault Management"])
+@app.post("/api/vaults/init", tags=["Vault Management"])
 def api_create_vault(
     payload: VaultCreateRequest,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
@@ -1287,8 +1295,12 @@ def api_create_vault(
         except Exception:
             pass
 
+    effective_name = (payload.display_name or payload.name or payload.vault_name or "").strip()
+    if not effective_name:
+        raise HTTPException(status_code=400, detail="必須提供紀錄庫名稱 (name 或 vault_name)")
+
     try:
-        init_result = init_vault(payload.vault_name, payload.description or "", owner_user_id=user_id)
+        init_result = init_vault(effective_name, payload.description or "", owner_user_id=user_id)
         switch_result = switch_vault(init_result["vault_id"])
         display = init_result.get("display_name") or init_result.get("name")
         return {
