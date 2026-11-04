@@ -598,8 +598,12 @@ def upload_meeting_audio(file: UploadFile = File(...)):
     file.file.seek(0, os.SEEK_END)
     file_size = file.file.tell()
     file.file.seek(0)
-    if file_size > 25 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="錄音檔不得超過 25 MB（Groq 免費方案單檔上限）。")
+    max_size_mb = int(os.getenv("AUDIO_MAX_FILE_SIZE_MB", "25"))
+    if file_size > max_size_mb * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=f"錄音檔不得超過 {max_size_mb} MB（上限設定值）。",
+        )
 
     safe_stem = (
         re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", file_stem).strip(" .")

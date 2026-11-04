@@ -1,3 +1,4 @@
+import os
 from typing import List, Dict, Any
 from litellm import completion
 
@@ -28,8 +29,9 @@ def generate_handover_summary(schedules: List[Dict[str, Any]], decisions: List[D
     final_prompt = prompt_template.replace("{{schedules_data}}", schedules_text)\
                                   .replace("{{decisions_data}}", decisions_text)
 
-    # 4. 【改用共用模組】取得模型名稱與金鑰設定
-    model_name, api_base, api_key = _get_model_config()
+    # 4. 【改用共用模組】取得模型名稱與金鑰設定 (支援 HANDOVER_MODEL 與溫度覆寫)
+    model_name, api_base, api_key = _get_model_config(task_env_var="HANDOVER_MODEL")
+    handover_temp = float(os.getenv("HANDOVER_TEMPERATURE", "0.3"))
 
     # 5. 呼叫 AI 模型
     try:
@@ -40,7 +42,7 @@ def generate_handover_summary(schedules: List[Dict[str, Any]], decisions: List[D
             messages=[
                 {"role": "user", "content": final_prompt}
             ],
-            temperature=0.3
+            temperature=handover_temp
         )
         return response.choices[0].message.content
     except Exception as e:

@@ -6,26 +6,34 @@ import httpx
 
 
 def transcribe_audio(file_path: str) -> str:
-    """使用 Groq Whisper Large V3 將錄音轉成繁體中文逐字稿。"""
+    """使用語音轉文字模型將錄音轉成繁體中文逐字稿。"""
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key or api_key.strip() == "your_groq_api_key_here":
         raise RuntimeError("請在 python/.env 設定有效的 GROQ_API_KEY")
     model = os.getenv("GROQ_TRANSCRIPTION_MODEL", "whisper-large-v3")
+    api_base = os.getenv("GROQ_API_BASE", "https://api.groq.com/openai/v1").rstrip("/")
+    endpoint = f"{api_base}/audio/transcriptions"
+    language = os.getenv("GROQ_TRANSCRIPTION_LANGUAGE", "zh")
+    prompt = os.getenv(
+        "GROQ_TRANSCRIPTION_PROMPT",
+        "以下是繁體中文會議討論逐字稿，請保留原文人名、專有名詞與原始語意。",
+    )
+    timeout = float(os.getenv("GROQ_TRANSCRIPTION_TIMEOUT", "120.0"))
 
     try:
         with open(file_path, "rb") as audio_file:
             response = httpx.post(
-                "https://api.groq.com/openai/v1/audio/transcriptions",
+                endpoint,
                 headers={"Authorization": f"Bearer {api_key}"},
                 files={"file": (os.path.basename(file_path), audio_file)},
                 data={
                     "model": model,
-                    "language": "zh",
-                    "prompt": "以下是繁體中文會議討論逐字稿，請保留原文人名、專有名詞與原始語意。",
+                    "language": language,
+                    "prompt": prompt,
                     "response_format": "json",
                     "temperature": "0",
                 },
-                timeout=120.0,
+                timeout=timeout,
             )
             response.raise_for_status()
         transcript = response.json().get("text", "").strip()

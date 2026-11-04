@@ -457,15 +457,16 @@ def init_db(
                 """
             )
 
+            embedding_dim = int(os.getenv("EMBEDDING_DIMENSION", "768"))
             conn.execute(
-                """
+                f"""
                 CREATE TABLE IF NOT EXISTS document_chunks (
                     id SERIAL PRIMARY KEY,
                     document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
                     chunk_index INTEGER NOT NULL,
                     content TEXT NOT NULL,
-                    metadata JSONB DEFAULT '{}'::jsonb,
-                    embedding vector(768)
+                    metadata JSONB DEFAULT '{{}}'::jsonb,
+                    embedding vector({embedding_dim})
                 );
                 """
             )

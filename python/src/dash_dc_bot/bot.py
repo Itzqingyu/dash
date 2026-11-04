@@ -96,7 +96,8 @@ def summarize_chat_to_markdown(
 {chat_transcript}
 """
 
-    model_name, api_base, api_key = llm._get_model_config()
+    model_name, api_base, api_key = llm._get_model_config(task_env_var="DISCORD_BOT_MODEL")
+    temperature = float(os.getenv("DISCORD_BOT_TEMPERATURE", "0.3"))
 
     response = completion(
         model=model_name,
@@ -106,7 +107,7 @@ def summarize_chat_to_markdown(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        temperature=0.3,
+        temperature=temperature,
     )
 
     markdown_output = response.choices[0].message.content.strip()
