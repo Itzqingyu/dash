@@ -133,8 +133,10 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
     try {
       const docs = await fetchDocuments();
       setDocuments(docs);
-      if (docs.length > 0 && selectedDocId === '') {
-        setSelectedDocId(docs[0].id);
+      if (docs.length > 0) {
+        setSelectedDocId((prev) => (docs.some((d) => d.id === prev) ? prev : docs[0].id));
+      } else {
+        setSelectedDocId('');
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -173,7 +175,8 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
    * 步驟 1：觸發 LLM 根據 system prompt 整理會議紀錄 (POST /extract_summary)
    */
   const handleExtract = async (docIdOverride?: number, sourceFilename?: string) => {
-    const targetDocId = docIdOverride ?? selectedDocId;
+    const validOverride = typeof docIdOverride === 'number' && !Number.isNaN(docIdOverride) ? docIdOverride : undefined;
+    const targetDocId = validOverride ?? (typeof selectedDocId === 'number' ? selectedDocId : undefined);
     if (!targetDocId) {
       setErrorMessage('請先從下拉選單選擇欲整理的會議文件');
       return;
@@ -594,7 +597,7 @@ export const MeetingExtractPanel: React.FC<MeetingExtractPanelProps> = ({
             <button
               type="button"
               className="button extract-run-btn"
-              onClick={handleExtract}
+              onClick={() => handleExtract()}
               disabled={isExtracting || !selectedDocId || documents.length === 0}
             >
               <span>{isExtracting ? 'LLM 整理分析中…' : '開始整理會議紀錄'}</span>

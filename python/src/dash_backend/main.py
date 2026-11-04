@@ -834,15 +834,48 @@ def extract_summary(req: ExtractSummaryRequest):
     record = None
     if req.doc_id is not None:
         record = get_doc_by_id(req.doc_id)
+        if not record:
+            try:
+                for v in list_vaults():
+                    v_target = v.get("vault_id") if isinstance(v, dict) else (getattr(v, "vault_id", None) or getattr(v, "name", None))
+                    cand_doc = get_doc_by_id(req.doc_id, vault_name=v_target)
+                    if cand_doc:
+                        record = cand_doc
+                        break
+            except Exception:
+                pass
     elif req.file_path is not None:
         record = get_doc_by_path(req.file_path)
         
     if not record:
         raise HTTPException(status_code=404, detail="找不到指定的文件紀錄")
         
-    md_file_path = os.path.join(get_markdown_target_dir(), record["filename"])
-    if not os.path.exists(md_file_path):
-        raise HTTPException(status_code=404, detail=f"找不到實體 Markdown 檔案: {record['filename']}")
+    filename = record.get("filename")
+    raw_path = record.get("file_path", "")
+
+    # 解析實體檔案路徑候選清單
+    candidate_paths = []
+    if raw_path:
+        candidate_paths.append(raw_path)
+        candidate_paths.append(os.path.join(DASH_ROOT, raw_path))
+        candidate_paths.append(os.path.join(MARKDOWN_ROOT, raw_path))
+
+    if filename:
+        candidate_paths.append(os.path.join(get_markdown_target_dir(), filename))
+        candidate_paths.append(os.path.join(MARKDOWN_ROOT, filename))
+        if os.path.exists(MARKDOWN_ROOT):
+            for root_dir, _, files in os.walk(MARKDOWN_ROOT):
+                if filename in files:
+                    candidate_paths.append(os.path.join(root_dir, filename))
+
+    md_file_path = None
+    for p in candidate_paths:
+        if p and os.path.exists(p) and os.path.isfile(p):
+            md_file_path = p
+            break
+
+    if not md_file_path:
+        raise HTTPException(status_code=404, detail=f"找不到實體 Markdown 檔案: {filename or raw_path}")
 
     try:
         with open(md_file_path, "r", encoding="utf-8") as f:
