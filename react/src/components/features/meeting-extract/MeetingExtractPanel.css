@@ -923,3 +923,108 @@
   border-radius: 6px;
   margin-left: 8px;
 }
+
+/* ==========================================
+   移動端最佳化 (Viewport <= 530px)
+   ========================================== */
+@media (max-width: 530px) {
+  .extract-container {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .extract-header-card {
+    padding: 20px 14px;
+    gap: 14px;
+  }
+
+  .extract-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .extract-header-title {
+    font-size: 1.35rem;
+  }
+
+  .extract-header-desc {
+    display: none;
+  }
+
+  .extract-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .extract-header-btn {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .extract-header-btn span {
+    display: none;
+  }
+
+  .extract-card {
+    padding: 16px 12px;
+  }
+
+  .extract-card-badge {
+    display: none;
+  }
+
+  .doc-pick-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .doc-select-wrap {
+    width: 100%;
+  }
+
+  .extract-run-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .activity-mode-toggle {
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .activity-toggle-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .activity-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-form-field.col-span-2 {
+    grid-column: span 1;
+  }
+
+  .activity-create-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .activity-create-hint {
+    display: none;
+  }
+
+  .extract-commit-bar {
+    padding: 12px 14px;
+  }
+
+  .extract-commit-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

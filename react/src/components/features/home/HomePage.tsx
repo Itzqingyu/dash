@@ -220,7 +220,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* 頂部極簡導航欄 (與 Vault Hub 導航欄位置樣式一致) */}
       <nav className="home-nav-bar" aria-label="首頁導航">
         <span className="home-crumb-active">
-          <Home size={14} />
+          <img src={dashIcon} alt="首頁" className="crumb-home-logo" />
           <span>首頁</span>
         </span>
       </nav>

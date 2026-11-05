@@ -148,3 +148,55 @@
   background-color: var(--danger-soft);
   border-color: var(--danger);
 }
+
+/* ==========================================
+   移動端最佳化 (Viewport <= 530px)
+   ========================================== */
+@media (max-width: 530px) {
+  .workspace-container {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .workspace-header-card {
+    padding: 20px 14px;
+    gap: 14px;
+  }
+
+  .workspace-header-title {
+    font-size: 1.35rem;
+  }
+
+  .workspace-header-desc {
+    display: none;
+  }
+
+  .workspace-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .workspace-header-btn {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .workspace-header-btn span {
+    display: none;
+  }
+
+  .stage-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+
+  .stage-tab-btn {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+}

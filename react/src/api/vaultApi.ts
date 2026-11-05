@@ -19,6 +19,7 @@ import type {
 import type {
   VaultMember,
   InviteCodeResponse,
+  VaultInvitationItem,
   JoinVaultResponse,
 } from '../types/auth';
 
@@ -39,6 +40,9 @@ export type {
 export const vaultApi = {
   /** 取得當前使用者所屬之 Vault 列表 */
   listVaults: () => apiClient.get<VaultItem[]>('/vaults'),
+
+  /** 取得當前使用者所屬之 Vault 列表 (別名) */
+  getUserVaults: () => apiClient.get<VaultItem[]>('/vaults'),
 
   /** 取得當前使用中 Vault 資訊與統計數據 */
   getActiveVault: () => apiClient.get<ActiveVaultResponse>('/vaults/active'),
@@ -80,19 +84,28 @@ export const vaultApi = {
     return apiClient.upload<ImportVaultResponse>(`/vault/import${query}`, formData);
   },
 
-  /** 建立邀請碼 (需 owner 或 admin 權限) */
+  /** 建立邀請碼 (需 owner 或 admin 權限，恆為單次使用) */
   createInviteCode: (
     vaultName: string,
     defaultRole: 'admin' | 'user' = 'user',
-    expiresInDays: number = 7,
-    maxUses?: number
+    expiresInDays: number = 7
   ) =>
     apiClient.post<InviteCodeResponse>('/vaults/invite-code', {
       vault_name: vaultName,
       default_role: defaultRole,
       expires_in_days: expiresInDays,
-      max_uses: maxUses || null,
+      max_uses: 1,
     }),
+
+  /** 取得紀錄庫所有有效未使用的邀請碼清單 (需 owner 或 admin 權限) */
+  getInviteCodes: (vaultId: string) =>
+    apiClient.get<VaultInvitationItem[]>(`/vaults/${encodeURIComponent(vaultId)}/invitations`),
+
+  /** 撤銷並刪除指定邀請碼 (需 owner 或 admin 權限) */
+  revokeInviteCode: (vaultId: string, inviteId: number) =>
+    apiClient.delete<{ status: string; message: string }>(
+      `/vaults/${encodeURIComponent(vaultId)}/invitations/${inviteId}`
+    ),
 
   /** 憑邀請碼加入紀錄庫 */
   joinVault: (inviteCode: string) =>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, Calendar } from 'lucide-react';
+import { RefreshCw, Calendar, Plus } from 'lucide-react';
 import { VaultBreadcrumb } from '../../layout/VaultBreadcrumb';
 import type { Activity } from '../../../types/activity';
 import './ActivityListView.css';
@@ -109,16 +109,20 @@ export const ActivityListView: React.FC<ActivityListViewProps> = ({
                 className="activity-header-btn secondary"
                 type="button"
                 onClick={onOpenQuickAdd}
+                title="新增紀錄"
               >
-                + 新增紀錄
+                <Plus size={15} />
+                <span>新增紀錄</span>
               </button>
               <button
                 className="activity-header-btn primary"
                 id="open-new-activity"
                 type="button"
                 onClick={onCreateActivity}
+                title="新增活動"
               >
-                + 新增活動
+                <Plus size={15} />
+                <span>新增活動</span>
               </button>
             </div>
           </div>

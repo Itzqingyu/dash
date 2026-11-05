@@ -26,18 +26,20 @@ _reranker = None
 
 
 def get_embeddings() -> FastEmbedEmbeddings:
-    """回傳 FastEmbedEmbeddings 向量模型單例 (使用 Jina AI 中文模型 jina-embeddings-v2-base-zh，維度 768)。"""
+    """回傳 FastEmbedEmbeddings 向量模型單例 (支援從環境變數 EMBEDDING_MODEL 設定)。"""
     global _embeddings
     if _embeddings is None:
-        _embeddings = FastEmbedEmbeddings(model_name="jinaai/jina-embeddings-v2-base-zh")
+        model_name = os.getenv("EMBEDDING_MODEL", "jinaai/jina-embeddings-v2-base-zh")
+        _embeddings = FastEmbedEmbeddings(model_name=model_name)
     return _embeddings
 
 
 def get_reranker() -> TextCrossEncoder:
-    """回傳 FastEmbed TextCrossEncoder 重排序模型單例 (使用 Jina AI 多語言模型 jina-reranker-v2-base-multilingual)。"""
+    """回傳 FastEmbed TextCrossEncoder 重排序模型單例 (支援從環境變數 RERANKER_MODEL 設定)。"""
     global _reranker
     if _reranker is None:
-        _reranker = TextCrossEncoder(model_name="jinaai/jina-reranker-v2-base-multilingual")
+        model_name = os.getenv("RERANKER_MODEL", "jinaai/jina-reranker-v2-base-multilingual")
+        _reranker = TextCrossEncoder(model_name=model_name)
     return _reranker
 
 
@@ -56,9 +58,11 @@ def split_markdown(file_path: str) -> List[Document]:
         print(f"[RAG Engine Error] 讀取檔案失敗 {file_path}: {e}")
         return []
 
+    chunk_size = int(os.getenv("RAG_CHUNK_SIZE", "500"))
+    chunk_overlap = int(os.getenv("RAG_CHUNK_OVERLAP", "50"))
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
         separators=["\n\n", "\n", " ", ""],
     )
 
@@ -114,7 +118,11 @@ def add_document(
     # 1. 判斷預期的託管 Markdown 檔案路徑
     raw_name = os.path.basename(file_path)
     file_stem, ext = os.path.splitext(raw_name)
-    md_dir = DEFAULT_MARKDOWN_DIR or get_default_markdown_dir()
+    if vault_name:
+        from dash_backend.vault_manager import get_markdown_dir
+        md_dir = DEFAULT_MARKDOWN_DIR or get_markdown_dir(vault_name)
+    else:
+        md_dir = DEFAULT_MARKDOWN_DIR or get_default_markdown_dir()
     target_md_path = os.path.join(md_dir, f"{file_stem}.md")
 
     # 2. 檢查 PostgreSQL 紀錄是否存在，若已存在則拋出 FileExistsError
@@ -205,7 +213,7 @@ def list_documents(
 
 def search(
     query: str,
-    top_k: int = 5,
+    top_k: Optional[int] = None,
     vault_name: Optional[str] = None,
 ) -> List[Document]:
     """執行完整 RAG 檢索流程：
@@ -213,10 +221,11 @@ def search(
     2. 經由 pgvector HNSW 索引餘弦距離抓取前 top_k * 3 個最相近候選切塊。
     3. 經由 Cross-Encoder 重排序模型進行高精度語意排序，回傳前 top_k 個最相關結果。
     """
+    effective_top_k = top_k if top_k is not None else int(os.getenv("RAG_TOP_K", "5"))
     embeddings_service = get_embeddings()
     query_vector = embeddings_service.embed_query(query)
 
-    retrieve_k = top_k * 3
+    retrieve_k = effective_top_k * 3
 
     with db.get_connection(vault_name=vault_name) as conn:
         rows = conn.execute(
@@ -245,5 +254,5 @@ def search(
         meta["similarity"] = float(row.get("similarity", 0.0))
         initial_results.append(Document(page_content=row["content"], metadata=meta))
 
-    reranked_results = rerank_documents(query, initial_results, top_k=top_k)
+    reranked_results = rerank_documents(query, initial_results, top_k=effective_top_k)
     return reranked_results

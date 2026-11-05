@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { Home, ChevronLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import dashIcon from '../../assets/icon/dash-without-word.png';
 import './VaultBreadcrumb.css';
 
 export interface BreadcrumbItem {
@@ -60,7 +61,7 @@ export const VaultBreadcrumb: React.FC<VaultBreadcrumbProps> = ({
                   className="crumb-nav-btn"
                   onClick={item.onClick}
                 >
-                  {index === 0 && <Home size={14} />}
+                  {index === 0 && <img src={dashIcon} alt="首頁" className="crumb-home-logo" />}
                   <span>{item.label}</span>
                 </button>
               )}
@@ -94,7 +95,7 @@ export const VaultBreadcrumb: React.FC<VaultBreadcrumbProps> = ({
           onClick={onNavigateToHome}
           title="返回所有紀錄庫首頁"
         >
-          <Home size={14} />
+          <img src={dashIcon} alt="首頁" className="crumb-home-logo" />
           <span>首頁</span>
         </button>
       )}

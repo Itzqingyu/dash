@@ -15,6 +15,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    ports:
+      - "5432:5432"
     networks:
       - dash-network
 
@@ -52,6 +54,28 @@ services:
       - dash-backend
     networks:
       - dash-network
+
+  # 4. Discord 機器人服務：獨立長連線常駐監聽與會議紀錄提煉
+  dash-discord-bot:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: dash-discord-bot
+    restart: unless-stopped
+    env_file:
+      - ./python/.env
+    environment:
+      DATABASE_URL: postgresql://dash:dash_secure_password@dash-db:5432/dash
+      DASH_DATA_DIR: /app/data
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - ./data/markdown:/app/data/markdown
+    depends_on:
+      dash-db:
+        condition: service_healthy
+    networks:
+      - dash-network
+    command: ["python", "-m", "dash_dc_bot.runner"]
 
 volumes:
   postgres-data:

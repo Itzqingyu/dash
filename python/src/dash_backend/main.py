@@ -37,6 +37,8 @@ from dash_backend.vault_manager import (
     delete_vault,
     create_invite_code,
     join_vault_by_invite,
+    list_vault_invitations,
+    revoke_vault_invitation,
     list_vault_members,
     update_member_role,
     export_vault_to_zip,
@@ -328,7 +330,9 @@ class VaultSwitchRequest(BaseModel):
 
 
 class VaultCreateRequest(BaseModel):
-    vault_name: str
+    vault_name: Optional[str] = None
+    name: Optional[str] = None
+    display_name: Optional[str] = None
     description: Optional[str] = ""
 
 
@@ -594,8 +598,12 @@ def upload_meeting_audio(file: UploadFile = File(...)):
     file.file.seek(0, os.SEEK_END)
     file_size = file.file.tell()
     file.file.seek(0)
-    if file_size > 25 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="錄音檔不得超過 25 MB（Groq 免費方案單檔上限）。")
+    max_size_mb = int(os.getenv("AUDIO_MAX_FILE_SIZE_MB", "25"))
+    if file_size > max_size_mb * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=f"錄音檔不得超過 {max_size_mb} MB（上限設定值）。",
+        )
 
     safe_stem = (
         re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", file_stem).strip(" .")
@@ -826,15 +834,48 @@ def extract_summary(req: ExtractSummaryRequest):
     record = None
     if req.doc_id is not None:
         record = get_doc_by_id(req.doc_id)
+        if not record:
+            try:
+                for v in list_vaults():
+                    v_target = v.get("vault_id") if isinstance(v, dict) else (getattr(v, "vault_id", None) or getattr(v, "name", None))
+                    cand_doc = get_doc_by_id(req.doc_id, vault_name=v_target)
+                    if cand_doc:
+                        record = cand_doc
+                        break
+            except Exception:
+                pass
     elif req.file_path is not None:
         record = get_doc_by_path(req.file_path)
         
     if not record:
         raise HTTPException(status_code=404, detail="找不到指定的文件紀錄")
         
-    md_file_path = os.path.join(get_markdown_target_dir(), record["filename"])
-    if not os.path.exists(md_file_path):
-        raise HTTPException(status_code=404, detail=f"找不到實體 Markdown 檔案: {record['filename']}")
+    filename = record.get("filename")
+    raw_path = record.get("file_path", "")
+
+    # 解析實體檔案路徑候選清單
+    candidate_paths = []
+    if raw_path:
+        candidate_paths.append(raw_path)
+        candidate_paths.append(os.path.join(DASH_ROOT, raw_path))
+        candidate_paths.append(os.path.join(MARKDOWN_ROOT, raw_path))
+
+    if filename:
+        candidate_paths.append(os.path.join(get_markdown_target_dir(), filename))
+        candidate_paths.append(os.path.join(MARKDOWN_ROOT, filename))
+        if os.path.exists(MARKDOWN_ROOT):
+            for root_dir, _, files in os.walk(MARKDOWN_ROOT):
+                if filename in files:
+                    candidate_paths.append(os.path.join(root_dir, filename))
+
+    md_file_path = None
+    for p in candidate_paths:
+        if p and os.path.exists(p) and os.path.isfile(p):
+            md_file_path = p
+            break
+
+    if not md_file_path:
+        raise HTTPException(status_code=404, detail=f"找不到實體 Markdown 檔案: {filename or raw_path}")
 
     try:
         with open(md_file_path, "r", encoding="utf-8") as f:
@@ -1221,17 +1262,12 @@ def api_save_handover(payload: HandoverSaveRequest):
 
 @app.get("/vaults", tags=["Vault Management"])
 @app.get("/api/vaults", tags=["Vault Management"])
-def api_list_vaults(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)):
-    """若提供有效 Bearer Token 則列出該登入使用者所屬之 Vault；未提供或無效時回傳公開/預設 Vault 清冊"""
-    if credentials and credentials.credentials:
-        try:
-            payload = decode_access_token(credentials.credentials)
-            user_id = int(payload.get("sub", 0))
-            if user_id > 0:
-                return list_user_vaults(user_id)
-        except Exception:
-            pass
-    return list_vaults()
+@app.get("/user/vaults", tags=["Vault Management"])
+@app.get("/api/user/vaults", tags=["Vault Management"])
+def api_list_vaults(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """嚴格要求登入身分：列出該登入使用者所屬之紀錄庫清冊；未提供有效 Token 或憑證失效一律回傳 401 要求重新登入。"""
+    user_id = int(current_user["id"])
+    return list_user_vaults(user_id)
 
 
 @app.get("/vaults/active", tags=["Vault Management"])
@@ -1272,6 +1308,10 @@ def api_switch_vault(
 
 @app.post("/vaults/create", tags=["Vault Management"])
 @app.post("/api/vaults/create", tags=["Vault Management"])
+@app.post("/vault/init", tags=["Vault Management"])
+@app.post("/api/vault/init", tags=["Vault Management"])
+@app.post("/vaults/init", tags=["Vault Management"])
+@app.post("/api/vaults/init", tags=["Vault Management"])
 def api_create_vault(
     payload: VaultCreateRequest,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
@@ -1285,8 +1325,12 @@ def api_create_vault(
         except Exception:
             pass
 
+    effective_name = (payload.display_name or payload.name or payload.vault_name or "").strip()
+    if not effective_name:
+        raise HTTPException(status_code=400, detail="必須提供紀錄庫名稱 (name 或 vault_name)")
+
     try:
-        init_result = init_vault(payload.vault_name, payload.description or "", owner_user_id=user_id)
+        init_result = init_vault(effective_name, payload.description or "", owner_user_id=user_id)
         switch_result = switch_vault(init_result["vault_id"])
         display = init_result.get("display_name") or init_result.get("name")
         return {
@@ -1376,6 +1420,50 @@ def api_create_invite_code(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"建立邀請碼失敗: {str(exc)}")
+
+
+@app.get("/vaults/{vault_id}/invitations", tags=["Vault Management"])
+@app.get("/api/vaults/{vault_id}/invitations", tags=["Vault Management"])
+def api_list_vault_invitations(
+    vault_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """取得特定紀錄庫當前有效且未被使用的邀請碼清單（限 owner 或 admin）"""
+    try:
+        require_vault_role(vault_id, "admin", current_user)
+        return list_vault_invitations(vault_name=vault_id, user_id=current_user["id"])
+    except HTTPException:
+        raise
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"取得邀請碼清單失敗: {str(exc)}")
+
+
+@app.delete("/vaults/{vault_id}/invitations/{invite_id}", tags=["Vault Management"])
+@app.delete("/api/vaults/{vault_id}/invitations/{invite_id}", tags=["Vault Management"])
+def api_revoke_vault_invitation(
+    vault_id: str,
+    invite_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """撤銷並徹底自資料庫刪除特定邀請碼（限 owner 或 admin）"""
+    try:
+        require_vault_role(vault_id, "admin", current_user)
+        success = revoke_vault_invitation(vault_name=vault_id, invite_id=invite_id, user_id=current_user["id"])
+        if not success:
+            raise HTTPException(status_code=404, detail="找不到該邀請碼或已失效刪除")
+        return {"status": "success", "message": "已成功撤銷並刪除該邀請碼"}
+    except HTTPException:
+        raise
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"撤銷邀請碼失敗: {str(exc)}")
 
 
 @app.post("/vaults/join", tags=["Vault Management"])

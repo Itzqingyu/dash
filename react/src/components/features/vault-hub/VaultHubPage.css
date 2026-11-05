@@ -434,7 +434,7 @@
 }
 
 .btn-close:hover {
-  background-color: var(--hover);
+  background-color: var(--canvas);
   color: var(--ink);
 }
 
@@ -556,4 +556,179 @@
   font-weight: 800;
   color: var(--cyan);
   letter-spacing: 0.05em;
+}
+
+/* 有效邀請碼清單管理 */
+.vault-invites-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.vault-empty-invites {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 4px 0;
+}
+
+.vault-invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.vault-invite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  gap: 10px;
+}
+
+.vault-invite-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vault-invite-item-code {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--cyan);
+  letter-spacing: 0.04em;
+}
+
+.vault-invite-item-meta {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.vault-invite-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-danger {
+  background-color: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.btn-danger:hover {
+  background-color: var(--danger);
+  color: var(--white);
+  border-color: var(--danger);
+}
+
+.role-badge.role-bot {
+  background-color: var(--cyan-soft);
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+}
+
+.member-icon-bot {
+  color: var(--cyan);
+}
+
+/* ==========================================
+   移動端最佳化 (Viewport <= 530px)
+   ========================================== */
+@media (max-width: 530px) {
+  .vault-hub-container {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .vault-hub-header {
+    padding: 20px 14px;
+    gap: 14px;
+  }
+
+  .vault-hub-title-left {
+    gap: 12px;
+  }
+
+  .vault-hub-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .vault-hub-title {
+    font-size: 1.45rem;
+  }
+
+  .vault-hub-desc {
+    display: none;
+  }
+
+  .vault-hub-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .hub-btn {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .hub-btn span {
+    display: none;
+  }
+
+  .vault-hub-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .hub-card {
+    padding: 16px 14px;
+    gap: 12px;
+  }
+
+  .hub-card-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.82rem;
+  }
+
+  .hub-modal-container {
+    width: 95vw;
+    max-width: 95vw;
+    padding: 18px 14px;
+  }
+}
+
+.crumb-home-logo {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  vertical-align: middle;
+  flex-shrink: 0;
 }

@@ -147,7 +147,7 @@ export async function extractMeetingSummary(
   filePath?: string
 ): Promise<ExtractSummaryResponse> {
   const payload: { doc_id?: number; file_path?: string } = {};
-  if (docId !== undefined && docId !== null) {
+  if (typeof docId === 'number' && !Number.isNaN(docId)) {
     payload.doc_id = docId;
   }
   if (filePath) {

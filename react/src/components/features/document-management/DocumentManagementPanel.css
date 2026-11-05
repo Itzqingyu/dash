@@ -449,3 +449,110 @@
   margin-bottom: 16px;
 }
 
+
+/* ==========================================
+   移動端最佳化 (Viewport <= 530px)
+   ========================================== */
+@media (max-width: 530px) {
+  .doc-container {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .doc-header-card {
+    padding: 20px 14px;
+    gap: 14px;
+  }
+
+  .doc-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .doc-header-title {
+    font-size: 1.35rem;
+  }
+
+  .doc-header-desc {
+    display: none;
+  }
+
+  .doc-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .doc-header-btn {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .doc-header-btn span {
+    display: none;
+  }
+
+  .doc-stat-pill {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
+
+  .doc-upload-card {
+    padding: 20px 14px;
+    gap: 8px;
+  }
+
+  .upload-icon-circle {
+    width: 42px;
+    height: 42px;
+  }
+
+  .upload-card-text {
+    font-size: 0.9rem;
+  }
+
+  .upload-card-hint {
+    display: none;
+  }
+
+  .doc-list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .doc-search-wrap {
+    max-width: 100%;
+  }
+
+  .doc-table th,
+  .doc-table td {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+
+  .btn-icon-action {
+    padding: 6px 8px;
+    gap: 0;
+  }
+
+  .btn-icon-action span {
+    display: none;
+  }
+
+  .reader-modal-card {
+    width: 95vw;
+    max-width: 95vw;
+    max-height: 90vh;
+  }
+
+  .reader-modal-header {
+    padding: 14px 16px;
+  }
+
+  .reader-modal-body {
+    padding: 16px;
+  }
+}

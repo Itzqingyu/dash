@@ -156,3 +156,51 @@
   outline: 2px solid var(--cyan);
   outline-offset: -2px;
 }
+
+/* ==========================================
+   移動端最佳化 (Viewport <= 530px)
+   ========================================== */
+@media (max-width: 530px) {
+  .activity-container {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .activity-header-card {
+    padding: 20px 14px;
+    gap: 14px;
+  }
+
+  .activity-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .activity-header-title {
+    font-size: 1.35rem;
+  }
+
+  .activity-header-desc {
+    display: none;
+  }
+
+  .activity-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .activity-header-btn {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .activity-header-btn span {
+    display: none;
+  }
+
+  .summary-strip article small {
+    display: none;
+  }
+}

@@ -90,7 +90,13 @@ export async function apiRequest<T>(
       // 若為 403 或 404 且與紀錄庫存取或已被刪除相關，發布強制退出通知
       if (
         (response.status === 403 || response.status === 404) &&
-        (errorMessage.includes('紀錄庫') || errorMessage.includes('無權存取') || errorMessage.includes('找不到'))
+        (
+          errorMessage.includes('紀錄庫已被刪除') ||
+          errorMessage.includes('找不到指定紀錄庫') ||
+          errorMessage.includes('找不到紀錄庫') ||
+          errorMessage.includes('紀錄庫不存在') ||
+          (errorMessage.includes('紀錄庫') && (errorMessage.includes('無權') || errorMessage.includes('權限不足')))
+        )
       ) {
         window.dispatchEvent(
           new CustomEvent('dash:vault-kicked', {

@@ -458,17 +458,31 @@ def create_invite_code(
         if not m_row or m_row["role"] not in ("owner", "admin"):
             raise PermissionError("只有 owner 或 admin 才能建立邀請碼。")
 
-        # 產生格式如 DASH-A1B2C3D4 的邀請碼
-        code = f"DASH-{secrets.token_hex(4).upper()}"
+        # 產生格式如 DASH-A1B2C3D4 的邀請碼，並以迴圈確保代碼絕不重複
+        code = None
+        for _ in range(10):
+            candidate = f"DASH-{secrets.token_hex(4).upper()}"
+            dup_check = conn.execute(
+                "SELECT 1 FROM public.vault_invitations WHERE invite_code = %s LIMIT 1;",
+                (candidate,),
+            ).fetchone()
+            if not dup_check:
+                code = candidate
+                break
+
+        if not code:
+            raise RuntimeError("無法生成全域唯一的邀請碼，請稍後重試。")
+
         expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
 
+        # 嚴格單次使用：max_uses 恆為 1
         conn.execute(
             """
             INSERT INTO public.vault_invitations
             (invite_code, vault_id, created_by, default_role, expires_at, max_uses, used_count)
-            VALUES (%s, %s, %s, %s, %s, %s, 0);
+            VALUES (%s, %s, %s, %s, %s, 1, 0);
             """,
-            (code, vid, created_by_user_id, default_role, expires_at, max_uses),
+            (code, vid, created_by_user_id, default_role, expires_at),
         )
 
         v_row = conn.execute(
@@ -529,13 +543,9 @@ def join_vault_by_invite(invite_code: str, user_id: int) -> Dict[str, Any]:
             (target_vid, user_id, assigned_role),
         )
 
-        # 累加使用計數
+        # 單次使用完畢：立即從資料庫中徹底刪除，不留痕跡
         conn.execute(
-            """
-            UPDATE public.vault_invitations
-            SET used_count = used_count + 1
-            WHERE id = %s;
-            """,
+            "DELETE FROM public.vault_invitations WHERE id = %s;",
             (inv["id"],),
         )
 
@@ -577,16 +587,44 @@ def list_vault_members(vault_name: str, caller_user_id: Optional[int] = None) ->
             (vid,),
         ).fetchall()
 
-        return [
+        members = [
             {
                 "id": r["id"],
                 "user_id": r["user_id"],
                 "email": r["email"],
                 "role": r["role"],
                 "joined_at": r["joined_at"].isoformat() if r.get("joined_at") else None,
+                "is_bot": False,
             }
             for r in rows
         ]
+
+        # 查詢是否有綁定的 Discord 頻道
+        dc_rows = conn.execute(
+            """
+            SELECT channel_id, guild_id, vault_id, channel_name, bound_by_discord_user, created_at
+            FROM public.discord_channel_bindings
+            WHERE vault_id = %s
+            ORDER BY created_at ASC;
+            """,
+            (vid,),
+        ).fetchall()
+
+        for dc in dc_rows:
+            ch_raw = dc.get("channel_name") or dc["channel_id"]
+            ch_display = f"#{ch_raw}" if not ch_raw.startswith("#") else ch_raw
+            members.append({
+                "id": f"dc_{dc['channel_id']}",
+                "user_id": None,
+                "email": f"{ch_display} (dc bot)",
+                "role": "bot",
+                "joined_at": dc["created_at"].isoformat() if dc.get("created_at") else None,
+                "is_bot": True,
+                "channel_id": dc["channel_id"],
+                "channel_name": dc.get("channel_name"),
+            })
+
+        return members
 
 
 def update_member_role(
@@ -903,3 +941,100 @@ def import_vault_from_zip(
         "manifest": manifest,
         "stats": switch_result.get("stats", {}),
     }
+
+
+
+def validate_invite_code_for_binding(invite_code: str, consume: bool = True) -> Dict[str, Any]:
+    """驗證邀請碼並回傳其關聯之 Vault 資訊（供 Discord Bot 綁定使用）。驗證通過後立即消耗刪除。"""
+    clean_code = invite_code.strip()
+    if not clean_code:
+        raise ValueError("邀請碼不能為空。")
+
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        inv = conn.execute(
+            """
+            SELECT i.*, v.name AS vault_name, v.display_name AS vault_display_name
+            FROM public.vault_invitations i
+            JOIN public.vaults v ON i.vault_id = v.vault_id
+            WHERE i.invite_code = %s
+            LIMIT 1;
+            """,
+            (clean_code,),
+        ).fetchone()
+        if not inv:
+            raise ValueError("邀請碼不存在或已被使用。")
+
+        now = datetime.now(timezone.utc)
+        if inv.get("expires_at") and inv["expires_at"] < now:
+            conn.execute("DELETE FROM public.vault_invitations WHERE id = %s;", (inv["id"],))
+            raise ValueError("此邀請碼已過期。")
+
+        if consume:
+            # Discord 綁定成功消耗：立即實體刪除作廢
+            conn.execute("DELETE FROM public.vault_invitations WHERE id = %s;", (inv["id"],))
+
+        return dict(inv)
+
+
+def list_vault_invitations(vault_name: str, user_id: int) -> List[Dict[str, Any]]:
+    """查詢指定 Vault 當前所有有效且未被使用的邀請碼（限 owner 或 admin）。"""
+    vid = database.resolve_vault_id(vault_name, user_id=user_id)
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        m_row = conn.execute(
+            "SELECT role FROM public.vault_members WHERE vault_id = %s AND user_id = %s",
+            (vid, user_id),
+        ).fetchone()
+        if not m_row or m_row["role"] not in ("owner", "admin"):
+            raise PermissionError("只有 owner 或 admin 才能檢視邀請碼清單。")
+
+        # 自動清理已過期的邀請碼
+        conn.execute(
+            "DELETE FROM public.vault_invitations WHERE vault_id = %s AND expires_at < CURRENT_TIMESTAMP;",
+            (vid,),
+        )
+
+        rows = conn.execute(
+            """
+            SELECT i.id, i.invite_code, i.vault_id, i.default_role, i.expires_at, i.created_at,
+                   u.email AS creator_email
+            FROM public.vault_invitations i
+            LEFT JOIN public.users u ON i.created_by = u.id
+            WHERE i.vault_id = %s
+            ORDER BY i.created_at DESC;
+            """,
+            (vid,),
+        ).fetchall()
+
+        results = []
+        for r in rows:
+            results.append({
+                "id": r["id"],
+                "invite_code": r["invite_code"],
+                "vault_id": r["vault_id"],
+                "default_role": r["default_role"],
+                "expires_at": r["expires_at"].isoformat() if r.get("expires_at") else None,
+                "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
+                "creator_email": r.get("creator_email") or "系統",
+            })
+        return results
+
+
+def revoke_vault_invitation(vault_name: str, invite_id: int, user_id: int) -> bool:
+    """撤銷並從資料庫徹底刪除指定邀請碼（限 owner 或 admin）。"""
+    vid = database.resolve_vault_id(vault_name, user_id=user_id)
+    pool = database.get_pool()
+    with pool.connection() as conn:
+        m_row = conn.execute(
+            "SELECT role FROM public.vault_members WHERE vault_id = %s AND user_id = %s",
+            (vid, user_id),
+        ).fetchone()
+        if not m_row or m_row["role"] not in ("owner", "admin"):
+            raise PermissionError("只有 owner 或 admin 才能撤銷邀請碼。")
+
+        res = conn.execute(
+            "DELETE FROM public.vault_invitations WHERE id = %s AND vault_id = %s RETURNING id;",
+            (invite_id, vid),
+        ).fetchone()
+        return bool(res)

@@ -465,3 +465,74 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ==========================================
+   移動端最佳化 (Viewport <= 530px)
+   ========================================== */
+@media (max-width: 530px) {
+  .home-container {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .home-dash-header {
+    padding: 20px 14px;
+    gap: 14px;
+  }
+
+  .home-dash-title-left {
+    gap: 12px;
+  }
+
+  .home-dash-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .home-dash-title {
+    font-size: 1.35rem;
+  }
+
+  .home-dash-desc {
+    display: none;
+  }
+
+  .home-dash-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .home-btn {
+    padding: 8px 10px;
+    gap: 0;
+  }
+
+  .home-btn span {
+    display: none;
+  }
+
+  .vaults-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .vault-entry-card {
+    padding: 16px 14px;
+    gap: 12px;
+  }
+
+  .modal-card {
+    width: 95vw;
+    padding: 18px 14px;
+  }
+}
+
+.crumb-home-logo {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  vertical-align: middle;
+  flex-shrink: 0;
+}

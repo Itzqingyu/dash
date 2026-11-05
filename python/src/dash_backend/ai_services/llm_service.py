@@ -29,16 +29,52 @@ def load_prompt_template(template_name: str) -> str:
         return f.read()
 
 
-def _get_model_config():
-    """解析環境變數以取得 litellm 所需之 model_name, api_base, api_key。"""
-    model_name = os.getenv("ACTIVE_MODEL", "local/my-model")
+def _get_model_config(task_env_var: Optional[str] = None):
+    """解析環境變數以取得 litellm 所需之 model_name, api_base, api_key。
+    
+    支援依任務優先讀取特定環境變數 (如 MEETING_EXTRACTION_MODEL、CHAT_MODEL)，
+    若未特別指定則 fallback 至全域 ACTIVE_MODEL。
+    """
+    model_name = None
+    if task_env_var:
+        model_name = os.getenv(task_env_var)
+    if not model_name:
+        model_name = os.getenv("ACTIVE_MODEL", "openai/gpt-4o")
+
     api_base = None
     api_key = None
 
     if model_name.startswith("local/"):
         model_name = "openai/" + model_name[6:]
-        api_base = os.getenv("LLAMACPP_API_BASE", "http://localhost:8080/v1")
-        api_key = "sk-no-key-required"
+        api_base = (
+            os.getenv("LLAMACPP_API_BASE")
+            or os.getenv("LOCAL_API_BASE")
+            or "http://localhost:8080/v1"
+        )
+        api_key = os.getenv("LLAMACPP_API_KEY") or os.getenv("LOCAL_API_KEY") or "sk-no-key-required"
+    elif model_name.startswith("ollama/"):
+        api_base = os.getenv("OLLAMA_API_BASE") or "http://localhost:11434"
+        api_key = os.getenv("OLLAMA_API_KEY") or "ollama"
+    elif model_name.startswith("openai/") or model_name.startswith("gpt-"):
+        api_base = os.getenv("OPENAI_API_BASE")
+        api_key = os.getenv("OPENAI_API_KEY")
+    elif model_name.startswith("gemini/"):
+        api_base = os.getenv("GEMINI_API_BASE")
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    elif model_name.startswith("deepseek/"):
+        api_base = os.getenv("DEEPSEEK_API_BASE")
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+    elif model_name.startswith("anthropic/") or model_name.startswith("claude-"):
+        api_base = os.getenv("ANTHROPIC_API_BASE")
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+    elif model_name.startswith("groq/"):
+        api_base = os.getenv("GROQ_API_BASE")
+        api_key = os.getenv("GROQ_API_KEY")
+
+    if not api_key:
+        api_key = os.getenv("ACTIVE_MODEL_API_KEY")
+    if not api_base:
+        api_base = os.getenv("ACTIVE_MODEL_API_BASE")
 
     return model_name, api_base, api_key
 
@@ -107,7 +143,10 @@ def chat_with_context(
 
     api_messages.append({"role": "user", "content": current_user_prompt})
 
-    model_name, api_base, api_key = _get_model_config()
+    model_name, api_base, api_key = _get_model_config(task_env_var="CHAT_MODEL")
+    rag_temp = float(os.getenv("RAG_TEMPERATURE", "0.2"))
+    chat_temp = float(os.getenv("CHAT_TEMPERATURE", "0.7"))
+    temperature = rag_temp if mode == "rag" else chat_temp
 
     try:
         response = completion(
@@ -115,7 +154,7 @@ def chat_with_context(
             api_base=api_base,
             api_key=api_key,
             messages=api_messages,
-            temperature=0.2 if mode == "rag" else 0.7
+            temperature=temperature
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -137,14 +176,8 @@ def extract_structured_meeting_data(full_text: str, system_prompt: Optional[str]
 
     user_prompt = f"請閱讀以下會議紀錄內文，並按照規定萃取為單一 JSON 物件：\n\n{full_text}"
 
-    model_name = os.getenv("ACTIVE_MODEL", "local/my-model")
-    api_base = None
-    api_key = None
-
-    if model_name.startswith("local/"):
-        model_name = "openai/" + model_name[6:]
-        api_base = os.getenv("LLAMACPP_API_BASE", "http://localhost:8080/v1")
-        api_key = "sk-no-key-required"
+    model_name, api_base, api_key = _get_model_config(task_env_var="MEETING_EXTRACTION_MODEL")
+    extraction_temp = float(os.getenv("MEETING_EXTRACTION_TEMPERATURE", "0.1"))
 
     try:
         response = completion(
@@ -155,7 +188,7 @@ def extract_structured_meeting_data(full_text: str, system_prompt: Optional[str]
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.1
+            temperature=extraction_temp
         )
         raw_output = response.choices[0].message.content.strip()
         
